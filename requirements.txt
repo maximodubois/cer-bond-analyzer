@@ -1,0 +1,10 @@
+# ── Server ──────────────────────────────────────
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+httpx>=0.27.0           # async HTTP client for BCRA/INDEC APIs
+itsdangerous>=2.2.0     # session middleware
+python-multipart>=0.0.9 # form parsing (login)
+
+# ── Google Sheets (optional — only if using live prices) ────────
+google-auth>=2.0
+google-api-python-client>=2.0
