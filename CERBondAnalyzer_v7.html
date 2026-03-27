@@ -130,6 +130,21 @@
   <div class="sub">NSS Curve Fitting · Scenario/Stress · Butterfly/RV · Total Return · Z-Spread · Live Prices</div>
 </div>
 
+<!-- TABS (ahora arriba de todo) -->
+<div style="display:flex;gap:0;margin-top:16px;border-bottom:2px solid var(--cb);flex-wrap:wrap">
+  <button class="tab-btn active" onclick="switchTab('calculadoras')">Calculadoras</button>
+  <button class="tab-btn" onclick="switchTab('resumen')">Resumen</button>
+  <button class="tab-btn" onclick="switchTab('analysis')">Análisis</button>
+  <button class="tab-btn" onclick="switchTab('quantplus')">Quant+</button>
+  <button class="tab-btn" onclick="switchTab('livescreen')">Live BID/LAST/OFFER</button>
+  <button class="tab-btn" onclick="switchTab('positions')">Posiciones</button>
+  <button class="tab-btn" onclick="switchTab('pases')">Pases</button>
+  <button class="tab-btn" onclick="switchTab('databcra')">Data BCRA</button>
+</div>
+
+<!-- TAB: CALCULADORAS -->
+<div id="tab-calculadoras">
+
 <!-- LIVE PRICES (via Python server → Google Sheets) -->
 <div class="card" id="connCard">
   <div class="st">Precios en Tiempo Real — Google Sheets via server.py <span class="conn-status" id="connStatus"><span class="live-badge off"></span>Desconectado</span></div>
@@ -188,20 +203,10 @@
   <button class="btn" onclick="clearAllManual()" style="flex:0 0 auto;background:#1e2d44;color:var(--am);border:1px solid var(--am);width:auto;padding:10px 20px">Borrar manuales</button>
 </div>
 
-<!-- TABS -->
-<div style="display:flex;gap:0;margin-top:16px;border-bottom:2px solid var(--cb)">
-  <button class="tab-btn active" onclick="switchTab('resumen')">Resumen</button>
-  <button class="tab-btn" onclick="switchTab('analysis')">Análisis</button>
-  <button class="tab-btn" onclick="switchTab('quantplus')">Quant+</button>
-  <button class="tab-btn" onclick="switchTab('livescreen')">Live BID/LAST/OFFER</button>
-  <button class="tab-btn" onclick="switchTab('positions')">Posiciones</button>
-  <button class="tab-btn" onclick="switchTab('pases')">Pases</button>
-  <button class="tab-btn" onclick="switchTab('databcra')">Data BCRA</button>
-</div>
+</div><!-- end tab-calculadoras -->
 
-<!-- TAB: ANALYSIS -->
 <!-- TAB: RESUMEN -->
-<div id="tab-resumen">
+<div id="tab-resumen" style="display:none">
   <div class="card" style="margin-top:10px">
     <div class="st">Resumen — Bonos CER (tasa fija equivalente)</div>
     <div style="overflow-x:auto">
@@ -244,19 +249,12 @@
 <!-- TAB: ANALYSIS -->
 <div id="tab-analysis" style="display:none">
 
-<div class="card" id="compCard" style="margin-top:10px">
-  <div class="st">Comparación vs Tasa Fija (LECAP / BONCAP)</div>
-  <div class="comp-grid">
-    <div>
-      <div class="ig" style="margin-bottom:8px">
-        <label>Instrumento fijo comparable</label>
-        <select id="fixedComparable"></select>
-      </div>
-      <div class="ig"><label>TIR tasa fija comparable (TEA %)</label><input type="number" id="lecapYield" step="0.1" placeholder="Ej: 34" value="34"></div>
-      <div style="margin-top:6px;font-size:9px;color:var(--td)">TNA equiv: <span id="lecapTNA" style="color:var(--t);font-family:'IBM Plex Mono',monospace">—</span></div>
-    </div>
-    <div id="beResults"><div style="font-size:10px;color:var(--tm);padding-top:6px">Calculá para ver breakeven.</div></div>
-  </div>
+<!-- Comparación vs Tasa Fija: removido -->
+<div style="display:none">
+  <select id="fixedComparable"></select>
+  <input type="number" id="lecapYield" value="34">
+  <span id="lecapTNA"></span>
+  <div id="beResults"></div>
 </div>
 
 <div class="card" id="chartCard" style="display:none">
@@ -268,25 +266,36 @@
 <div class="card" id="durCard" style="display:none">
   <div style="display:flex;justify-content:space-between;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:6px">
     <div class="st" style="margin-bottom:0">Curvas Duration vs TNA — Log + Nelson-Siegel-Svensson</div>
-    <div class="row-actions">
-      <div class="ig"><label>Dur máx</label><input type="number" id="durMaxInput" step="0.05" min="0.05" placeholder="Auto"></div>
+    <div class="row-actions" style="display:flex;gap:6px;align-items:end;flex-wrap:wrap">
+      <div class="ig" style="margin-bottom:0"><label style="font-size:9px">Ver gráficos</label>
+        <select id="durChartSelector" onchange="switchDurCharts(this.value)" style="font-size:11px;padding:4px 8px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;font-family:'IBM Plex Mono',monospace">
+          <option value="all">Los 3 (miniatura)</option>
+          <option value="fx">Solo Tasa Fija</option>
+          <option value="cer">Solo CER Real</option>
+          <option value="combo">Solo Combinado</option>
+          <option value="fx_cer">Tasa Fija + CER</option>
+          <option value="fx_combo">Tasa Fija + Combinado</option>
+          <option value="cer_combo">CER + Combinado</option>
+        </select>
+      </div>
+      <div class="ig" style="margin-bottom:0"><label>Dur máx</label><input type="number" id="durMaxInput" step="0.05" min="0.05" placeholder="Auto"></div>
       <button class="btn-api btn-sm" onclick="setDurZoom('auto')">Auto</button>
       <button class="btn-api btn-sm" onclick="setDurZoom('in')">+</button>
       <button class="btn-api btn-sm" onclick="setDurZoom('out')">−</button>
     </div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-    <div>
+  <div id="durChartsGrid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+    <div id="durWrapFX">
       <div class="il" style="color:var(--fx);margin-bottom:4px">LECAP / BONCAP — Tasa Fija</div>
-      <div class="chart-c" style="height:220px"><canvas id="durChartFX"></canvas></div>
+      <div class="chart-c" id="durChartFXContainer" style="height:220px"><canvas id="durChartFX"></canvas></div>
     </div>
-    <div>
+    <div id="durWrapCER">
       <div class="il" style="color:var(--ac);margin-bottom:4px">CER — TIR Real (CER+)</div>
-      <div class="chart-c" style="height:220px"><canvas id="durChartCERReal"></canvas></div>
+      <div class="chart-c" id="durChartCERContainer" style="height:220px"><canvas id="durChartCERReal"></canvas></div>
     </div>
-    <div>
+    <div id="durWrapCombo">
       <div class="il" style="color:var(--am);margin-bottom:4px">Combinado — CER Nominal + Tasa Fija</div>
-      <div class="chart-c" style="height:220px"><canvas id="durChartCombo"></canvas></div>
+      <div class="chart-c" id="durChartComboContainer" style="height:220px"><canvas id="durChartCombo"></canvas></div>
     </div>
   </div>
   <div class="legend" id="durLegend"></div>
@@ -959,10 +968,10 @@ function buildFixedCards(){
         <div class="list-inputs">
           <div class="price-row">
             <div class="ig"><label><span class="live-badge off" id="flb_${f.id}"></span>Precio Live</label><div class="px-live stale" id="fpl_${f.id}">—</div></div>
-            <div class="ig"><label style="color:var(--am)">Manual</label><input type="number" id="fpm_${f.id}" class="px-manual" step="0.001" value="${f.price}" placeholder="vacío=live" oninput="onManualPriceFx('${f.id}')"></div>
+            <div class="ig"><label style="color:var(--am)">Manual</label><input type="number" id="fpm_${f.id}" class="px-manual" step="0.001" value="" placeholder="vacío=live" oninput="onManualPriceFx('${f.id}')"></div>
             <div class="ig"><label style="color:var(--bl)">TNA → Px</label><input type="number" id="tna_in_fx_${f.id}" class="px-tna" step="0.1" placeholder="TNA%" oninput="onTNAInputFx('${f.id}')"></div>
           </div>
-          <input type="hidden" id="fxp_${f.id}" value="${f.price}">
+          <input type="hidden" id="fxp_${f.id}" value="">
         </div>
         <div class="list-metrics" style="margin-top:0;padding-top:0;border-top:none">
           <div class="metric"><div class="mv" style="color:${f.color}" id="fxtea_${f.id}">—</div><div class="ml">TEA</div></div>
@@ -1801,13 +1810,14 @@ function drawImplInflChart(results){
 // ═══ INIT ══════════════════════════
 // ═══ TABS ═════════════════════════════════════════════════════════
 function switchTab(tab){
-  ["resumen","analysis","quantplus","livescreen","positions","pases","databcra"].forEach(t=>{
+  ["calculadoras","resumen","analysis","quantplus","livescreen","positions","pases","databcra"].forEach(t=>{
     const el=document.getElementById("tab-"+t);
     if(el) el.style.display=t===tab?"":"none";
   });
   document.querySelectorAll(".tab-btn").forEach(b=>{
     const txt=b.textContent.toLowerCase();
-    const isActive=(tab==="resumen"&&txt.includes("resum"))
+    const isActive=(tab==="calculadoras"&&txt.includes("calcu"))
+      ||(tab==="resumen"&&txt.includes("resum"))
       ||(tab==="analysis"&&txt.includes("anál"))
       ||(tab==="quantplus"&&txt.includes("quant"))
       ||(tab==="livescreen"&&txt.includes("live"))
@@ -1821,6 +1831,33 @@ function switchTab(tab){
   if(tab==="positions") renderPositions();
   if(tab==="pases") buildPaseSelect();
   if(tab==="quantplus") refreshQuantPlus();
+}
+
+function switchDurCharts(mode){
+  const grid=document.getElementById("durChartsGrid");
+  const wFX=document.getElementById("durWrapFX");
+  const wCER=document.getElementById("durWrapCER");
+  const wCombo=document.getElementById("durWrapCombo");
+  const cFX=document.getElementById("durChartFXContainer");
+  const cCER=document.getElementById("durChartCERContainer");
+  const cCombo=document.getElementById("durChartComboContainer");
+  if(!grid||!wFX||!wCER||!wCombo)return;
+  const showFX=mode.includes("fx")||mode==="all";
+  const showCER=mode.includes("cer")||mode==="all";
+  const showCombo=mode.includes("combo")||mode==="all";
+  wFX.style.display=showFX?"":"none";
+  wCER.style.display=showCER?"":"none";
+  wCombo.style.display=showCombo?"":"none";
+  const count=[showFX,showCER,showCombo].filter(Boolean).length;
+  grid.style.gridTemplateColumns=count===3?"1fr 1fr 1fr":count===2?"1fr 1fr":"1fr";
+  const h=count===1?"420px":count===2?"300px":"220px";
+  if(cFX)cFX.style.height=h;
+  if(cCER)cCER.style.height=h;
+  if(cCombo)cCombo.style.height=h;
+  // Redraw charts after layout change
+  setTimeout(()=>{
+    if(window.currentDurData) drawDurationChart3(currentDurData.fx,currentDurData.cerReal,currentDurData.combo);
+  },50);
 }
 
 function renderResumen(){
@@ -1946,8 +1983,9 @@ function buildLiveTable(){
 
     // Compute VF from flows
     let vfNom=null;
+    let flows=[];
     if(getCER&&cerEm){
-      const flows=getBondSchedule(b, settle, getCER, cerLiqVal);
+      flows=getBondSchedule(b, settle, getCER, cerLiqVal);
       if(flows.length) vfNom=flows.reduce((s,f)=>s+f.nominal,0);
     }
 
@@ -1960,12 +1998,15 @@ function buildLiveTable(){
     const last=hasManual?manualPx:(lp.last||0);
     const ask=lp.ask||0;
 
-    const tirBid=calcTIRFromPrice(bid,vfNom,days);
-    const tirLast=calcTIRFromPrice(last,vfNom,days);
-    const tirOffer=calcTIRFromPrice(ask,vfNom,days);
-    const tnaBid=calcTNAFromPrice(bid,vfNom,days);
-    const tnaLast=calcTNAFromPrice(last,vfNom,days);
-    const tnaOffer=calcTNAFromPrice(ask,vfNom,days);
+    const tirBid=bid&&flows.length?xirrFromFlows(bid,flows,'nominal'):null;
+    const tirLast=last&&flows.length?xirrFromFlows(last,flows,'nominal'):null;
+    const tirOffer=ask&&flows.length?xirrFromFlows(ask,flows,'nominal'):null;
+    const tirBidPct=tirBid!=null?tirBid*100:null;
+    const tirLastPct=tirLast!=null?tirLast*100:null;
+    const tirOfferPct=tirOffer!=null?tirOffer*100:null;
+    const tnaBid=tirBidPct!=null?((Math.pow(1+tirBidPct/100,days/365)-1)*(365/days))*100:null;
+    const tnaLast=tirLastPct!=null?((Math.pow(1+tirLastPct/100,days/365)-1)*(365/days))*100:null;
+    const tnaOffer=tirOfferPct!=null?((Math.pow(1+tirOfferPct/100,days/365)-1)*(365/days))*100:null;
 
     const manualTag=hasManual?` <span style="font-size:7px;color:var(--am);font-weight:600">MAN</span>`:"";
     const lastStyle=hasManual?"color:var(--am);font-weight:700":"";
@@ -1978,9 +2019,9 @@ function buildLiveTable(){
       <td class="num">${bid||"—"}</td>
       <td class="num" style="${lastStyle}">${last||"—"}${manualTag}</td>
       <td class="num">${ask||"—"}</td>
-      <td class="num hl-g">${tirBid!=null?tirBid.toFixed(2)+"%":"—"}</td>
-      <td class="num" style="${tirLastStyle}">${tirLast!=null?tirLast.toFixed(2)+"%":"—"}</td>
-      <td class="num hl-g">${tirOffer!=null?tirOffer.toFixed(2)+"%":"—"}</td>
+      <td class="num hl-g">${tirBidPct!=null?tirBidPct.toFixed(2)+"%":"—"}</td>
+      <td class="num" style="${tirLastStyle}">${tirLastPct!=null?tirLastPct.toFixed(2)+"%":"—"}</td>
+      <td class="num hl-g">${tirOfferPct!=null?tirOfferPct.toFixed(2)+"%":"—"}</td>
       <td class="num hl-b">${tnaBid!=null?tnaBid.toFixed(2)+"%":"—"}</td>
       <td class="num" style="${tnaLastStyle}">${tnaLast!=null?tnaLast.toFixed(2)+"%":"—"}</td>
       <td class="num hl-b">${tnaOffer!=null?tnaOffer.toFixed(2)+"%":"—"}</td>
