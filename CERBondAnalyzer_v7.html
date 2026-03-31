@@ -310,13 +310,13 @@
     <div style="overflow-x:auto">
       <table class="lt">
         <thead><tr>
-          <th>Especie</th><th>Vencimiento</th><th class="num">Días</th>
+          <th>Especie</th><th class="num">Var %</th><th>Vencimiento</th><th class="num">Días</th>
           <th class="num" style="color:var(--fx)">TEA</th>
           <th class="num" style="color:var(--am)">Precio</th>
           <th class="num" style="color:var(--fx)">TNA</th>
           <th class="num">TEM</th><th class="num">Duration</th>
         </tr></thead>
-        <tbody id="resumenFXBody"><tr><td colspan="8" style="text-align:center;color:var(--tm);padding:12px">Calculá para ver resumen</td></tr></tbody>
+        <tbody id="resumenFXBody"><tr><td colspan="9" style="text-align:center;color:var(--tm);padding:12px">Calculá para ver resumen</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -398,8 +398,8 @@
 
 <!-- QUANT DASHBOARD -->
 <div class="card" id="quantCard" style="display:none">
-  <div class="st">Quant Dashboard — DV01 / Residual / Carry / Edge</div>
-  <div class="note" style="margin-bottom:8px">Responde: ¿cuál está más barato contra su curva? ¿cuál deja más edge neto después de spread? ¿cómo lo hedgeo por DV01?</div>
+  <div class="st">Quant Dashboard — DV01 / Curvas / Spreads</div>
+  <div class="note" style="margin-bottom:8px">Compara mercado vs curva logarítmica y NSS al mismo tiempo. Para cada instrumento se muestran ambas TNA teóricas, sus precios en curva y el spread en bps entre ese precio de curva y el precio actual.</div>
   <div style="overflow-x:auto">
     <table class="lt">
       <thead><tr>
@@ -407,12 +407,12 @@
         <th class="num">TNA</th><th class="num">Dur</th>
         <th class="num" style="color:var(--bl)">DV01</th>
         <th class="num" style="color:var(--bl)">Cvx</th>
-        <th class="num" style="color:var(--ac)">TNA curva</th>
-        <th class="num" style="color:var(--am)">Residual bps</th>
-        <th class="num">Carry 30d</th>
-        <th class="num">Roll 30d</th>
-        <th class="num" style="color:var(--w)">Spread ½</th>
-        <th class="num" style="color:var(--ac)">Net Edge bps</th>
+        <th class="num" style="color:var(--bl)">TNA curva Log</th>
+        <th class="num" style="color:var(--bl)">Px curva Log</th>
+        <th class="num" style="color:var(--am)">TNA curva NSS</th>
+        <th class="num" style="color:var(--am)">Px curva NSS</th>
+        <th class="num" style="color:var(--bl)">Spread bps Log</th>
+        <th class="num" style="color:var(--am)">Spread bps NSS</th>
         <th class="num">Hedge vs</th>
         <th class="num">Ratio</th>
       </tr></thead>
@@ -546,6 +546,16 @@
   <div class="note" style="margin-bottom:10px">Inflación mensual implícita por el mercado para cada mes futuro, derivada de breakeven CER vs LECAP comparable. Barras violeta = forward-forward entre bonos adyacentes (inflación implícita entre nodos). X = mes forward, Y = TEM implícita. Compara con tu proyección (grilla de inflación).</div>
   <div class="chart-c" style="height:280px"><canvas id="fwdInflTSChart"></canvas></div>
   <div class="legend" id="fwdInflTSLegend"></div>
+</div>
+
+<div class="card">
+  <div class="st">Forward Inflation Matrix — BE Condicional</div>
+  <div class="note" style="margin-bottom:10px">Cada fila fija ese mes en la inflación asumida. Cada celda muestra la TEM plana que deberían promediar los meses restantes hasta la columna final para respetar el breakeven implícito de mercado. Ejemplo: fila Jul, columna Dic.</div>
+  <div style="display:grid;grid-template-columns:auto auto 1fr;gap:10px;align-items:end;margin-bottom:10px">
+    <div class="ig"><label>Inflación asumida %</label><input type="number" id="fwdInflAssumption" value="3" step="0.1" oninput="buildForwardInflationMatrix()"></div>
+    <button class="btn-api" onclick="buildForwardInflationMatrix()">Recalcular matriz</button>
+  </div>
+  <div id="fwdInflMonthMatrix" style="overflow-x:auto"></div>
 </div>
 
 <!-- SYNTHETIC FX ARBITRAGE (ROFEX) -->
@@ -763,7 +773,7 @@ const FER=new Set([
 "2021-01-01","2021-02-15","2021-02-16","2021-03-24","2021-04-01","2021-04-02","2021-05-01","2021-05-24","2021-05-25","2021-06-20","2021-06-21","2021-07-09","2021-08-16","2021-10-08","2021-10-11","2021-11-20","2021-11-22","2021-12-08","2021-12-24","2021-12-25","2021-12-31",
 "2022-01-01","2022-02-28","2022-03-01","2022-03-24","2022-04-02","2022-04-14","2022-04-15","2022-05-01","2022-05-18","2022-05-25","2022-06-17","2022-06-20","2022-07-09","2022-08-15","2022-09-02","2022-10-07","2022-10-10","2022-11-21","2022-12-08","2022-12-09","2022-12-25",
 "2023-01-01","2023-02-20","2023-02-21","2023-03-24","2023-04-06","2023-04-07","2023-05-01","2023-05-25","2023-05-26","2023-06-19","2023-06-20","2023-07-09","2023-08-21","2023-10-13","2023-10-16","2023-11-06","2023-11-20","2023-12-08","2023-12-25",
-"2024-01-01","2024-01-31","2024-02-12","2024-02-13","2024-03-24","2024-03-28","2024-03-29","2024-04-01","2024-04-02","2024-05-01","2024-05-25","2024-06-17","2024-06-20","2024-06-21","2024-07-09","2024-08-17","2024-10-11","2024-10-12","2024-11-18","2024-12-08","2024-12-24","2024-12-25",
+"2024-01-01","2024-02-12","2024-02-13","2024-03-24","2024-03-28","2024-03-29","2024-04-01","2024-04-02","2024-05-01","2024-05-25","2024-06-17","2024-06-20","2024-06-21","2024-07-09","2024-08-17","2024-10-11","2024-10-12","2024-11-18","2024-12-08","2024-12-24","2024-12-25",
 "2025-01-01","2025-03-03","2025-03-04","2025-03-24","2025-04-02","2025-04-17","2025-04-18","2025-05-01","2025-05-02","2025-05-25","2025-06-16","2025-06-20","2025-07-09","2025-08-15","2025-08-17","2025-10-10","2025-11-21","2025-11-24","2025-12-08","2025-12-24","2025-12-25","2025-12-31",
 "2026-01-01","2026-02-16","2026-02-17","2026-03-23","2026-03-24","2026-04-02","2026-04-03","2026-05-01","2026-05-25","2026-06-17","2026-06-20","2026-07-09","2026-07-10","2026-08-17","2026-10-12","2026-11-20","2026-12-07","2026-12-08","2026-12-25",
 "2027-01-01","2027-02-08","2027-02-09","2027-03-24","2027-03-25","2027-03-26"
@@ -778,11 +788,13 @@ const BONDS=[
   {id:"X30S6",ticker:"X30S6",name:"LECER 30-Sep-26",mat:"2026-09-30",vno:100,cup:0,emDate:"2026-03-16",cerEm:714.9849,isin:"AR0362438175",color:"#fb923c"},
   {id:"TZXO6",ticker:"TZXO6",name:"BONCER 30-Oct-26",mat:"2026-10-30",vno:100,cup:0,emDate:"2024-10-31",cerEm:480.1526,isin:"AR0881212424",color:"#e879f9"},
   {id:"X30N6",ticker:"X30N6",name:"LECER 30-Nov-26",mat:"2026-11-30",vno:100,cup:0,emDate:"2025-12-15",cerEm:659.6789,isin:"AR0933792183",color:"#f9a8d4"},
-  {id:"TZXD6",ticker:"TZXD6",name:"BONCER 15-Dic-26",mat:"2026-12-15",vno:100,cup:0,emDate:"2024-06-15",cerEm:271.0476,isin:"AR0465304779",color:"#fbbf24"},
-  {id:"TZXM7",ticker:"TZXM7",name:"BONCER 31-Mar-27",mat:"2027-03-31",vno:100,cup:0,emDate:"2024-04-30",cerEm:361.3176,isin:"",color:"#4ade80"},
-  {id:"TZX27",ticker:"TZX27",name:"BONCER 30-Jun-27",mat:"2027-06-30",vno:100,cup:0,emDate:"2024-02-01",cerEm:200.388,isin:"",color:"#2dd4bf"},
-  {id:"TZXD7",ticker:"TZXD7",name:"BONCER 15-Dic-27",mat:"2027-12-15",vno:100,cup:0,emDate:"2024-03-15",cerEm:350.00,isin:"AR0611949808",color:"#f472b6"},
-  {id:"TZX28",ticker:"TZX28",name:"BONCER 30-Jun-28",mat:"2028-06-30",vno:100,cup:0,emDate:"2024-02-01",cerEm:200.388,isin:"",color:"#c084fc"},
+  {id:"TZXD6",ticker:"TZXD6",name:"BONCER 15-Dic-26",mat:"2026-12-15",vno:100,cup:0,emDate:"2024-03-15",cerEm:271.04755550913,isin:"AR0465304779",color:"#fbbf24"},
+  {id:"TZXM7",ticker:"TZXM7",name:"BONCER 31-Mar-27",mat:"2027-03-31",vno:100,cup:0,emDate:"2024-05-20",cerEm:361.31760345721,isin:"",color:"#4ade80"},
+  {id:"TZXA7",ticker:"TZXA7",name:"BONCER 30-Abr-27",mat:"2027-04-30",vno:100,cup:0,emDate:"2025-11-28",cerEm:652.33524435885,isin:"AR0320223842",color:"#22c55e"},
+  {id:"TZXY7",ticker:"TZXY7",name:"BONCER 31-May-27",mat:"2027-05-31",vno:100,cup:0,emDate:"2025-12-15",cerEm:659.67889566652,isin:"AR0286465007",color:"#06b6d4"},
+  {id:"TZX27",ticker:"TZX27",name:"BONCER 30-Jun-27",mat:"2027-06-30",vno:100,cup:0,emDate:"2024-02-01",cerEm:200.38801458912,isin:"",color:"#2dd4bf"},
+  {id:"TZXD7",ticker:"TZXD7",name:"BONCER 15-Dic-27",mat:"2027-12-15",vno:100,cup:0,emDate:"2024-03-15",cerEm:271.04755550913,isin:"AR0611949808",color:"#f472b6"},
+  {id:"TZX28",ticker:"TZX28",name:"BONCER 30-Jun-28",mat:"2028-06-30",vno:100,cup:0,emDate:"2024-02-01",cerEm:200.38801458912,isin:"",color:"#c084fc"},
 ];
 
 // ═══ TASA FIJA ═══
@@ -837,7 +849,43 @@ const IM=[
 // ═══ DATE UTILS ════════════════════
 const DB=(a,b)=>Math.round((b-a)/864e5);
 const DS=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-const IB=d=>{const w=d.getDay();return w!==0&&w!==6&&!FER.has(DS(d))};
+const _dynHolidayCache=new Map();
+function calcEasterSunday(year){
+  const a=year%19,b=Math.floor(year/100),c=year%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3);
+  const h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451);
+  const month=Math.floor((h+l-7*m+114)/31),day=((h+l-7*m+114)%31)+1;
+  return new Date(year,month-1,day);
+}
+function shiftMovableHoliday(date){
+  const d=new Date(date);
+  const wd=d.getDay();
+  if(wd===2||wd===3) d.setDate(d.getDate()-(wd-1));
+  else if(wd===4||wd===5||wd===6||wd===0) d.setDate(d.getDate()+((8-wd)%7||1));
+  return d;
+}
+function getDynamicHolidaySet(year){
+  if(_dynHolidayCache.has(year)) return _dynHolidayCache.get(year);
+  const set=new Set();
+  const add=(m,d)=>set.add(DS(new Date(year,m,d)));
+  const addDate=d=>set.add(DS(d));
+  const easter=calcEasterSunday(year);
+  const carnivalMon=new Date(easter); carnivalMon.setDate(carnivalMon.getDate()-48); addDate(carnivalMon);
+  const carnivalTue=new Date(easter); carnivalTue.setDate(carnivalTue.getDate()-47); addDate(carnivalTue);
+  const holyThu=new Date(easter); holyThu.setDate(holyThu.getDate()-3); addDate(holyThu);
+  const holyFri=new Date(easter); holyFri.setDate(holyFri.getDate()-2); addDate(holyFri);
+  [[0,1],[2,24],[3,2],[4,1],[4,25],[6,9],[11,8],[11,25]].forEach(([m,d])=>add(m,d));
+  [[5,17],[7,17],[9,12],[10,20]].forEach(([m,d])=>addDate(shiftMovableHoliday(new Date(year,m,d))));
+  add(5,20);
+  const belgrano=new Date(year,5,20);
+  if(belgrano.getDay()===0){
+    const observed=new Date(belgrano);
+    observed.setDate(observed.getDate()+1);
+    addDate(observed);
+  }
+  _dynHolidayCache.set(year,set);
+  return set;
+}
+const IB=d=>{const w=d.getDay(),ds=DS(d);return w!==0&&w!==6&&!FER.has(ds)&&!getDynamicHolidaySet(d.getFullYear()).has(ds)};
 function SBD(date,n){let r=new Date(date),c=0;while(c<n){r.setDate(r.getDate()-1);if(IB(r))c++}return r}
 function ABD(date,n){let r=new Date(date),c=0;while(c<n){r.setDate(r.getDate()+1);if(IB(r))c++}return r}
 function FD(d){return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear()}
@@ -880,9 +928,11 @@ function buildCER(baseCERVal,baseDateStr,inflMap){
   const D0=DB(baseAnchor,baseNextAnchor);
   const cerAtBaseAnchor=baseCERVal/Math.pow(1+baseInfl,n0/D0);
   const m15=new Map();
+  const futureSteps=Math.max(48,Object.keys(inflMap||{}).length+18);
+  const backwardSteps=Math.max(24,Math.ceil(Object.keys(inflMap||{}).length/2));
   m15.set(baseAnchor.getTime(),cerAtBaseAnchor);
   let cur=new Date(baseAnchor),curCER=cerAtBaseAnchor;
-  for(let i=0;i<18;i++){
+  for(let i=0;i<futureSteps;i++){
     const nxt=getNextAnchor15(cur);
     const k=inflKeyForAnchor(cur);
     const inf=(inflMap[k]||0)/100;
@@ -891,7 +941,7 @@ function buildCER(baseCERVal,baseDateStr,inflMap){
     cur=nxt;
   }
   cur=new Date(baseAnchor);curCER=cerAtBaseAnchor;
-  for(let i=0;i<8;i++){
+  for(let i=0;i<backwardSteps;i++){
     const prev=cur.getMonth()===0?new Date(cur.getFullYear()-1,11,15):new Date(cur.getFullYear(),cur.getMonth()-1,15);
     const k=inflKeyForAnchor(prev);
     const inf=(inflMap[k]||0)/100;
@@ -1345,14 +1395,20 @@ function drawDurationChart3(ptsFX,ptsCERReal,ptsCombo){
 
 
 // ═══ BOND FLOWS / IRR ═══════════════
+function getBondEmissionCER(b){
+  const el=document.getElementById("ce_"+b.id);
+  const val=el?parseFloat(el.value):NaN;
+  return !isNaN(val)&&val>0?val:b.cerEm;
+}
 function getBondSchedule(b, settle, getCER, cerLiqRef){
   const flows=[];
   const matD=new Date(b.mat+"T00:00:00");
   const ref=SBD(matD,10);
   const cerPay=getCER(ref);
-  if(!cerPay||!cerLiqRef) return flows;
+  const cerEmRef=getBondEmissionCER(b);
+  if(!cerPay||!cerLiqRef||!cerEmRef) return flows;
   const baseFlow=b.vno;
-  flows.push({date:matD, days:DB(settle,matD), cerPay, nominal:baseFlow*(cerPay/b.cerEm), real:baseFlow*(cerLiqRef/b.cerEm)});
+  flows.push({date:matD, days:DB(settle,matD), cerPay, nominal:baseFlow*(cerPay/cerEmRef), real:baseFlow*(cerLiqRef/cerEmRef)});
   return flows;
 }
 
@@ -1597,6 +1653,8 @@ function calculate(){
 
 // ═══ IMPLIED INFLATION ════════════════════════════════════════════
 const MNAMES=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+let _implInflResults=[];
+let _implInflFullyKnown=[];
 
 // Implied inflation month logic:
 // CER at date D sits in a window that uses CPI = inflKeyForAnchor(getAnchor15(D))
@@ -1729,6 +1787,8 @@ function calcImpliedInflation(settle, cerLiqInput, getCER){
 
   card.style.display="";
   results.sort((a,b)=>a.nMonths-b.nMonths);
+  _implInflResults=results.slice();
+  _implInflFullyKnown=fullyKnownBonds.slice();
 
   let html='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">';
 
@@ -1966,7 +2026,7 @@ function switchDurCharts(mode){
   },50);
 }
 
-function renderResumen(){
+function renderResumenLegacy(){
   const sd=document.getElementById("settleDate").value;
   const settle=new Date(sd+"T00:00:00");
   // CER summary
@@ -2008,6 +2068,68 @@ function renderResumen(){
       </tr>`;
     });
     fxBody.innerHTML=rows||'<tr><td colspan="8" style="text-align:center;color:var(--tm);padding:12px">Calculá primero</td></tr>';
+  }
+}
+
+function getPriceVariationMeta(ticker, manualInputId){
+  const lp=_livePrices[ticker]||{};
+  const manualEl=document.getElementById(manualInputId);
+  const manualPx=manualEl?parseFloat(manualEl.value):NaN;
+  const last=!isNaN(manualPx)&&manualPx>0?manualPx:(lp.last||0);
+  const closeP=lp.close||0;
+  const varPct=last&&closeP?((last-closeP)/closeP*100):null;
+  return {
+    last,
+    varPct,
+    text:varPct!=null?(varPct>=0?"+":"")+varPct.toFixed(2)+"%":"—",
+    color:varPct!=null?(varPct>=0?"var(--pos)":"#ef4444"):"var(--tm)"
+  };
+}
+
+function renderResumen(){
+  const sd=document.getElementById("settleDate").value;
+  const settle=new Date(sd+"T00:00:00");
+  const cerBody=document.getElementById("resumenCERBody");
+  if(cerBody){
+    let rows="";
+    BONDS.filter(b=>b._ok).forEach(b=>{
+      const days=DB(settle,new Date(b.mat+"T00:00:00"));
+      const px=getCurrentPrice(b.id);
+      const chg=getPriceVariationMeta(b.ticker,"pm_"+b.id);
+      rows+=`<tr style="border-left:3px solid ${b.color}">
+        <td class="tk" style="color:${b.color}">${b.ticker}</td>
+        <td class="num" style="color:${chg.color};font-weight:600">${chg.text}</td>
+        <td>${FD(new Date(b.mat+"T00:00:00"))}</td>
+        <td class="num">${days}</td>
+        <td class="num" style="color:var(--ac);font-weight:600">${b._tn!=null?b._tn.toFixed(2)+"%":"—"}</td>
+        <td class="num" style="color:var(--am);font-weight:600">${px?px.toFixed(2):"—"}</td>
+        <td class="num" style="color:var(--ac)">${b._tnaTF!=null?b._tnaTF.toFixed(2)+"%":"—"}</td>
+        <td class="num">${b._tr!=null?b._tr.toFixed(2)+"%":"—"}</td>
+        <td class="num">${b._dur!=null?b._dur.toFixed(3):"—"}</td>
+      </tr>`;
+    });
+    cerBody.innerHTML=rows||'<tr><td colspan="9" style="text-align:center;color:var(--tm);padding:12px">Calculá primero</td></tr>';
+  }
+  const fxBody=document.getElementById("resumenFXBody");
+  if(fxBody){
+    let rows="";
+    FIXED.filter(f=>f._ok).forEach(f=>{
+      const days=DB(settle,new Date(f.mat+"T00:00:00"));
+      const px=getCurrentPrice(f.id);
+      const chg=getPriceVariationMeta(f.ticker,"fpm_"+f.id);
+      rows+=`<tr style="border-left:3px solid ${f.color}">
+        <td class="tk" style="color:${f.color}">${f.ticker}</td>
+        <td class="num" style="color:${chg.color};font-weight:600">${chg.text}</td>
+        <td>${FD(new Date(f.mat+"T00:00:00"))}</td>
+        <td class="num">${days}</td>
+        <td class="num" style="color:var(--fx);font-weight:600">${f._tea!=null?f._tea.toFixed(2)+"%":"—"}</td>
+        <td class="num" style="color:var(--am);font-weight:600">${px?px.toFixed(3):"—"}</td>
+        <td class="num" style="color:var(--fx)">${f._tna!=null?f._tna.toFixed(2)+"%":"—"}</td>
+        <td class="num">${f._temCurrent!=null?f._temCurrent.toFixed(4)+"%":"—"}</td>
+        <td class="num">${f._dur!=null?f._dur.toFixed(3):"—"}</td>
+      </tr>`;
+    });
+    fxBody.innerHTML=rows||'<tr><td colspan="9" style="text-align:center;color:var(--tm);padding:12px">Calculá primero</td></tr>';
   }
 }
 
@@ -2674,7 +2796,7 @@ function copyPaseTable(){
 }
 
 // ═══ QUANT DASHBOARD ═════════════════════════════════════════════
-function buildQuantDashboard(){
+function buildQuantDashboardLegacy(){
   const card=document.getElementById("quantCard");
   const tbody=document.getElementById("quantBody");
   const ranking=document.getElementById("quantRanking");
@@ -2791,6 +2913,123 @@ function buildQuantDashboard(){
 }
 
 // ═══ FORWARD MATRICES ════════════════════════════════════════════
+function priceFromCurveTNA(vf, tnaPct, days){
+  if(vf==null||!isFinite(vf)||tnaPct==null||!isFinite(tnaPct)||days<=0) return null;
+  return vf/(1+(tnaPct/100)*days/365);
+}
+function curvePriceSpreadBps(px, curvePx){
+  if(px==null||curvePx==null||!isFinite(px)||!isFinite(curvePx)||px<=0) return null;
+  return ((curvePx/px)-1)*10000;
+}
+function buildQuantDashboard(){
+  const card=document.getElementById("quantCard");
+  const tbody=document.getElementById("quantBody");
+  const ranking=document.getElementById("quantRanking");
+  if(!tbody)return;
+
+  const sd=document.getElementById("settleDate").value;
+  const settle=new Date(sd+"T00:00:00");
+  const items=[];
+
+  const comboLogCurve=_fittedCurves.comboLog;
+  const comboNSSCurve=_fittedCurves.comboNSS;
+  const fxLogCurve=_fittedCurves.fxLog;
+  const fxNSSCurve=_fittedCurves.fxNSS;
+
+  BONDS.filter(b=>b._ok&&b._dur>0).forEach(b=>{
+    const px=getCurrentPrice(b.id);
+    const days=DB(settle,new Date(b.mat+"T00:00:00"));
+    if(!px||days<=0)return;
+    const tna=b._tnaTF;
+    const tea=b._tn;
+    const dur=b._dur;
+    const dv01=px*dur/10000;
+    const cvx=dur*(dur+days/365)/Math.pow(1+(tea||0)/100,2);
+    const vfEl=document.getElementById("vf_"+b.id);
+    const vf=vfEl?parseFloat((vfEl.textContent||"").replace("$","")):null;
+    const theoTNALog=comboLogCurve?comboLogCurve.predict(dur):null;
+    const theoPxLog=priceFromCurveTNA(vf,theoTNALog,days);
+    const spreadLogBps=curvePriceSpreadBps(px,theoPxLog);
+    const theoTNANSS=comboNSSCurve?comboNSSCurve.predict(dur):null;
+    const theoPxNSS=priceFromCurveTNA(vf,theoTNANSS,days);
+    const spreadNSSBps=curvePriceSpreadBps(px,theoPxNSS);
+    items.push({ticker:b.ticker,type:"CER",color:b.color,days,px,tna,dur,dv01,cvx,isCER:true,pxDecimals:2,
+      theoTNALog,theoPxLog,spreadLogBps,theoTNANSS,theoPxNSS,spreadNSSBps});
+  });
+
+  FIXED.filter(f=>f._ok&&f._dur>0).forEach(f=>{
+    const px=getCurrentPrice(f.id);
+    const days=DB(settle,new Date(f.mat+"T00:00:00"));
+    if(!px||days<=0)return;
+    const tna=f._tna;
+    const tea=f._tea;
+    const dur=f._dur;
+    const dv01=px*dur/10000;
+    const cvx=dur*(dur+days/365)/Math.pow(1+(tea||0)/100,2);
+    const vf=f._vf;
+    const theoTNALog=fxLogCurve?fxLogCurve.predict(dur):null;
+    const theoPxLog=priceFromCurveTNA(vf,theoTNALog,days);
+    const spreadLogBps=curvePriceSpreadBps(px,theoPxLog);
+    const theoTNANSS=fxNSSCurve?fxNSSCurve.predict(dur):null;
+    const theoPxNSS=priceFromCurveTNA(vf,theoTNANSS,days);
+    const spreadNSSBps=curvePriceSpreadBps(px,theoPxNSS);
+    items.push({ticker:f.ticker,type:f.type,color:f.color,days,px,tna,dur,dv01,cvx,isCER:false,pxDecimals:3,
+      theoTNALog,theoPxLog,spreadLogBps,theoTNANSS,theoPxNSS,spreadNSSBps});
+  });
+
+  if(!items.length){card.style.display="none";return}
+  card.style.display="";
+
+  const cerItems=items.filter(i=>i.isCER);
+  const fxItems=items.filter(i=>!i.isCER);
+  const hedgeCER=cerItems.length?cerItems.reduce((a,b)=>a.days<b.days?a:b):null;
+  const hedgeFX=fxItems.length?fxItems.reduce((a,b)=>a.days<b.days?a:b):null;
+
+  function spreadColor(spread){
+    if(spread==null||!isFinite(spread)) return "var(--td)";
+    return spread>25?"var(--ac)":spread<-25?"var(--w)":"var(--td)";
+  }
+
+  let rows="";
+  items.sort((a,b)=>a.days-b.days);
+  items.forEach(it=>{
+    const hedge=it.isCER?hedgeCER:hedgeFX;
+    const hedgeTk=hedge&&hedge.ticker!==it.ticker?hedge.ticker:"—";
+    const hedgeRatio=hedge&&hedge.dv01&&hedge.ticker!==it.ticker?(it.dv01/hedge.dv01).toFixed(3):"—";
+    const fmtPx=n=>n!=null&&isFinite(n)?n.toFixed(it.pxDecimals):"—";
+    rows+=`<tr style="border-left:3px solid ${it.color}">
+      <td class="tk" style="color:${it.color}">${it.ticker}</td>
+      <td>${it.type}</td>
+      <td class="num">${it.days}</td>
+      <td class="num">${it.px.toFixed(it.pxDecimals)}</td>
+      <td class="num">${it.tna!=null?it.tna.toFixed(2)+"%":"—"}</td>
+      <td class="num">${it.dur.toFixed(3)}</td>
+      <td class="num" style="color:var(--bl)">${it.dv01.toFixed(4)}</td>
+      <td class="num" style="color:var(--bl)">${it.cvx.toFixed(3)}</td>
+      <td class="num" style="color:var(--bl)">${it.theoTNALog!=null&&isFinite(it.theoTNALog)?it.theoTNALog.toFixed(2)+"%":"—"}</td>
+      <td class="num" style="color:var(--bl)">${fmtPx(it.theoPxLog)}</td>
+      <td class="num" style="color:var(--am)">${it.theoTNANSS!=null&&isFinite(it.theoTNANSS)?it.theoTNANSS.toFixed(2)+"%":"—"}</td>
+      <td class="num" style="color:var(--am)">${fmtPx(it.theoPxNSS)}</td>
+      <td class="num" style="color:${spreadColor(it.spreadLogBps)};font-weight:600">${it.spreadLogBps!=null?(it.spreadLogBps>0?"+":"")+it.spreadLogBps.toFixed(1):"—"}</td>
+      <td class="num" style="color:${spreadColor(it.spreadNSSBps)};font-weight:600">${it.spreadNSSBps!=null?(it.spreadNSSBps>0?"+":"")+it.spreadNSSBps.toFixed(1):"—"}</td>
+      <td class="num">${hedgeTk}</td>
+      <td class="num">${hedgeRatio}</td>
+    </tr>`;
+  });
+  tbody.innerHTML=rows;
+
+  const withLog=items.filter(i=>i.spreadLogBps!=null).sort((a,b)=>b.spreadLogBps-a.spreadLogBps).slice(0,3);
+  const withNSS=items.filter(i=>i.spreadNSSBps!=null).sort((a,b)=>b.spreadNSSBps-a.spreadNSSBps).slice(0,3);
+  let rk='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:10px">';
+  rk+='<div><div class="il" style="color:var(--bl);margin-bottom:4px">Más baratos vs curva Log</div>';
+  withLog.forEach((it,i)=>rk+=`<div style="color:${it.color};font-weight:600">${i+1}. ${it.ticker} <span style="color:${spreadColor(it.spreadLogBps)}">${it.spreadLogBps>0?'+':''}${it.spreadLogBps.toFixed(0)}bps</span></div>`);
+  rk+='</div>';
+  rk+='<div><div class="il" style="color:var(--am);margin-bottom:4px">Más baratos vs curva NSS</div>';
+  withNSS.forEach((it,i)=>rk+=`<div style="color:${it.color};font-weight:600">${i+1}. ${it.ticker} <span style="color:${spreadColor(it.spreadNSSBps)}">${it.spreadNSSBps>0?'+':''}${it.spreadNSSBps.toFixed(0)}bps</span></div>`);
+  rk+='</div></div>';
+  ranking.innerHTML=rk;
+}
+
 function buildForwardMatrix(items, containerID){
   const el=document.getElementById(containerID);
   if(!el||!items.length){if(el)el.innerHTML="";return}
@@ -2877,6 +3116,7 @@ function refreshQuantPlus(){
   calcPortfolioRisk();
   buildRVHeatmap();
   drawFwdInflTS();
+  buildForwardInflationMatrix();
 }
 
 // ── Helpers ──
@@ -3604,6 +3844,70 @@ function drawFwdInflTS(){
 
   const leg=document.getElementById("fwdInflTSLegend");
   if(leg) leg.innerHTML='<span><span class="ldot" style="background:var(--ac)"></span>Breakeven spot</span> <span><span class="ldot" style="background:#8b5cf6"></span>Forward-Forward implícito</span> <span><span class="ldot" style="background:var(--am)"></span>Tu proyección</span>';
+}
+
+function buildMonthlyBEForwardCurve(){
+  const results=(_implInflResults||[]).slice().sort((a,b)=>a.nMonths-b.nMonths);
+  if(!results.length) return [];
+  const series=[];
+  let cumPrev=1, prevN=0;
+  results.forEach(r=>{
+    const n=Math.max(0,r.nMonths||0);
+    if(!n||!Array.isArray(r.months)||!r.months.length||n<=prevN) return;
+    const cumNow=Math.pow(1+r.implPi/100,n);
+    const missing=n-prevN;
+    const stepFactor=Math.pow(cumNow/cumPrev,1/missing);
+    for(let idx=prevN;idx<n;idx++){
+      const month=r.months[idx];
+      if(!month) continue;
+      series.push({month,tem:(stepFactor-1)*100});
+    }
+    cumPrev=cumNow;
+    prevN=n;
+  });
+  return series;
+}
+
+function buildForwardInflationMatrix(){
+  const el=document.getElementById("fwdInflMonthMatrix");
+  if(!el) return;
+  const baseSeries=buildMonthlyBEForwardCurve();
+  if(baseSeries.length<2){
+    el.innerHTML='<div class="note">Calculá primero breakevens CER vs LECAP para construir la matriz.</div>';
+    return;
+  }
+
+  const assumption=parseFloat(document.getElementById("fwdInflAssumption").value);
+  if(!isFinite(assumption)){
+    el.innerHTML='<div class="note">Ingresá una inflación asumida válida.</div>';
+    return;
+  }
+
+  const avg=baseSeries.reduce((s,m)=>s+m.tem,0)/baseSeries.length;
+  let html='<table class="fwd-matrix"><thead><tr><th>Mes asumido</th>';
+  baseSeries.forEach(m=>html+=`<th>${m.month.label}</th>`);
+  html+='</tr></thead><tbody>';
+
+  for(let i=0;i<baseSeries.length;i++){
+    html+=`<tr><th>${baseSeries[i].month.label}<br><span style="color:var(--am)">${assumption.toFixed(2)}%</span></th>`;
+    for(let j=0;j<baseSeries.length;j++){
+      if(j<i){ html+='<td style="background:var(--bg);color:var(--tm)">—</td>'; continue; }
+      if(j===i){ html+=`<td class="fwd-mid">${assumption.toFixed(2)}%</td>`; continue; }
+      let totalFactor=1;
+      for(let k=i;k<=j;k++) totalFactor*=1+baseSeries[k].tem/100;
+      const remCount=j-i;
+      const remFactor=totalFactor/(1+assumption/100);
+      if(remFactor<=0){ html+='<td style="background:var(--bg);color:var(--tm)">N/A</td>'; continue; }
+      const reqTem=(Math.pow(remFactor,1/remCount)-1)*100;
+      const cls=reqTem>avg*1.03?"fwd-hi":reqTem<avg*0.97?"fwd-lo":"fwd-mid";
+      html+=`<td class="${cls}" title="TEM plana requerida para ${baseSeries[i].month.label}→${baseSeries[j].month.label}">${reqTem.toFixed(2)}%</td>`;
+    }
+    html+='</tr>';
+  }
+
+  html+='</tbody></table>';
+  html+=`<div class="note" style="margin-top:8px">Lectura: fila = mes que asumís en <b>${assumption.toFixed(2)}%</b>. Columna = mes final. Celda = TEM plana requerida para los meses restantes. Ejemplo: fila Jul, columna Dic.</div>`;
+  el.innerHTML=html;
 }
 
 
