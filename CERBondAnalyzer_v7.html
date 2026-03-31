@@ -549,10 +549,13 @@
 </div>
 
 <div class="card">
-  <div class="st">Forward Inflation Matrix — BE Condicional</div>
-  <div class="note" style="margin-bottom:10px">Cada fila fija ese mes en la inflación asumida. Cada celda muestra la TEM plana que deberían promediar los meses restantes hasta la columna final para respetar el breakeven implícito de mercado. Ejemplo: fila Jul, columna Dic.</div>
-  <div style="display:grid;grid-template-columns:auto auto 1fr;gap:10px;align-items:end;margin-bottom:10px">
-    <div class="ig"><label>Inflación asumida %</label><input type="number" id="fwdInflAssumption" value="3" step="0.1" oninput="buildForwardInflationMatrix()"></div>
+  <div class="st">Forward Inflation Matrix — Shock por Mes</div>
+  <div class="note" style="margin-bottom:10px">Elegís un mes a shockear y una grilla de inflaciones posibles. La matriz te muestra cuánto debería dar cada mes siguiente para que el breakeven acumulado hacia cada horizonte siga siendo el implícito del mercado. Ejemplo: si Marzo da 3.0%, cuánto debería dar Abril para sostener el BE de Mayo.</div>
+  <div style="display:grid;grid-template-columns:auto auto auto auto auto 1fr;gap:10px;align-items:end;margin-bottom:10px">
+    <div class="ig"><label>Mes shock</label><select id="fwdInflShockMonth" onchange="buildForwardInflationMatrix()"></select></div>
+    <div class="ig"><label>Desde %</label><input type="number" id="fwdInflShockStart" value="2.8" step="0.1" oninput="buildForwardInflationMatrix()"></div>
+    <div class="ig"><label>Hasta %</label><input type="number" id="fwdInflShockEnd" value="3.2" step="0.1" oninput="buildForwardInflationMatrix()"></div>
+    <div class="ig"><label>Paso %</label><input type="number" id="fwdInflShockStep" value="0.1" step="0.1" oninput="buildForwardInflationMatrix()"></div>
     <button class="btn-api" onclick="buildForwardInflationMatrix()">Recalcular matriz</button>
   </div>
   <div id="fwdInflMonthMatrix" style="overflow-x:auto"></div>
@@ -3877,36 +3880,67 @@ function buildForwardInflationMatrix(){
     return;
   }
 
-  const assumption=parseFloat(document.getElementById("fwdInflAssumption").value);
-  if(!isFinite(assumption)){
-    el.innerHTML='<div class="note">Ingresá una inflación asumida válida.</div>';
+  const shockSel=document.getElementById("fwdInflShockMonth");
+  if(shockSel&&shockSel.options.length!==baseSeries.length){
+    shockSel.innerHTML=baseSeries.map((m,i)=>`<option value="${i}">${m.month.label}</option>`).join("");
+  }
+
+  const rawShockIdx=parseInt(shockSel?.value||"0",10);
+  const shockIdx=Math.min(Math.max(isFinite(rawShockIdx)?rawShockIdx:0,0),baseSeries.length-1);
+  if(shockSel) shockSel.value=String(shockIdx);
+  const start=parseFloat(document.getElementById("fwdInflShockStart").value);
+  const end=parseFloat(document.getElementById("fwdInflShockEnd").value);
+  const step=parseFloat(document.getElementById("fwdInflShockStep").value);
+  if(!isFinite(start)||!isFinite(end)||!isFinite(step)||step<=0){
+    el.innerHTML='<div class="note">Completá una grilla válida de escenarios.</div>';
     return;
   }
 
-  const avg=baseSeries.reduce((s,m)=>s+m.tem,0)/baseSeries.length;
-  let html='<table class="fwd-matrix"><thead><tr><th>Mes asumido</th>';
-  baseSeries.forEach(m=>html+=`<th>${m.month.label}</th>`);
-  html+='</tr></thead><tbody>';
-
-  for(let i=0;i<baseSeries.length;i++){
-    html+=`<tr><th>${baseSeries[i].month.label}<br><span style="color:var(--am)">${assumption.toFixed(2)}%</span></th>`;
-    for(let j=0;j<baseSeries.length;j++){
-      if(j<i){ html+='<td style="background:var(--bg);color:var(--tm)">—</td>'; continue; }
-      if(j===i){ html+=`<td class="fwd-mid">${assumption.toFixed(2)}%</td>`; continue; }
-      let totalFactor=1;
-      for(let k=i;k<=j;k++) totalFactor*=1+baseSeries[k].tem/100;
-      const remCount=j-i;
-      const remFactor=totalFactor/(1+assumption/100);
-      if(remFactor<=0){ html+='<td style="background:var(--bg);color:var(--tm)">N/A</td>'; continue; }
-      const reqTem=(Math.pow(remFactor,1/remCount)-1)*100;
-      const cls=reqTem>avg*1.03?"fwd-hi":reqTem<avg*0.97?"fwd-lo":"fwd-mid";
-      html+=`<td class="${cls}" title="TEM plana requerida para ${baseSeries[i].month.label}→${baseSeries[j].month.label}">${reqTem.toFixed(2)}%</td>`;
-    }
-    html+='</tr>';
+  const lo=Math.min(start,end), hi=Math.max(start,end);
+  const scenarios=[];
+  for(let v=lo;v<=hi+1e-9;v+=step) scenarios.push(Math.round(v*1000)/1000);
+  if(!scenarios.length){
+    el.innerHTML='<div class="note">La grilla de escenarios quedó vacía.</div>';
+    return;
   }
 
+  const baseFactors=baseSeries.map(m=>1+m.tem/100);
+  let html='<table class="fwd-matrix"><thead><tr><th>Escenario</th>';
+  for(let j=shockIdx;j<baseSeries.length;j++) html+=`<th>${baseSeries[j].month.label}</th>`;
+  html+='</tr></thead><tbody>';
+
+  html+='<tr><th>Curva BE</th>';
+  for(let j=shockIdx;j<baseSeries.length;j++) html+=`<td class="fwd-mid">${baseSeries[j].tem.toFixed(2)}%</td>`;
+  html+='</tr>';
+
+  scenarios.forEach(scn=>{
+    const rowFactors=baseFactors.slice();
+    rowFactors[shockIdx]=1+scn/100;
+    html+=`<tr><th>${baseSeries[shockIdx].month.label} = <span style="color:var(--am)">${scn.toFixed(2)}%</span></th>`;
+    for(let j=shockIdx;j<baseSeries.length;j++){
+      if(j===shockIdx){
+        html+=`<td class="fwd-mid">${scn.toFixed(2)}%</td>`;
+        continue;
+      }
+      let targetCum=1, solvedPrev=1;
+      for(let k=shockIdx;k<=j;k++) targetCum*=baseFactors[k];
+      for(let k=shockIdx;k<j;k++) solvedPrev*=rowFactors[k];
+      const reqFactor=targetCum/solvedPrev;
+      if(reqFactor<=0||!isFinite(reqFactor)){
+        html+='<td style="background:var(--bg);color:var(--tm)">N/A</td>';
+        continue;
+      }
+      rowFactors[j]=reqFactor;
+      const reqTem=(reqFactor-1)*100;
+      const baseTem=baseSeries[j].tem;
+      const cls=reqTem>baseTem+0.15?"fwd-hi":reqTem<baseTem-0.15?"fwd-lo":"fwd-mid";
+      html+=`<td class="${cls}" title="Mes requerido: ${baseSeries[j].month.label}">${reqTem.toFixed(2)}%</td>`;
+    }
+    html+='</tr>';
+  });
+
   html+='</tbody></table>';
-  html+=`<div class="note" style="margin-top:8px">Lectura: fila = mes que asumís en <b>${assumption.toFixed(2)}%</b>. Columna = mes final. Celda = TEM plana requerida para los meses restantes. Ejemplo: fila Jul, columna Dic.</div>`;
+  html+=`<div class="note" style="margin-top:8px">Lectura: elegís un <b>mes shock</b>. Cada fila fija ese mes en un valor distinto. Cada celda muestra la inflación que debería tener ese mes de la columna para que el breakeven acumulado hasta ahí siga siendo el de la curva implícita. Si shockeás Marzo y mirás Mayo, la celda de Abril te dice cuánto debería dar Abril; la de Mayo, cuánto debería dar Mayo luego de ese nuevo Abril.</div>`;
   el.innerHTML=html;
 }
 
