@@ -285,7 +285,7 @@
       <button class="btn-api" id="btnConnect" onclick="startPricePolling()">Conectar</button>
       <button class="btn-api btn-sm" id="btnDisconnect" onclick="stopPricePolling()" style="display:none;color:var(--w);border-color:var(--w)">Parar</button>
     </div>
-    <div id="connLog" class="note" style="margin:0">Ejecutá <code style="color:var(--ac)">python server.py</code> en la terminal y después presioná Conectar.</div>
+    <div id="connLog" class="note" style="margin:0">Ejecutá <code style="color:var(--ac)">python server.py</code> en la terminal. El dashboard intenta conectarse solo al abrir.</div>
   </div>
 </div>
 
@@ -5201,6 +5201,10 @@ setTimeout(()=>{
     }
   });
 },500);
+
+setTimeout(()=>{
+  try{ startPricePolling(); }catch(e){}
+},800);
 
 // Clock
 setInterval(()=>{
