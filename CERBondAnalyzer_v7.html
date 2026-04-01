@@ -215,16 +215,14 @@
   .resumen-curve-label{font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--td);margin-bottom:4px;text-align:center}
   .resumen-be-line{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;border:1px solid var(--cb);background:linear-gradient(90deg,rgba(240,112,64,0.08),rgba(45,184,168,0.06));overflow:hidden}
   .resumen-be-head{font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--td);white-space:nowrap}
-  .resumen-be-viewport{position:relative;flex:1;overflow:hidden;min-width:0}
+  .resumen-be-viewport{position:relative;flex:1;overflow:hidden;min-width:0;cursor:grab;user-select:none}
+  .resumen-be-viewport.dragging{cursor:grabbing}
   .resumen-be-track{display:flex;align-items:center;gap:8px;width:max-content}
-  .resumen-be-track.is-animated{animation:resumenBEScroll 28s linear infinite}
   .resumen-be-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:999px;background:rgba(8,12,20,0.58);border:1px solid rgba(148,163,184,0.12);font-family:'IBM Plex Mono',monospace;white-space:nowrap}
   .resumen-be-month{font-size:10px;color:var(--td)}
   .resumen-be-val{font-size:11px;font-weight:700;color:var(--am)}
   .resumen-be-sep{font-size:9px;color:var(--tm)}
   .resumen-be-meta{font-size:10px;color:var(--td);white-space:nowrap}
-  @keyframes resumenBEScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-  @media (prefers-reduced-motion: reduce){.resumen-be-track.is-animated{animation:none}}
   @media(max-width:760px){.resumen-curves{grid-template-columns:1fr}}
   /* Bond Calculator Modal */
   .bc-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -342,22 +340,41 @@
 <div id="tab-resumen" style="display:none">
   <!-- Curvas -->
   <div class="card" style="margin-top:10px">
-    <div class="bh">
-      <div class="st" style="margin-bottom:0">Curvas Duration / Rendimiento</div>
-      <span style="font-size:9px;color:var(--td)">Click en bono para calculadora</span>
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:6px">
+      <div>
+        <div class="st" style="margin-bottom:0">Curvas Duration / Rendimiento</div>
+        <span style="font-size:9px;color:var(--td)">Click en bono para calculadora</span>
+      </div>
+      <div class="row-actions" style="display:flex;gap:6px;align-items:end;flex-wrap:wrap">
+        <div class="ig" style="margin-bottom:0"><label style="font-size:9px">Ver gráficos</label>
+          <select id="resumenDurChartSelector" onchange="switchResumenCharts(this.value)" style="font-size:11px;padding:4px 8px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;font-family:'IBM Plex Mono',monospace">
+            <option value="all">Los 3 (miniatura)</option>
+            <option value="fx">Solo Tasa Fija</option>
+            <option value="cer">Solo CER Real</option>
+            <option value="combo">Solo Combinado</option>
+            <option value="fx_cer">Tasa Fija + CER</option>
+            <option value="fx_combo">Tasa Fija + Combinado</option>
+            <option value="cer_combo">CER + Combinado</option>
+          </select>
+        </div>
+        <div class="ig" style="margin-bottom:0"><label>Dur máx</label><input type="number" id="resumenDurMaxInput" step="0.05" min="0.05" placeholder="Auto"></div>
+        <button class="btn-api btn-sm" onclick="setResumenDurZoom('auto')">Auto</button>
+        <button class="btn-api btn-sm" onclick="setResumenDurZoom('in')">+</button>
+        <button class="btn-api btn-sm" onclick="setResumenDurZoom('out')">−</button>
+      </div>
     </div>
-    <div class="resumen-curves">
-      <div class="resumen-curve-wrap">
+    <div class="resumen-curves" id="resumenChartsGrid">
+      <div class="resumen-curve-wrap" id="resumenWrapFX">
         <div class="resumen-curve-label" style="color:var(--fx)">LECAP / BONCAP — TEA</div>
-        <div class="chart-c" style="height:180px"><canvas id="resumenChartFX"></canvas></div>
+        <div class="chart-c" id="resumenChartFXContainer" style="height:180px"><canvas id="resumenChartFX"></canvas></div>
       </div>
-      <div class="resumen-curve-wrap">
+      <div class="resumen-curve-wrap" id="resumenWrapCER">
         <div class="resumen-curve-label" style="color:var(--acl)">CER — TIR Real</div>
-        <div class="chart-c" style="height:180px"><canvas id="resumenChartCER"></canvas></div>
+        <div class="chart-c" id="resumenChartCERContainer" style="height:180px"><canvas id="resumenChartCER"></canvas></div>
       </div>
-      <div class="resumen-curve-wrap">
+      <div class="resumen-curve-wrap" id="resumenWrapCombo">
         <div class="resumen-curve-label" style="color:var(--am)">Combinado — Nominal</div>
-        <div class="chart-c" style="height:180px"><canvas id="resumenChartCombo"></canvas></div>
+        <div class="chart-c" id="resumenChartComboContainer" style="height:180px"><canvas id="resumenChartCombo"></canvas></div>
       </div>
     </div>
     <div class="legend" id="resumenCurveLegend" style="margin-top:8px">
@@ -1308,14 +1325,22 @@ function logRegression(points){
 }
 let currentDurData={fx:[],cerReal:[],combo:[]};
 let _fittedCurves={};
-function setDurZoom(mode){
-  const inp=document.getElementById("durMaxInput");
+let _resumenBEStripState={raf:0,pauseUntil:0,isDragging:false,startX:0,startScrollLeft:0};
+function setDurZoomByInput(inputId, mode, onChange){
+  const inp=document.getElementById(inputId);
+  if(!inp) return;
   const cur=parseFloat(inp.value);
   const all=[...currentDurData.fx,...currentDurData.cerReal,...currentDurData.combo];
   if(mode==="auto") inp.value="";
   else if(mode==="in") inp.value=((cur||getAutoDurMax(all))*0.8).toFixed(2);
   else if(mode==="out") inp.value=((cur||getAutoDurMax(all))*1.25).toFixed(2);
-  drawDurationChart3(currentDurData.fx,currentDurData.cerReal,currentDurData.combo);
+  if(typeof onChange==="function") onChange();
+}
+function setDurZoom(mode){
+  setDurZoomByInput("durMaxInput",mode,()=>drawDurationChart3(currentDurData.fx,currentDurData.cerReal,currentDurData.combo));
+}
+function setResumenDurZoom(mode){
+  setDurZoomByInput("resumenDurMaxInput",mode,()=>renderResumenCurves());
 }
 function getAutoDurMax(points){
   const v=points.filter(p=>p.x>0&&isFinite(p.x)&&isFinite(p.y));
@@ -1390,9 +1415,87 @@ function fitNSS(points){
   return {params:best, predict:t=>nssPredict(t,best), rmse:Math.sqrt(bestErr/points.length)};
 }
 
+function getChartTooltipData(point){
+  const bond=BONDS.find(x=>x.id===point.id||x.ticker===point.label);
+  if(bond){
+    const px=getCurrentPrice(bond.id);
+    const be=(_implInflResults||[]).find(r=>r.ticker===bond.ticker);
+    return {
+      title:bond.ticker,
+      subtitle:bond.name,
+      color:bond.color,
+      lines:[
+        `Px: ${px?px.toFixed(2):"—"}`,
+        `TIR real: ${bond._tr!=null?bond._tr.toFixed(2)+"%":"—"}`,
+        `TNA CER fija: ${bond._tnaTF!=null?bond._tnaTF.toFixed(2)+"%":"—"}`,
+        `BE infla: ${be&&be.implPi!=null?be.implPi.toFixed(2)+"%":"—"}`
+      ]
+    };
+  }
+  const fx=FIXED.find(x=>x.id===point.id||x.ticker===point.label);
+  if(fx){
+    const px=getCurrentPrice(fx.id);
+    return {
+      title:fx.ticker,
+      subtitle:fx.type,
+      color:fx.color,
+      lines:[
+        `Px: ${px?px.toFixed(3):"—"}`,
+        `TEA: ${fx._tea!=null?fx._tea.toFixed(2)+"%":"—"}`,
+        `TNA: ${fx._tna!=null?fx._tna.toFixed(2)+"%":"—"}`
+      ]
+    };
+  }
+  return {title:point.label,subtitle:"",color:point.color,lines:[]};
+}
+
+function drawCanvasTooltip(ctx, boxX, boxY, tooltip, W, H){
+  const padX=10, lineH=14, headH=15;
+  ctx.font="bold 10px 'IBM Plex Mono',monospace";
+  const titleW=ctx.measureText(tooltip.title||"").width;
+  ctx.font="9px 'IBM Plex Mono',monospace";
+  const subtitleW=tooltip.subtitle?ctx.measureText(tooltip.subtitle).width:0;
+  let maxW=Math.max(titleW,subtitleW);
+  (tooltip.lines||[]).forEach(line=>{ maxW=Math.max(maxW,ctx.measureText(line).width); });
+  const width=maxW+padX*2;
+  const height=headH+(tooltip.subtitle?12:0)+(tooltip.lines.length*lineH)+8;
+  let x=boxX+12, y=boxY-height-12;
+  if(x+width>W-8) x=boxX-width-12;
+  if(x<8) x=8;
+  if(y<8) y=boxY+12;
+  if(y+height>H-8) y=H-height-8;
+  ctx.save();
+  ctx.fillStyle="rgba(8,12,20,0.94)";
+  ctx.strokeStyle="rgba(148,163,184,0.22)";
+  ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.roundRect(x,y,width,height,10);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle=tooltip.color||"#fff";
+  ctx.font="bold 10px 'IBM Plex Mono',monospace";
+  ctx.textAlign="left";
+  ctx.fillText(tooltip.title||"",x+padX,y+13);
+  let ty=y+26;
+  if(tooltip.subtitle){
+    ctx.fillStyle="#94a3b8";
+    ctx.font="9px 'IBM Plex Mono',monospace";
+    ctx.fillText(tooltip.subtitle,x+padX,ty);
+    ty+=12;
+  }
+  ctx.fillStyle="#e2e8f0";
+  ctx.font="9px 'IBM Plex Mono',monospace";
+  (tooltip.lines||[]).forEach(line=>{
+    ctx.fillText(line,x+padX,ty);
+    ty+=lineH;
+  });
+  ctx.restore();
+}
+
 function drawOneChart(canvasId,points,maxXUse,title,curveColor,onPointClick){
   const cv=document.getElementById(canvasId);
   if(!cv)return;
+  cv._chartArgs={points,maxXUse,title,curveColor};
   const ct=cv.parentElement;
   const valid=points.filter(p=>p.x>0&&p.x<=maxXUse&&isFinite(p.y));
   if(!valid.length){
@@ -1424,13 +1527,15 @@ function drawOneChart(canvasId,points,maxXUse,title,curveColor,onPointClick){
     c.beginPath();c.moveTo(px,pad.t);c.lineTo(px,H-pad.b);c.stroke();
     c.fillStyle="#475569";c.textAlign="center";c.font="7px 'IBM Plex Mono',monospace";c.fillText(x.toFixed(2),px,H-12);
   }
+  const hoverKey=cv._chartHoverKey||null;
   // Points — store hit regions for click detection
   const hits=[];
   valid.forEach(p=>{
     const px=xP(p.x), py=yP(p.y);
-    c.beginPath();c.arc(px,py,4,0,Math.PI*2);c.fillStyle=p.color;c.fill();c.strokeStyle="#080c14";c.lineWidth=1.2;c.stroke();
+    const isHover=hoverKey===(p.id||p.label);
+    c.beginPath();c.arc(px,py,isHover?5.6:4,0,Math.PI*2);c.fillStyle=p.color;c.fill();c.strokeStyle="#080c14";c.lineWidth=isHover?1.8:1.2;c.stroke();
     c.fillStyle=p.color;c.font="bold 7px 'IBM Plex Mono',monospace";c.textAlign="center";c.fillText(p.label,px,py-8);
-    hits.push({px,py,r:7,label:p.label,color:p.color});
+    hits.push({px,py,r:7,label:p.label,color:p.color,key:p.id||p.label,point:p});
   });
   cv._chartHits=hits;
   // Log regression
@@ -1462,27 +1567,44 @@ function drawOneChart(canvasId,points,maxXUse,title,curveColor,onPointClick){
     c.fillStyle="#ffffff66";c.font="7px 'IBM Plex Mono',monospace";c.textAlign="right";
     c.fillText("Log",W-pad.r-2,pad.t+20);
   }
+  const hoveredHit=hits.find(h=>h.key===hoverKey);
+  if(hoveredHit){
+    const tooltip=getChartTooltipData(hoveredHit.point);
+    drawCanvasTooltip(c,hoveredHit.px,hoveredHit.py,tooltip,W,H);
+  }
   // Click / hover handling
-  if(onPointClick){
-    cv._chartClickCb=onPointClick;
-    if(!cv._chartListeners){
-      cv._chartListeners=true;
-      cv.addEventListener('click',function(e){
-        if(!this._chartHits||!this._chartClickCb)return;
-        const rect=this.getBoundingClientRect();
-        const mx=(e.clientX-rect.left),my=(e.clientY-rect.top);
-        for(const h of this._chartHits){
-          if(Math.hypot(h.px-mx,h.py-my)<=h.r+3){this._chartClickCb(h.label);break;}
-        }
-      });
-      cv.addEventListener('mousemove',function(e){
-        if(!this._chartHits)return;
-        const rect=this.getBoundingClientRect();
-        const mx=(e.clientX-rect.left),my=(e.clientY-rect.top);
-        const hit=this._chartHits.some(h=>Math.hypot(h.px-mx,h.py-my)<=h.r+3);
-        this.style.cursor=hit?'pointer':'default';
-      });
-    }
+  cv._chartClickCb=onPointClick;
+  if(!cv._chartListeners){
+    cv._chartListeners=true;
+    cv.addEventListener('click',function(e){
+      if(!this._chartHits||!this._chartClickCb)return;
+      const rect=this.getBoundingClientRect();
+      const mx=(e.clientX-rect.left),my=(e.clientY-rect.top);
+      for(const h of this._chartHits){
+        if(Math.hypot(h.px-mx,h.py-my)<=h.r+3){this._chartClickCb(h.label);break;}
+      }
+    });
+    cv.addEventListener('mousemove',function(e){
+      if(!this._chartHits)return;
+      const rect=this.getBoundingClientRect();
+      const mx=(e.clientX-rect.left),my=(e.clientY-rect.top);
+      const hit=this._chartHits.find(h=>Math.hypot(h.px-mx,h.py-my)<=h.r+3)||null;
+      this.style.cursor=hit?(this._chartClickCb?'pointer':'default'):'default';
+      const nextKey=hit?hit.key:null;
+      if(this._chartHoverKey!==nextKey){
+        this._chartHoverKey=nextKey;
+        const a=this._chartArgs;
+        if(a) drawOneChart(this.id,a.points,a.maxXUse,a.title,a.curveColor,this._chartClickCb);
+      }
+    });
+    cv.addEventListener('mouseleave',function(){
+      if(this._chartHoverKey!=null){
+        this._chartHoverKey=null;
+        this.style.cursor='default';
+        const a=this._chartArgs;
+        if(a) drawOneChart(this.id,a.points,a.maxXUse,a.title,a.curveColor,this._chartClickCb);
+      }
+    });
   }
 }
 
@@ -1618,7 +1740,7 @@ function calcFixedOne(f){
   document.getElementById("fxmonths_"+f.id).textContent=monthsRem.toFixed(2);
   document.getElementById("fxdur_"+f.id).textContent=dur.toFixed(3);
   f._ok=true; f._tea=tea; f._tna=tna; f._dur=dur; f._vf=vf; f._days=days; f._price=price; f._temCurrent=temCurrent;
-  return {x:dur,y:tna,label:f.ticker,color:"#8b5cf6"};
+  return {x:dur,y:tna,label:f.ticker,color:"#8b5cf6",id:f.id,assetType:"fixed"};
 }
 
 // ═══ CALCULATE ═════════════════════
@@ -1706,7 +1828,7 @@ function calculate(){
       // TNA real for CER+ chart
       const tnaReal=tirRealTEA!=null?((Math.pow(1+tirRealTEA/100,days/365)-1)*(365/days))*100:null;
       b._tnaReal=tnaReal;
-      if(dur!=null&&tnaNom!=null) scatterPts.push({x:dur,y:tnaNom,label:b.ticker,color:"#2a9d8f",yReal:tnaReal});
+      if(dur!=null&&tnaNom!=null) scatterPts.push({x:dur,y:tnaNom,label:b.ticker,color:"#2a9d8f",yReal:tnaReal,id:b.id,assetType:"cer"});
     } else {
       ["tn","tr","vf","vt","pa","tna","durm"].forEach(f=>{document.getElementById(f+"_"+b.id).textContent="—"});
       document.getElementById("rt_"+b.id).textContent="—";
@@ -2128,13 +2250,29 @@ function switchTab(tab){
 }
 
 function switchDurCharts(mode){
-  const grid=document.getElementById("durChartsGrid");
-  const wFX=document.getElementById("durWrapFX");
-  const wCER=document.getElementById("durWrapCER");
-  const wCombo=document.getElementById("durWrapCombo");
-  const cFX=document.getElementById("durChartFXContainer");
-  const cCER=document.getElementById("durChartCERContainer");
-  const cCombo=document.getElementById("durChartComboContainer");
+  applyDurChartLayout({
+    mode,
+    gridId:"durChartsGrid",
+    wrapFXId:"durWrapFX",
+    wrapCERId:"durWrapCER",
+    wrapComboId:"durWrapCombo",
+    chartFXId:"durChartFXContainer",
+    chartCERId:"durChartCERContainer",
+    chartComboId:"durChartComboContainer"
+  });
+  setTimeout(()=>{
+    if(window.currentDurData) drawDurationChart3(currentDurData.fx,currentDurData.cerReal,currentDurData.combo);
+  },50);
+}
+
+function applyDurChartLayout({mode,gridId,wrapFXId,wrapCERId,wrapComboId,chartFXId,chartCERId,chartComboId}){
+  const grid=document.getElementById(gridId);
+  const wFX=document.getElementById(wrapFXId);
+  const wCER=document.getElementById(wrapCERId);
+  const wCombo=document.getElementById(wrapComboId);
+  const cFX=document.getElementById(chartFXId);
+  const cCER=document.getElementById(chartCERId);
+  const cCombo=document.getElementById(chartComboId);
   if(!grid||!wFX||!wCER||!wCombo)return;
   const showFX=mode.includes("fx")||mode==="all";
   const showCER=mode.includes("cer")||mode==="all";
@@ -2148,10 +2286,20 @@ function switchDurCharts(mode){
   if(cFX)cFX.style.height=h;
   if(cCER)cCER.style.height=h;
   if(cCombo)cCombo.style.height=h;
-  // Redraw charts after layout change
-  setTimeout(()=>{
-    if(window.currentDurData) drawDurationChart3(currentDurData.fx,currentDurData.cerReal,currentDurData.combo);
-  },50);
+}
+
+function switchResumenCharts(mode){
+  applyDurChartLayout({
+    mode,
+    gridId:"resumenChartsGrid",
+    wrapFXId:"resumenWrapFX",
+    wrapCERId:"resumenWrapCER",
+    wrapComboId:"resumenWrapCombo",
+    chartFXId:"resumenChartFXContainer",
+    chartCERId:"resumenChartCERContainer",
+    chartComboId:"resumenChartComboContainer"
+  });
+  setTimeout(()=>renderResumenCurves(),50);
 }
 
 function renderResumenLegacy(){
@@ -2269,12 +2417,25 @@ function renderResumenCurves(){
   const note=document.getElementById('resumenCurveNote');
   if(!cd||(!cd.fx.length&&!cd.cerReal.length&&!cd.combo.length)){
     if(note) note.textContent='Calculá primero para ver curvas (o abrí la pestaña Análisis)';
+    stopResumenBEStripAuto();
+    stopResumenBEStripAuto();
     return;
   }
   if(note) note.textContent='';
+  const mode=document.getElementById("resumenDurChartSelector")?.value||"all";
+  applyDurChartLayout({
+    mode,
+    gridId:"resumenChartsGrid",
+    wrapFXId:"resumenWrapFX",
+    wrapCERId:"resumenWrapCER",
+    wrapComboId:"resumenWrapCombo",
+    chartFXId:"resumenChartFXContainer",
+    chartCERId:"resumenChartCERContainer",
+    chartComboId:"resumenChartComboContainer"
+  });
   const all=[...cd.fx,...cd.cerReal,...cd.combo].filter(p=>p.x>0&&isFinite(p.y));
   if(!all.length) return;
-  const userMax=parseFloat(document.getElementById("durMaxInput")?.value);
+  const userMax=parseFloat(document.getElementById("resumenDurMaxInput")?.value);
   const autoMax=getAutoDurMax(all);
   const maxXUse=(userMax&&userMax>0)?userMax:autoMax;
   drawOneChart('resumenChartFX', cd.fx, maxXUse, 'LECAP/BONCAP','#9b7af0',lbl=>{const f=FIXED.find(x=>x.ticker===lbl);if(f)openBondCalculator('fixed',f.id);});
@@ -2284,9 +2445,10 @@ function renderResumenCurves(){
 
 function renderResumenBreakevenStrip(){
   const card=document.getElementById("resumenBECard");
+  const viewport=card?.querySelector(".resumen-be-viewport");
   const strip=document.getElementById("resumenBEStrip");
   const meta=document.getElementById("resumenBEMeta");
-  if(!card||!strip||!meta) return;
+  if(!card||!viewport||!strip||!meta) return;
   const series=(_implInflResults||[])
     .filter(r=>{
       const bond=BONDS.find(b=>b.ticker===r.ticker);
@@ -2299,7 +2461,6 @@ function renderResumenBreakevenStrip(){
     });
   if(!series.length){
     card.style.display="none";
-    strip.className="resumen-be-track";
     strip.innerHTML="";
     meta.textContent="—";
     return;
@@ -2311,12 +2472,63 @@ function renderResumenBreakevenStrip(){
       <span class="resumen-be-month">${pt.firstMonth.label}→${pt.lastMonth.label}</span>
     </span>${i<series.length-1?'<span class="resumen-be-sep">·</span>':''}
   `).join("");
-  const shouldAnimate=series.length>=5;
-  strip.className="resumen-be-track"+(shouldAnimate?" is-animated":"");
-  strip.innerHTML=shouldAnimate?chipHTML+chipHTML:chipHTML;
+  const shouldLoop=series.length>=4;
+  strip.className="resumen-be-track";
+  strip.innerHTML=shouldLoop?chipHTML+chipHTML:chipHTML;
   const avg=series.reduce((s,x)=>s+x.implPi,0)/series.length;
   meta.textContent=`prom ${avg.toFixed(2)}% TEM`;
   card.style.display="";
+  setupResumenBEStrip(viewport,strip,shouldLoop);
+}
+
+function stopResumenBEStripAuto(){
+  if(_resumenBEStripState.raf){
+    cancelAnimationFrame(_resumenBEStripState.raf);
+    _resumenBEStripState.raf=0;
+  }
+}
+
+function setupResumenBEStrip(viewport,strip,shouldLoop){
+  stopResumenBEStripAuto();
+  viewport.scrollLeft=0;
+  if(!viewport.dataset.dragBound){
+    viewport.dataset.dragBound="1";
+    viewport.addEventListener("mousedown",e=>{
+      if(e.button!==0) return;
+      _resumenBEStripState.isDragging=true;
+      _resumenBEStripState.startX=e.clientX;
+      _resumenBEStripState.startScrollLeft=viewport.scrollLeft;
+      _resumenBEStripState.pauseUntil=Date.now()+3500;
+      viewport.classList.add("dragging");
+    });
+    window.addEventListener("mousemove",e=>{
+      if(!_resumenBEStripState.isDragging) return;
+      viewport.scrollLeft=_resumenBEStripState.startScrollLeft-(e.clientX-_resumenBEStripState.startX);
+    });
+    window.addEventListener("mouseup",()=>{
+      if(!_resumenBEStripState.isDragging) return;
+      _resumenBEStripState.isDragging=false;
+      _resumenBEStripState.pauseUntil=Date.now()+3500;
+      viewport.classList.remove("dragging");
+    });
+    viewport.addEventListener("wheel",e=>{
+      if(Math.abs(e.deltaY)<=Math.abs(e.deltaX) && e.deltaX===0) return;
+      e.preventDefault();
+      viewport.scrollLeft+=e.deltaX||e.deltaY;
+      _resumenBEStripState.pauseUntil=Date.now()+2500;
+    },{passive:false});
+    viewport.addEventListener("mouseenter",()=>{ _resumenBEStripState.pauseUntil=Date.now()+1200; });
+  }
+  if(!shouldLoop||strip.scrollWidth<=viewport.clientWidth+8) return;
+  const halfWidth=strip.scrollWidth/2;
+  const tick=()=>{
+    if(!_resumenBEStripState.isDragging && Date.now()>=_resumenBEStripState.pauseUntil){
+      viewport.scrollLeft+=0.45;
+      if(viewport.scrollLeft>=halfWidth) viewport.scrollLeft-=halfWidth;
+    }
+    _resumenBEStripState.raf=requestAnimationFrame(tick);
+  };
+  tick();
 }
 
 function renderVolume(){
@@ -4964,6 +5176,7 @@ setTimeout(initSortableTables,200);
 })();
 
 document.getElementById("durMaxInput").addEventListener("change",()=>drawDurationChart3(currentDurData.fx,currentDurData.cerReal,currentDurData.combo));
+document.getElementById("resumenDurMaxInput").addEventListener("change",()=>renderResumenCurves());
 document.getElementById("settleDate").addEventListener("change",function(){
   const sd=this.value;
   if(sd){
