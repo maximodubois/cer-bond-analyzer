@@ -369,7 +369,7 @@
   </div>
   <div class="card" id="resumenBECard" style="margin-top:6px;display:none">
     <div class="resumen-be-line">
-      <div class="resumen-be-head">Breakeven mercado 2026</div>
+      <div class="resumen-be-head">Breakeven bonos 2026</div>
       <div class="resumen-be-viewport">
         <div id="resumenBEStrip" class="resumen-be-track"></div>
       </div>
@@ -909,7 +909,7 @@ const FIXED=[
 // ═══ INFLATION MONTHS ══════════════
 const IM=[
   {k:"2026-03",l:"Mar 26",d:"2.7"},
-  {k:"2026-04",l:"Abr 26",d:"2.2"},
+  {k:"2026-04",l:"Abr 26",d:"2.4"},
   {k:"2026-05",l:"May 26",d:"2.1"},
   {k:"2026-06",l:"Jun 26",d:"1.9"},
   {k:"2026-07",l:"Jul 26",d:"1.7"},
@@ -2287,7 +2287,16 @@ function renderResumenBreakevenStrip(){
   const strip=document.getElementById("resumenBEStrip");
   const meta=document.getElementById("resumenBEMeta");
   if(!card||!strip||!meta) return;
-  const series=buildMonthlyBEForwardCurve().filter(x=>x?.month?.y===2026);
+  const series=(_implInflResults||[])
+    .filter(r=>{
+      const bond=BONDS.find(b=>b.ticker===r.ticker);
+      return bond&&new Date(bond.mat+"T00:00:00").getFullYear()===2026;
+    })
+    .sort((a,b)=>{
+      const bondA=BONDS.find(x=>x.ticker===a.ticker);
+      const bondB=BONDS.find(x=>x.ticker===b.ticker);
+      return new Date(bondA.mat+"T00:00:00")-new Date(bondB.mat+"T00:00:00");
+    });
   if(!series.length){
     card.style.display="none";
     strip.className="resumen-be-track";
@@ -2296,15 +2305,16 @@ function renderResumenBreakevenStrip(){
     return;
   }
   const chipHTML=series.map((pt,i)=>`
-    <span class="resumen-be-chip" title="Inflación implícita mensual de mercado">
-      <span class="resumen-be-month">${pt.month.label}</span>
-      <span class="resumen-be-val">${pt.tem.toFixed(2)}%</span>
+    <span class="resumen-be-chip" title="${pt.firstMonth.label} → ${pt.lastMonth.label}">
+      <span class="resumen-be-month" style="color:${pt.color};font-weight:700">${pt.ticker}</span>
+      <span class="resumen-be-val">${pt.implPi.toFixed(2)}%</span>
+      <span class="resumen-be-month">${pt.firstMonth.label}→${pt.lastMonth.label}</span>
     </span>${i<series.length-1?'<span class="resumen-be-sep">·</span>':''}
   `).join("");
   const shouldAnimate=series.length>=5;
   strip.className="resumen-be-track"+(shouldAnimate?" is-animated":"");
   strip.innerHTML=shouldAnimate?chipHTML+chipHTML:chipHTML;
-  const avg=series.reduce((s,x)=>s+x.tem,0)/series.length;
+  const avg=series.reduce((s,x)=>s+x.implPi,0)/series.length;
   meta.textContent=`prom ${avg.toFixed(2)}% TEM`;
   card.style.display="";
 }
