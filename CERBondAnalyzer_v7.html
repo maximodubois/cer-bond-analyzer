@@ -2296,13 +2296,29 @@ function openBondCalculator(bondType, bondId){
   const b = bondType==='cer' ? BONDS.find(x=>x.id===bondId) : FIXED.find(x=>x.id===bondId);
   if(!b) return;
 
-  const sd=document.getElementById("settleDate").value;
-  const settle=new Date(sd+"T00:00:00");
+  // Settle mutable: T+1 hábil (del form global) por default; CI = hoy
+  const today=new Date(); today.setHours(0,0,0,0);
+  const t1Settle=new Date((document.getElementById("settleDate").value||DS(ABD(today,1)))+"T00:00:00");
+  let settle=t1Settle;
+
   const matD=new Date(b.mat+"T00:00:00");
-  const days=DB(settle,matD);
   const lp=_livePrices[b.ticker]||{};
   const defaultPx=lp.last||lp.bid||lp.ask||'';
   const typeLabel=bondType==='cer'?'CER':b.type;
+
+  // Global setter accesible desde los botones inline
+  window._bcSetSettle=function(mode){
+    settle=(mode==='ci')?today:t1Settle;
+    const lbl=mode==='ci'?'CI — hoy '+DS(today):'T+1 — '+DS(t1Settle);
+    document.getElementById('bcSettleLabel').textContent=lbl;
+    document.getElementById('bcBtnCI').style.cssText=mode==='ci'
+      ?'background:var(--acd);border-color:var(--acl);color:var(--acl);font-weight:700;'
+      :'';
+    document.getElementById('bcBtnT1').style.cssText=mode!=='ci'
+      ?'background:var(--acd);border-color:var(--acl);color:var(--acl);font-weight:700;'
+      :'';
+    recalc();
+  };
 
   const overlay=document.createElement('div');
   overlay.id='bondCalcModal';
@@ -2312,11 +2328,18 @@ function openBondCalculator(bondType, bondId){
       <div class="bc-header">
         <div>
           <div class="bc-title" style="color:${b.color}">${b.ticker} <span style="font-size:11px;color:var(--td);font-weight:400">${b.name||b.ticker}</span></div>
-          <div class="bc-sub">${typeLabel} &nbsp;·&nbsp; Vto: ${b.mat} &nbsp;·&nbsp; Días al vto: <strong style="color:var(--t)">${days}</strong></div>
+          <div class="bc-sub">${typeLabel} &nbsp;·&nbsp; Vto: ${b.mat} &nbsp;·&nbsp; Días al vto: <strong id="bcDaysLabel" style="color:var(--t)">—</strong></div>
         </div>
         <button class="bc-close" id="bcClose">&times;</button>
       </div>
       <div class="bc-body">
+        <!-- Liquidación toggle -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--cb)">
+          <span style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--td);font-weight:600">Liquidación</span>
+          <button id="bcBtnCI" class="btn-api btn-sm" onclick="_bcSetSettle('ci')">CI — hoy</button>
+          <button id="bcBtnT1" class="btn-api btn-sm" onclick="_bcSetSettle('t1')" style="background:var(--acd);border-color:var(--acl);color:var(--acl);font-weight:700">T+1 háb</button>
+          <span id="bcSettleLabel" style="font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--td);margin-left:4px">T+1 — ${DS(t1Settle)}</span>
+        </div>
         <div class="bc-inputs">
           <div class="ig">
             <label>Precio ${bondType==='cer'?'(% VT)':'($)'}</label>
@@ -2366,12 +2389,16 @@ function openBondCalculator(bondType, bondId){
     </div>`;
 
   document.body.appendChild(overlay);
-  document.getElementById('bcClose').addEventListener('click', ()=>overlay.remove());
-  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  document.getElementById('bcClose').addEventListener('click', ()=>{ delete window._bcSetSettle; overlay.remove(); });
+  overlay.addEventListener('click', e=>{ if(e.target===overlay){ delete window._bcSetSettle; overlay.remove(); } });
 
   function recalc(){
     const price=parseFloat(document.getElementById('bci-price').value)||0;
     const vnoAmount=parseFloat(document.getElementById('bci-vno').value)||100;
+    // days se recalcula cada vez según el settle activo (CI o T+1)
+    const days=DB(settle,matD);
+    const daysEl=document.getElementById('bcDaysLabel');
+    if(daysEl) daysEl.textContent=days;
 
     if(bondType==='cer'){
       const cerLiqVal=parseFloat(document.getElementById("cerLiq").value);
