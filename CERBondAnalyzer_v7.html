@@ -2472,13 +2472,14 @@ function renderResumenBreakevenStrip(){
       <span class="resumen-be-month">${pt.firstMonth.label}→${pt.lastMonth.label}</span>
     </span>${i<series.length-1?'<span class="resumen-be-sep">·</span>':''}
   `).join("");
-  const shouldLoop=series.length>=4;
+  const shouldLoop=series.length>=2;
+  const repeatCount=shouldLoop?4:1;
   strip.className="resumen-be-track";
-  strip.innerHTML=shouldLoop?chipHTML+chipHTML:chipHTML;
+  strip.innerHTML=Array(repeatCount).fill(chipHTML).join("");
   const avg=series.reduce((s,x)=>s+x.implPi,0)/series.length;
   meta.textContent=`prom ${avg.toFixed(2)}% TEM`;
   card.style.display="";
-  setupResumenBEStrip(viewport,strip,shouldLoop);
+  setupResumenBEStrip(viewport,strip,shouldLoop,repeatCount);
 }
 
 function stopResumenBEStripAuto(){
@@ -2488,9 +2489,10 @@ function stopResumenBEStripAuto(){
   }
 }
 
-function setupResumenBEStrip(viewport,strip,shouldLoop){
+function setupResumenBEStrip(viewport,strip,shouldLoop,repeatCount=1){
   stopResumenBEStripAuto();
-  viewport.scrollLeft=0;
+  const cycleWidth=repeatCount>0?strip.scrollWidth/repeatCount:strip.scrollWidth;
+  viewport.scrollLeft=shouldLoop?cycleWidth:0;
   if(!viewport.dataset.dragBound){
     viewport.dataset.dragBound="1";
     viewport.addEventListener("mousedown",e=>{
@@ -2520,11 +2522,10 @@ function setupResumenBEStrip(viewport,strip,shouldLoop){
     viewport.addEventListener("mouseenter",()=>{ _resumenBEStripState.pauseUntil=Date.now()+1200; });
   }
   if(!shouldLoop||strip.scrollWidth<=viewport.clientWidth+8) return;
-  const halfWidth=strip.scrollWidth/2;
   const tick=()=>{
     if(!_resumenBEStripState.isDragging && Date.now()>=_resumenBEStripState.pauseUntil){
       viewport.scrollLeft+=0.45;
-      if(viewport.scrollLeft>=halfWidth) viewport.scrollLeft-=halfWidth;
+      if(viewport.scrollLeft>=cycleWidth*2) viewport.scrollLeft-=cycleWidth;
     }
     _resumenBEStripState.raf=requestAnimationFrame(tick);
   };
