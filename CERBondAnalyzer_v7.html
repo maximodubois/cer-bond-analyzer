@@ -920,6 +920,7 @@ const IM=[
 const DB=(a,b)=>Math.round((b-a)/864e5);
 const DS=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const _dynHolidayCache=new Map();
+const MOVABLE_HOLIDAYS=[[5,17],[7,17],[9,12],[10,20]];
 function calcEasterSunday(year){
   const a=year%19,b=Math.floor(year/100),c=year%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3);
   const h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451);
@@ -944,7 +945,7 @@ function getDynamicHolidaySet(year){
   const holyThu=new Date(easter); holyThu.setDate(holyThu.getDate()-3); addDate(holyThu);
   const holyFri=new Date(easter); holyFri.setDate(holyFri.getDate()-2); addDate(holyFri);
   [[0,1],[2,24],[3,2],[4,1],[4,25],[6,9],[11,8],[11,25]].forEach(([m,d])=>add(m,d));
-  [[5,17],[7,17],[9,12],[10,20]].forEach(([m,d])=>addDate(shiftMovableHoliday(new Date(year,m,d))));
+  MOVABLE_HOLIDAYS.forEach(([m,d])=>addDate(shiftMovableHoliday(new Date(year,m,d))));
   add(5,20);
   const belgrano=new Date(year,5,20);
   if(belgrano.getDay()===0){
@@ -955,7 +956,19 @@ function getDynamicHolidaySet(year){
   _dynHolidayCache.set(year,set);
   return set;
 }
-const IB=d=>{const w=d.getDay(),ds=DS(d);return w!==0&&w!==6&&!FER.has(ds)&&!getDynamicHolidaySet(d.getFullYear()).has(ds)};
+function isTransferredMovableRawDate(date){
+  const ds=DS(date);
+  return MOVABLE_HOLIDAYS.some(([m,d])=>{
+    const raw=new Date(date.getFullYear(),m,d);
+    return DS(raw)===ds && DS(shiftMovableHoliday(raw))!==ds;
+  });
+}
+const IB=d=>{
+  const w=d.getDay(),ds=DS(d);
+  if(w===0||w===6) return false;
+  const inStaticFER=FER.has(ds) && !isTransferredMovableRawDate(d);
+  return !inStaticFER && !getDynamicHolidaySet(d.getFullYear()).has(ds);
+};
 function SBD(date,n){let r=new Date(date),c=0;while(c<n){r.setDate(r.getDate()-1);if(IB(r))c++}return r}
 function ABD(date,n){let r=new Date(date),c=0;while(c<n){r.setDate(r.getDate()+1);if(IB(r))c++}return r}
 function FD(d){return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear()}
