@@ -7,55 +7,70 @@
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-E2S19W41G6"></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-E2S19W41G6');</script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
-  :root{--bg:#0c1117;--card:#141b24;--cb:#1f2937;--ac:#1D6D65;--acd:#1D6D6533;--acl:#2a9d8f;--w:#F86D36;--wd:#F86D3622;--bl:#4da6ff;--bld:#4da6ff22;--am:#F86D36;--amd:#F86D3622;--fx:#8b5cf6;--fxd:#8b5cf622;--t:#e5e7eb;--td:#6b7280;--tm:#4b5563;--ib:#111827;--ibr:#374151;--pos:#2a9d8f;--neg:#F86D36;--grn:#E6F2DE}
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+  :root{
+    --bg:#07090e;--card:#0d1219;--cb:#18222e;--cbf:#1f2d3d;
+    --ac:#1D6D65;--acd:#1D6D6520;--acl:#2db8a8;--acll:#3dd5c3;
+    --w:#f07040;--wd:#f0704020;--bl:#4da6ff;--bld:#4da6ff20;
+    --am:#f07040;--amd:#f0704020;--fx:#9b7af0;--fxd:#9b7af020;
+    --t:#dde4ee;--td:#5a6a80;--tm:#3a4a5c;
+    --ib:#090d14;--ibr:#1c2838;
+    --pos:#2db8a8;--neg:#f07040;--grn:#E6F2DE;
+    --r:14px;--rs:8px;
+    --sh:0 2px 12px rgba(0,0,0,0.4),0 0 0 1px rgba(255,255,255,0.03);
+    --sh-lg:0 8px 32px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.04)
+  }
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'IBM Plex Sans',-apple-system,sans-serif;background:var(--bg);color:var(--t);min-height:100vh;padding:16px 20px;font-size:13px}
-  .hdr{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--cb);padding-bottom:12px;margin-bottom:16px}
-  .hdr h1{font-size:18px;font-weight:700;color:var(--acl);letter-spacing:-0.02em}
-  .hdr .sub{font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace}
-  .card{background:var(--card);border:1px solid var(--cb);border-radius:10px;padding:16px;margin-bottom:10px}
-  .st{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  ::-webkit-scrollbar{width:4px;height:4px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:var(--cb);border-radius:2px}
+  body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--t);min-height:100vh;padding:18px 22px;font-size:13px;line-height:1.5}
+  .hdr{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;margin-bottom:0;border-bottom:1px solid var(--cb)}
+  .hdr h1{font-size:17px;font-weight:700;color:var(--acl);letter-spacing:-0.03em;font-family:'Inter',sans-serif}
+  .hdr .sub{font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;margin-top:2px}
+  .card{background:var(--card);border:1px solid var(--cb);border-radius:var(--r);padding:16px 18px;margin-bottom:10px;box-shadow:var(--sh);transition:border-color 0.2s}
+  .card:hover{border-color:var(--cbf)}
+  .st{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--td);margin-bottom:12px;display:flex;align-items:center;gap:8px}
   .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
   .g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
-  .ig{display:flex;flex-direction:column;gap:3px}
-  label{font-size:9px;font-weight:500;color:var(--td);text-transform:uppercase;letter-spacing:0.06em}
-  input[type="number"],input[type="date"],input[type="text"],input[type="password"],select{background:var(--ib);border:1px solid var(--ibr);border-radius:6px;padding:7px 9px;color:var(--t);font-size:12px;font-family:'IBM Plex Mono',monospace;outline:none;width:100%;transition:border-color 0.15s}
-  input:focus,select:focus{border-color:var(--acl)}
+  .ig{display:flex;flex-direction:column;gap:4px}
+  label{font-size:9px;font-weight:500;color:var(--td);text-transform:uppercase;letter-spacing:0.07em}
+  input[type="number"],input[type="date"],input[type="text"],input[type="password"],select{background:var(--ib);border:1px solid var(--ibr);border-radius:var(--rs);padding:7px 10px;color:var(--t);font-size:12px;font-family:'IBM Plex Mono',monospace;outline:none;width:100%;transition:border-color 0.15s,box-shadow 0.15s}
+  input:focus,select:focus{border-color:var(--acl);box-shadow:0 0 0 2px var(--acd)}
   .ii{text-align:right;padding:5px;font-size:11px}
-  .ic{position:relative}.ic .p{position:absolute;right:5px;top:50%;transform:translateY(-50%);font-size:9px;color:var(--tm);pointer-events:none}
-  .il{font-size:8px;text-align:center;color:var(--td);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1px}
-  .note{font-size:9px;color:var(--tm);font-style:italic;margin-top:6px;line-height:1.4}
+  .ic{position:relative}.ic .p{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:9px;color:var(--tm);pointer-events:none}
+  .il{font-size:8px;text-align:center;color:var(--td);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:1px}
+  .note{font-size:9px;color:var(--tm);margin-top:6px;line-height:1.5}
   .tag{display:inline-block;font-size:8px;font-weight:600;padding:2px 6px;border-radius:4px;letter-spacing:0.04em;text-transform:uppercase}
-  .mb{background:var(--bg);border-radius:6px;padding:10px;margin-bottom:8px}
+  .mb{background:var(--bg);border-radius:var(--rs);padding:10px;margin-bottom:8px}
   .mv{font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace;letter-spacing:-0.02em}
   .ms{font-size:12px;font-weight:600;font-family:'IBM Plex Mono',monospace}
-  .ml{font-size:8px;font-weight:500;color:var(--td);text-transform:uppercase;letter-spacing:0.06em;margin-top:1px}
+  .ml{font-size:8px;font-weight:500;color:var(--td);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px}
   .cd{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:9px;color:var(--td)}
   .cd .v{color:var(--t);font-family:'IBM Plex Mono',monospace}
-  .btn{background:var(--acl);color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;width:100%;margin-top:10px;transition:opacity 0.15s}
-  .btn:hover{opacity:0.85}
-  .btn-api{background:var(--ib);color:var(--acl);border:1px solid var(--acl);border-radius:6px;padding:6px 12px;font-size:10px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;white-space:nowrap;transition:all 0.15s}
-  .btn-api:hover{background:var(--acl);color:#fff}
-  .btn-api:disabled{opacity:0.4;cursor:not-allowed}
-  .btn-api.btn-sm{font-size:9px;padding:4px 10px}
+  .btn{background:var(--acl);color:#fff;border:none;border-radius:var(--rs);padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer;width:100%;margin-top:10px;transition:all 0.15s;letter-spacing:-0.01em}
+  .btn:hover{background:var(--acll);transform:translateY(-1px);box-shadow:0 4px 12px var(--acd)}
+  .btn-api{background:transparent;color:var(--acl);border:1px solid var(--cb);border-radius:6px;padding:5px 12px;font-size:10px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;transition:all 0.15s}
+  .btn-api:hover{background:var(--acd);border-color:var(--acl);color:var(--acll)}
+  .btn-api:disabled{opacity:0.35;cursor:not-allowed}
+  .btn-api.btn-sm{font-size:9px;padding:3px 9px}
   .api-ok{color:var(--acl)!important}
   .api-err{color:var(--w)!important}
   .api-load{color:var(--am)!important}
   .live-badge{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--acl);margin-right:4px;animation:pulse 1.5s infinite}
   .live-badge.off{background:var(--w);animation:none}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
-  .px-live{background:var(--acd);border:1px solid rgba(29,109,101,0.4);border-radius:6px;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:var(--acl);min-width:100px;text-align:right;min-height:38px;display:flex;align-items:center;justify-content:flex-end}
+  .px-live{background:var(--acd);border:1px solid rgba(45,184,168,0.3);border-radius:var(--rs);padding:7px 10px;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:var(--acl);min-width:100px;text-align:right;min-height:36px;display:flex;align-items:center;justify-content:flex-end}
   .px-live.stale{color:var(--tm);border-color:var(--ibr);background:var(--ib)}
-  .px-manual{border:1px solid var(--am)!important;font-size:15px!important;padding:8px 10px!important;font-weight:600!important}
-  .px-manual:not(:placeholder-shown){background:rgba(248,109,54,0.06)!important;border-color:var(--am)!important}
+  .px-manual{border:1px solid var(--am)!important;font-size:15px!important;padding:7px 10px!important;font-weight:600!important}
+  .px-manual:not(:placeholder-shown){background:rgba(240,112,64,0.05)!important;border-color:var(--am)!important}
   .conn-grid{display:grid;grid-template-columns:1fr 1fr 1fr auto auto;gap:8px;align-items:end}
-  .conn-status{font-size:10px;font-family:'IBM Plex Mono',monospace;padding:4px 8px;border-radius:4px;display:inline-flex;align-items:center;gap:4px}
+  .conn-status{font-size:10px;font-family:'IBM Plex Mono',monospace;padding:3px 8px;border-radius:4px;display:inline-flex;align-items:center;gap:4px}
   .price-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end;min-width:360px}
-  .px-tna{border:1px solid var(--bl)!important;font-size:13px!important;padding:7px 8px!important;font-weight:600!important;background:rgba(77,166,255,0.06)!important;text-align:right}
-  .px-tna:not(:placeholder-shown){background:rgba(77,166,255,0.12)!important}
-  .beb{background:var(--bg);border-radius:6px;padding:10px}
+  .px-tna{border:1px solid var(--bl)!important;font-size:13px!important;padding:7px 8px!important;font-weight:600!important;background:rgba(77,166,255,0.04)!important;text-align:right}
+  .px-tna:not(:placeholder-shown){background:rgba(77,166,255,0.10)!important}
+  .beb{background:var(--bg);border-radius:var(--rs);padding:10px}
   .bes{margin-top:6px;font-size:9px;padding:3px 6px;border-radius:4px;text-align:center;font-weight:600}
   .chart-c{position:relative;width:100%;height:200px;margin-top:6px}
   .chart-c.tall{height:320px}
@@ -63,21 +78,22 @@
   .ldot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:3px;vertical-align:middle}
   .method p{margin:0 0 4px;font-size:9px;color:var(--td);line-height:1.5}
   .method strong{color:var(--tm)}
-  .bonds-grid,.fixed-grid{display:flex;flex-direction:column;gap:8px}
-  .list-row{background:var(--card);border:1px solid var(--cb);border-radius:10px;padding:10px 12px;margin-bottom:0;transition:border-color 0.15s}
-  .list-row:hover{border-color:var(--acl)}
+  .bonds-grid,.fixed-grid{display:flex;flex-direction:column;gap:6px}
+  .list-row{background:var(--card);border:1px solid var(--cb);border-radius:var(--r);padding:10px 14px;margin-bottom:0;transition:border-color 0.15s,box-shadow 0.15s;box-shadow:var(--sh)}
+  .list-row:hover{border-color:var(--acl);box-shadow:0 4px 20px rgba(45,184,168,0.08)}
   .list-row + .list-row{margin-top:0}
   .list-head{display:grid;grid-template-columns:200px 400px 1fr;gap:12px;align-items:center}
   .list-title{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-  .list-meta{font-size:9px;color:var(--td);line-height:1.45}
+  .list-meta{font-size:9px;color:var(--td);line-height:1.5}
   .list-inputs{display:grid;grid-template-columns:minmax(130px,1.3fr) auto;gap:8px;align-items:end}
-  .list-metrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--cb)}
-  .metric{background:var(--bg);border-radius:8px;padding:8px 9px;min-height:54px}
+  .list-metrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--cb)}
+  .metric{background:var(--bg);border-radius:10px;padding:8px 10px;min-height:52px;transition:background 0.15s}
+  .metric:hover{background:#0c1420}
   .metric .mv{font-size:15px}
   .metric .ms{font-size:11px}
   .list-detail{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin-top:8px;font-size:9px;color:var(--td)}
   .list-detail .v{color:var(--t);font-family:'IBM Plex Mono',monospace}
-  .section-band{font-size:10px;font-weight:700;letter-spacing:0.08em;color:var(--tm);text-transform:uppercase;margin:10px 0 6px}
+  .section-band{font-size:10px;font-weight:600;letter-spacing:0.08em;color:var(--td);text-transform:uppercase;margin:10px 0 6px}
   @media (max-width:1200px){
     .list-head{grid-template-columns:1fr}
     .list-inputs,.list-metrics,.list-detail{grid-template-columns:repeat(3,minmax(0,1fr));}
@@ -87,14 +103,11 @@
     body{padding:8px;font-size:12px}
     .hdr{flex-direction:column;text-align:center;gap:6px}
     .hdr h1{font-size:16px}
-    .card{padding:10px;border-radius:8px}
-    /* Tabs: scroll horizontal on mobile */
+    .card{padding:10px;border-radius:10px}
     .tab-bar-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
     .tab-bar-wrap::-webkit-scrollbar{display:none}
     .tab-btn{font-size:11px;padding:8px 12px;white-space:nowrap}
-    /* ALL inline grids inside cards stack on mobile */
     .card>[style*="grid-template-columns"]{grid-template-columns:1fr!important}
-    /* Grids stack on mobile */
     .g2,.g3,.g4{grid-template-columns:1fr}
     .comp-grid{grid-template-columns:1fr}
     .list-head{grid-template-columns:1fr}
@@ -108,19 +121,15 @@
     .metric{padding:6px 7px;min-height:44px}
     .metric .mv{font-size:13px}
     .btn{padding:10px;font-size:12px}
-    .btn-api{padding:5px 10px;font-size:9px}
-    /* Tables: horizontally scrollable */
+    .btn-api{padding:4px 9px;font-size:9px}
     .lt{font-size:10px}
     .lt th{padding:6px 6px;font-size:8px}
     .lt td{padding:4px 6px}
     .gi{grid-template-columns:repeat(auto-fill,minmax(55px,1fr));gap:4px}
-    /* Duration charts stack vertically on mobile */
     #durChartsGrid{grid-template-columns:1fr!important}
     #durChartFXContainer,#durChartCERContainer,#durChartComboContainer{height:250px!important}
-    /* Forward matrices */
     .fwd-matrix{font-size:7px}
     .fwd-matrix th,.fwd-matrix td{padding:2px 3px}
-    /* Quant grids */
     .stress-grid{font-size:8px}
     .stress-cell{padding:3px 4px}
     .rv-heat{grid-template-columns:repeat(2,1fr)!important}
@@ -129,7 +138,6 @@
     .portfolio-kpi{grid-template-columns:1fr 1fr}
     .kpi .mv{font-size:14px}
     .tr-row{grid-template-columns:60px 1fr 60px;font-size:9px}
-    /* Misc */
     .conn-grid{grid-template-columns:1fr}
     .row-actions{flex-wrap:wrap;gap:6px}
     .be-cols{grid-template-columns:1fr}
@@ -147,57 +155,87 @@
   .bh{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
   .gi{display:grid;grid-template-columns:repeat(auto-fill,minmax(65px,1fr));gap:5px}
   .row-actions{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
-  .tab-btn{background:transparent;border:none;color:var(--td);font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:600;padding:10px 18px;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;letter-spacing:0.02em}
+  /* Tab bar */
+  .tab-btn{background:transparent;border:none;color:var(--td);font-family:'Inter',sans-serif;font-size:11.5px;font-weight:500;padding:12px 16px;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;letter-spacing:0.01em;white-space:nowrap}
   .tab-btn:hover{color:var(--t)}
-  .tab-btn.active{color:var(--acl);border-bottom-color:var(--acl)}
-  /* Tables — Docta style, sortable */
+  .tab-btn.active{color:var(--acl);border-bottom-color:var(--acl);font-weight:600}
+  /* Tables — minimal dark */
   .lt{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px}
-  .lt th{text-align:left;font-size:9px;font-weight:600;color:var(--td);text-transform:uppercase;letter-spacing:0.06em;padding:8px 10px;border-bottom:2px solid var(--cb);white-space:nowrap;cursor:pointer;user-select:none;transition:color 0.15s;position:relative}
+  .lt th{text-align:left;font-size:9px;font-weight:600;color:var(--td);text-transform:uppercase;letter-spacing:0.07em;padding:9px 10px;border-bottom:1px solid var(--cbf);white-space:nowrap;cursor:pointer;user-select:none;transition:color 0.15s;position:relative}
   .lt th:hover{color:var(--acl)}
   .lt th.sorted-asc::after{content:" ▲";font-size:7px;color:var(--acl)}
   .lt th.sorted-desc::after{content:" ▼";font-size:7px;color:var(--acl)}
-  .lt td{padding:6px 10px;border-bottom:1px solid rgba(31,41,55,0.6);white-space:nowrap;transition:background 0.1s}
-  .lt tr:hover td{background:rgba(29,109,101,0.06)}
+  .lt td{padding:7px 10px;border-bottom:1px solid rgba(24,34,46,0.8);white-space:nowrap;transition:background 0.1s}
+  .lt tr:hover td{background:rgba(45,184,168,0.05)}
+  .lt tr.clickable-row{cursor:pointer}
+  .lt tr.clickable-row:hover td{background:rgba(45,184,168,0.07)}
   .lt .num{text-align:right}
   .lt .hl-g{color:var(--acl)}
   .lt .hl-b{color:var(--am)}
-  .lt .tk{font-weight:600}
-  .lt .cer-row{border-left:3px solid var(--acl)}
-  .lt .fx-row{border-left:3px solid #8b5cf6}
+  .lt .tk{font-weight:600;letter-spacing:0.02em}
+  .lt .cer-row{border-left:2px solid var(--acl)}
+  .lt .fx-row{border-left:2px solid var(--fx)}
   .fwd-matrix{border-collapse:collapse;font-size:8px;font-family:'IBM Plex Mono',monospace;width:100%}
   .fwd-matrix th,.fwd-matrix td{padding:3px 5px;text-align:center;border:1px solid var(--cb);white-space:nowrap}
   .fwd-matrix th{background:var(--bg);color:var(--td);font-weight:600;font-size:7px}
-  .fwd-matrix td.fwd-hi{background:rgba(42,157,143,0.12);color:var(--acl)}
-  .fwd-matrix td.fwd-lo{background:rgba(248,109,54,0.12);color:var(--w)}
+  .fwd-matrix td.fwd-hi{background:rgba(45,184,168,0.10);color:var(--acl)}
+  .fwd-matrix td.fwd-lo{background:rgba(240,112,64,0.10);color:var(--w)}
   .fwd-matrix td.fwd-mid{color:var(--t)}
-  /* v7 quant additions */
+  /* Quant additions */
   .stress-grid{display:grid;gap:2px;font-family:'IBM Plex Mono',monospace;font-size:10px}
   .stress-cell{padding:4px 6px;text-align:center;border-radius:2px;white-space:nowrap}
   .stress-hdr{background:var(--bg);color:var(--td);font-weight:600;font-size:8px;text-transform:uppercase}
-  .stress-pos{background:rgba(42,157,143,0.08);color:var(--acl)}
-  .stress-neg{background:rgba(248,109,54,0.08);color:var(--w)}
+  .stress-pos{background:rgba(45,184,168,0.07);color:var(--acl)}
+  .stress-neg{background:rgba(240,112,64,0.07);color:var(--w)}
   .stress-zero{background:var(--bg);color:var(--t)}
   .rv-heat{display:grid;gap:3px;font-family:'IBM Plex Mono',monospace;font-size:10px}
-  .rv-cell{padding:6px;border-radius:4px;text-align:center;position:relative;min-height:50px;display:flex;flex-direction:column;justify-content:center}
+  .rv-cell{padding:6px;border-radius:6px;text-align:center;position:relative;min-height:50px;display:flex;flex-direction:column;justify-content:center}
   .rv-tk{font-weight:700;font-size:11px}
   .rv-score{font-size:14px;font-weight:700}
   .rv-sub{font-size:8px;color:var(--td);margin-top:2px}
-  .bf-leg{background:var(--bg);border-radius:6px;padding:10px;display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;margin-bottom:6px}
+  .bf-leg{background:var(--bg);border-radius:var(--rs);padding:10px;display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;margin-bottom:6px}
   .bf-label{font-size:10px;font-weight:600;width:50px}
   .bf-result{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:10px}
-  .tr-bar{height:18px;border-radius:3px;min-width:2px;transition:width 0.3s}
-  .tr-row{display:grid;grid-template-columns:80px 1fr 80px;gap:8px;align-items:center;padding:3px 0;border-bottom:1px solid rgba(31,41,55,0.3)}
+  .tr-bar{height:16px;border-radius:3px;min-width:2px;transition:width 0.3s}
+  .tr-row{display:grid;grid-template-columns:80px 1fr 80px;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid rgba(24,34,46,0.6)}
   .portfolio-kpi{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
-  .kpi{background:var(--bg);border-radius:10px;padding:12px;text-align:center}
+  .kpi{background:var(--bg);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--cb)}
   .kpi .mv{font-size:18px}
   .kpi .ml{margin-top:4px}
   /* Chart toggle controls */
-  .chart-toggles{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:center}
+  .chart-toggles{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center}
   .chart-toggle{display:flex;align-items:center;gap:4px;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--td);cursor:pointer;padding:3px 8px;border-radius:4px;border:1px solid var(--cb);transition:all 0.15s;user-select:none}
   .chart-toggle:hover{border-color:var(--acl)}
   .chart-toggle input{accent-color:var(--acl);cursor:pointer}
-  .chart-toggle.active{border-color:var(--acl);background:rgba(29,109,101,0.08)}
+  .chart-toggle.active{border-color:var(--acl);background:var(--acd)}
   .chart-metric-select{background:var(--ib);border:1px solid var(--ibr);border-radius:6px;padding:5px 10px;color:var(--t);font-size:11px;font-family:'IBM Plex Mono',monospace;cursor:pointer}
+  /* Resumen curves grid */
+  .resumen-curves{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
+  .resumen-curve-wrap{background:var(--bg);border-radius:10px;padding:10px 12px;border:1px solid var(--cb)}
+  .resumen-curve-label{font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--td);margin-bottom:4px;text-align:center}
+  @media(max-width:760px){.resumen-curves{grid-template-columns:1fr}}
+  /* Bond Calculator Modal */
+  .bc-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px}
+  .bc-modal{background:var(--card);border:1px solid var(--cb);border-radius:12px;width:100%;max-width:660px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.7)}
+  .bc-header{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 20px;border-bottom:1px solid var(--cb)}
+  .bc-title{font-size:17px;font-weight:700;letter-spacing:-0.01em}
+  .bc-sub{font-size:10px;color:var(--td);margin-top:3px;font-family:'IBM Plex Mono',monospace}
+  .bc-close{background:none;border:none;color:var(--td);font-size:22px;cursor:pointer;padding:0;line-height:1;transition:color 0.15s}
+  .bc-close:hover{color:var(--t)}
+  .bc-body{padding:16px 20px}
+  .bc-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:14px}
+  .bc-kpi{background:var(--bg);border-radius:8px;padding:10px 12px}
+  .bc-kpi .bv{font-size:17px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--acl)}
+  .bc-kpi .bl{font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-top:2px}
+  .bc-inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  .bc-target{background:var(--bg);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .bc-prices{font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;display:flex;gap:16px;margin-bottom:12px;padding:8px 10px;background:var(--bg);border-radius:6px;flex-wrap:wrap}
+  .bc-flows table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:10px}
+  .bc-flows th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--cb);color:var(--td);font-size:9px;text-transform:uppercase;letter-spacing:0.06em}
+  .bc-flows td{padding:5px 8px;border-bottom:1px solid rgba(31,41,55,0.4)}
+  .bc-flows tfoot td{font-weight:700;border-top:2px solid var(--cb);border-bottom:none;color:var(--acl)}
+  .live-tk-link{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+  .live-tk-link:hover{opacity:0.8}
 </style>
 </head>
 <body>
@@ -211,17 +249,17 @@
   </div>
 </div>
 
-<!-- TABS (ahora arriba de todo) -->
-<div class="tab-bar-wrap" style="margin-top:16px;border-bottom:2px solid var(--cb)">
+<!-- TABS -->
+<div class="tab-bar-wrap" style="border-bottom:1px solid var(--cb)">
 <div style="display:flex;gap:0;flex-wrap:nowrap;min-width:max-content">
   <button class="tab-btn active" onclick="switchTab('calculadoras')">Calculadoras</button>
   <button class="tab-btn" onclick="switchTab('resumen')">Resumen</button>
   <button class="tab-btn" onclick="switchTab('analysis')">Análisis</button>
   <button class="tab-btn" onclick="switchTab('quantplus')">Quant+</button>
-  <button class="tab-btn" onclick="switchTab('livescreen')">Live BID/LAST/OFFER</button>
+  <button class="tab-btn" onclick="switchTab('livescreen')">Live Screen</button>
   <button class="tab-btn" onclick="switchTab('positions')">Posiciones</button>
   <button class="tab-btn" onclick="switchTab('pases')">Pases</button>
-  <button class="tab-btn" onclick="switchTab('databcra')">Data BCRA</button>
+  <button class="tab-btn" onclick="switchTab('databcra')">BCRA</button>
 </div>
 </div>
 
@@ -290,23 +328,52 @@
 
 <!-- TAB: RESUMEN -->
 <div id="tab-resumen" style="display:none">
+  <!-- Curvas -->
   <div class="card" style="margin-top:10px">
-    <div class="st">Resumen — Bonos CER (tasa fija equivalente)</div>
+    <div class="bh">
+      <div class="st" style="margin-bottom:0">Curvas Duration / Rendimiento</div>
+      <span style="font-size:9px;color:var(--td)">Click en bono para calculadora</span>
+    </div>
+    <div class="resumen-curves">
+      <div class="resumen-curve-wrap">
+        <div class="resumen-curve-label" style="color:var(--fx)">LECAP / BONCAP — TEA</div>
+        <div class="chart-c" style="height:180px"><canvas id="resumenChartFX"></canvas></div>
+      </div>
+      <div class="resumen-curve-wrap">
+        <div class="resumen-curve-label" style="color:var(--acl)">CER — TIR Real</div>
+        <div class="chart-c" style="height:180px"><canvas id="resumenChartCER"></canvas></div>
+      </div>
+      <div class="resumen-curve-wrap">
+        <div class="resumen-curve-label" style="color:var(--am)">Combinado — Nominal</div>
+        <div class="chart-c" style="height:180px"><canvas id="resumenChartCombo"></canvas></div>
+      </div>
+    </div>
+    <div class="legend" id="resumenCurveLegend" style="margin-top:8px">
+      <span><span class="ldot" style="background:var(--acl)"></span>CER</span>
+      <span><span class="ldot" style="background:var(--fx)"></span>LECAP/BONCAP</span>
+      <span style="color:var(--td);font-size:9px">— — log&nbsp;&nbsp;━ NSS</span>
+    </div>
+    <div id="resumenCurveNote" class="note" style="text-align:center">Calculá primero para ver curvas</div>
+  </div>
+  <!-- Tabla CER -->
+  <div class="card" style="margin-top:8px">
+    <div class="st">Bonos CER — tasa fija equivalente <span style="font-size:8px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--td)">click en fila → calculadora</span></div>
     <div style="overflow-x:auto">
       <table class="lt">
         <thead><tr>
           <th>Especie</th><th class="num">Var %</th><th>Vencimiento</th><th class="num">Días</th>
-          <th class="num" style="color:var(--ac)">TEA Nom</th>
+          <th class="num" style="color:var(--acl)">TEA Nom</th>
           <th class="num" style="color:var(--am)">Precio</th>
-          <th class="num" style="color:var(--ac)">TNA</th>
+          <th class="num" style="color:var(--acl)">TNA</th>
           <th class="num">TIR Real</th><th class="num">Duration</th>
         </tr></thead>
-        <tbody id="resumenCERBody"><tr><td colspan="9" style="text-align:center;color:var(--tm);padding:12px">Calculá para ver resumen</td></tr></tbody>
+        <tbody id="resumenCERBody"><tr><td colspan="9" style="text-align:center;color:var(--tm);padding:14px">Calculá para ver resumen</td></tr></tbody>
       </table>
     </div>
   </div>
+  <!-- Tabla FIXED -->
   <div class="card" style="margin-top:8px">
-    <div class="st">Resumen — LECAP / BONCAP (tasa fija)</div>
+    <div class="st">LECAP / BONCAP — tasa fija <span style="font-size:8px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--td)">click en fila → calculadora</span></div>
     <div style="overflow-x:auto">
       <table class="lt">
         <thead><tr>
@@ -316,11 +383,11 @@
           <th class="num" style="color:var(--fx)">TNA</th>
           <th class="num">TEM</th><th class="num">Duration</th>
         </tr></thead>
-        <tbody id="resumenFXBody"><tr><td colspan="9" style="text-align:center;color:var(--tm);padding:12px">Calculá para ver resumen</td></tr></tbody>
+        <tbody id="resumenFXBody"><tr><td colspan="9" style="text-align:center;color:var(--tm);padding:14px">Calculá para ver resumen</td></tr></tbody>
       </table>
     </div>
   </div>
-  <!-- VOLUME CHART -->
+  <!-- Volumen -->
   <div class="card" style="margin-top:8px">
     <div class="st">Volumen Efectivo — Ranking</div>
     <div id="volumeChart" style="font-family:'IBM Plex Mono',monospace;font-size:11px">
@@ -1289,13 +1356,14 @@ function fitNSS(points){
   return {params:best, predict:t=>nssPredict(t,best), rmse:Math.sqrt(bestErr/points.length)};
 }
 
-function drawOneChart(canvasId,points,maxXUse,title,curveColor){
+function drawOneChart(canvasId,points,maxXUse,title,curveColor,onPointClick){
   const cv=document.getElementById(canvasId);
   if(!cv)return;
   const ct=cv.parentElement;
   const valid=points.filter(p=>p.x>0&&p.x<=maxXUse&&isFinite(p.y));
   if(!valid.length){
-    const c2=cv.getContext("2d");c2.clearRect(0,0,cv.width,cv.height);return;
+    const c2=cv.getContext("2d");c2.clearRect(0,0,cv.width,cv.height);
+    cv._chartHits=null;return;
   }
   const dpr=window.devicePixelRatio||1,W=ct.clientWidth,H=ct.clientHeight;
   cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+"px";cv.style.height=H+"px";
@@ -1322,12 +1390,15 @@ function drawOneChart(canvasId,points,maxXUse,title,curveColor){
     c.beginPath();c.moveTo(px,pad.t);c.lineTo(px,H-pad.b);c.stroke();
     c.fillStyle="#475569";c.textAlign="center";c.font="7px 'IBM Plex Mono',monospace";c.fillText(x.toFixed(2),px,H-12);
   }
-  // Points
+  // Points — store hit regions for click detection
+  const hits=[];
   valid.forEach(p=>{
     const px=xP(p.x), py=yP(p.y);
     c.beginPath();c.arc(px,py,4,0,Math.PI*2);c.fillStyle=p.color;c.fill();c.strokeStyle="#080c14";c.lineWidth=1.2;c.stroke();
     c.fillStyle=p.color;c.font="bold 7px 'IBM Plex Mono',monospace";c.textAlign="center";c.fillText(p.label,px,py-8);
+    hits.push({px,py,r:7,label:p.label,color:p.color});
   });
+  cv._chartHits=hits;
   // Log regression
   const reg=logRegression(valid);
   if(reg){
@@ -1350,14 +1421,34 @@ function drawOneChart(canvasId,points,maxXUse,title,curveColor){
       if(y>=minY-5&&y<=maxY+5){if(!started){c.moveTo(xP(x),yP(y));started=true}else c.lineTo(xP(x),yP(y))}
     }
     c.stroke();
-    // NSS label
     c.fillStyle=curveColor;c.font="bold 7px 'IBM Plex Mono',monospace";c.textAlign="right";
     c.fillText("NSS",W-pad.r-2,pad.t+10);
   }
-  // Log label
   if(reg){
     c.fillStyle="#ffffff66";c.font="7px 'IBM Plex Mono',monospace";c.textAlign="right";
     c.fillText("Log",W-pad.r-2,pad.t+20);
+  }
+  // Click / hover handling
+  if(onPointClick){
+    cv._chartClickCb=onPointClick;
+    if(!cv._chartListeners){
+      cv._chartListeners=true;
+      cv.addEventListener('click',function(e){
+        if(!this._chartHits||!this._chartClickCb)return;
+        const rect=this.getBoundingClientRect();
+        const mx=(e.clientX-rect.left),my=(e.clientY-rect.top);
+        for(const h of this._chartHits){
+          if(Math.hypot(h.px-mx,h.py-my)<=h.r+3){this._chartClickCb(h.label);break;}
+        }
+      });
+      cv.addEventListener('mousemove',function(e){
+        if(!this._chartHits)return;
+        const rect=this.getBoundingClientRect();
+        const mx=(e.clientX-rect.left),my=(e.clientY-rect.top);
+        const hit=this._chartHits.some(h=>Math.hypot(h.px-mx,h.py-my)<=h.r+3);
+        this.style.cursor=hit?'pointer':'default';
+      });
+    }
   }
 }
 
@@ -1370,9 +1461,9 @@ function drawDurationChart3(ptsFX,ptsCERReal,ptsCombo){
   const autoMax=getAutoDurMax(all);
   const maxXUse=(userMax&&userMax>0)?userMax:autoMax;
   
-  drawOneChart("durChartFX",ptsFX,maxXUse,"LECAP/BONCAP","#8b5cf6");
-  drawOneChart("durChartCERReal",ptsCERReal,maxXUse,"CER Real","#2a9d8f");
-  drawOneChart("durChartCombo",ptsCombo,maxXUse,"Combinado","#F86D36");
+  drawOneChart("durChartFX",ptsFX,maxXUse,"LECAP/BONCAP","#8b5cf6",lbl=>{const f=FIXED.find(x=>x.ticker===lbl);if(f)openBondCalculator('fixed',f.id);});
+  drawOneChart("durChartCERReal",ptsCERReal,maxXUse,"CER Real","#2a9d8f",lbl=>{const b=BONDS.find(x=>x.ticker===lbl);if(b)openBondCalculator('cer',b.id);});
+  drawOneChart("durChartCombo",ptsCombo,maxXUse,"Combinado","#F86D36",lbl=>{const b=BONDS.find(x=>x.ticker===lbl);if(b){openBondCalculator('cer',b.id)}else{const f=FIXED.find(x=>x.ticker===lbl);if(f)openBondCalculator('fixed',f.id);}});
   
   // Legend
   document.getElementById("durLegend").innerHTML=`
@@ -2099,19 +2190,19 @@ function renderResumen(){
       const days=DB(settle,new Date(b.mat+"T00:00:00"));
       const px=getCurrentPrice(b.id);
       const chg=getPriceVariationMeta(b.ticker,"pm_"+b.id);
-      rows+=`<tr style="border-left:3px solid ${b.color}">
+      rows+=`<tr class="clickable-row cer-row" onclick="openBondCalculator('cer','${b.id}')" title="Click para calculadora">
         <td class="tk" style="color:${b.color}">${b.ticker}</td>
         <td class="num" style="color:${chg.color};font-weight:600">${chg.text}</td>
         <td>${FD(new Date(b.mat+"T00:00:00"))}</td>
         <td class="num">${days}</td>
-        <td class="num" style="color:var(--ac);font-weight:600">${b._tn!=null?b._tn.toFixed(2)+"%":"—"}</td>
+        <td class="num" style="color:var(--acl);font-weight:600">${b._tn!=null?b._tn.toFixed(2)+"%":"—"}</td>
         <td class="num" style="color:var(--am);font-weight:600">${px?px.toFixed(2):"—"}</td>
-        <td class="num" style="color:var(--ac)">${b._tnaTF!=null?b._tnaTF.toFixed(2)+"%":"—"}</td>
+        <td class="num" style="color:var(--acl)">${b._tnaTF!=null?b._tnaTF.toFixed(2)+"%":"—"}</td>
         <td class="num">${b._tr!=null?b._tr.toFixed(2)+"%":"—"}</td>
         <td class="num">${b._dur!=null?b._dur.toFixed(3):"—"}</td>
       </tr>`;
     });
-    cerBody.innerHTML=rows||'<tr><td colspan="9" style="text-align:center;color:var(--tm);padding:12px">Calculá primero</td></tr>';
+    cerBody.innerHTML=rows||'<tr><td colspan="9" style="text-align:center;color:var(--tm);padding:14px">Calculá primero</td></tr>';
   }
   const fxBody=document.getElementById("resumenFXBody");
   if(fxBody){
@@ -2120,7 +2211,7 @@ function renderResumen(){
       const days=DB(settle,new Date(f.mat+"T00:00:00"));
       const px=getCurrentPrice(f.id);
       const chg=getPriceVariationMeta(f.ticker,"fpm_"+f.id);
-      rows+=`<tr style="border-left:3px solid ${f.color}">
+      rows+=`<tr class="clickable-row fx-row" onclick="openBondCalculator('fixed','${f.id}')" title="Click para calculadora">
         <td class="tk" style="color:${f.color}">${f.ticker}</td>
         <td class="num" style="color:${chg.color};font-weight:600">${chg.text}</td>
         <td>${FD(new Date(f.mat+"T00:00:00"))}</td>
@@ -2132,8 +2223,28 @@ function renderResumen(){
         <td class="num">${f._dur!=null?f._dur.toFixed(3):"—"}</td>
       </tr>`;
     });
-    fxBody.innerHTML=rows||'<tr><td colspan="9" style="text-align:center;color:var(--tm);padding:12px">Calculá primero</td></tr>';
+    fxBody.innerHTML=rows||'<tr><td colspan="9" style="text-align:center;color:var(--tm);padding:14px">Calculá primero</td></tr>';
   }
+  // Dibujar curvas en Resumen usando los datos calculados en Análisis
+  renderResumenCurves();
+}
+
+function renderResumenCurves(){
+  const cd=typeof currentDurData!=='undefined'?currentDurData:null;
+  const note=document.getElementById('resumenCurveNote');
+  if(!cd||(!cd.fx.length&&!cd.cerReal.length&&!cd.combo.length)){
+    if(note) note.textContent='Calculá primero para ver curvas (o abrí la pestaña Análisis)';
+    return;
+  }
+  if(note) note.textContent='';
+  const all=[...cd.fx,...cd.cerReal,...cd.combo].filter(p=>p.x>0&&isFinite(p.y));
+  if(!all.length) return;
+  const userMax=parseFloat(document.getElementById("durMaxInput")?.value);
+  const autoMax=getAutoDurMax(all);
+  const maxXUse=(userMax&&userMax>0)?userMax:autoMax;
+  drawOneChart('resumenChartFX', cd.fx, maxXUse, 'LECAP/BONCAP','#9b7af0',lbl=>{const f=FIXED.find(x=>x.ticker===lbl);if(f)openBondCalculator('fixed',f.id);});
+  drawOneChart('resumenChartCER', cd.cerReal, maxXUse, 'CER Real','#2db8a8',lbl=>{const b=BONDS.find(x=>x.ticker===lbl);if(b)openBondCalculator('cer',b.id);});
+  drawOneChart('resumenChartCombo', cd.combo, maxXUse, 'Combinado','#f07040',lbl=>{const b=BONDS.find(x=>x.ticker===lbl);if(b){openBondCalculator('cer',b.id)}else{const f=FIXED.find(x=>x.ticker===lbl);if(f)openBondCalculator('fixed',f.id);}});
 }
 
 function renderVolume(){
@@ -2180,6 +2291,244 @@ function clearAllManual(){
 }
 
 // ═══ LIVE TABLE ══════════════════════════════════════════════════
+function openBondCalculator(bondType, bondId){
+  document.getElementById('bondCalcModal')?.remove();
+  const b = bondType==='cer' ? BONDS.find(x=>x.id===bondId) : FIXED.find(x=>x.id===bondId);
+  if(!b) return;
+
+  const sd=document.getElementById("settleDate").value;
+  const settle=new Date(sd+"T00:00:00");
+  const matD=new Date(b.mat+"T00:00:00");
+  const days=DB(settle,matD);
+  const lp=_livePrices[b.ticker]||{};
+  const defaultPx=lp.last||lp.bid||lp.ask||'';
+  const typeLabel=bondType==='cer'?'CER':b.type;
+
+  const overlay=document.createElement('div');
+  overlay.id='bondCalcModal';
+  overlay.className='bc-overlay';
+  overlay.innerHTML=`
+    <div class="bc-modal">
+      <div class="bc-header">
+        <div>
+          <div class="bc-title" style="color:${b.color}">${b.ticker} <span style="font-size:11px;color:var(--td);font-weight:400">${b.name||b.ticker}</span></div>
+          <div class="bc-sub">${typeLabel} &nbsp;·&nbsp; Vto: ${b.mat} &nbsp;·&nbsp; Días al vto: <strong style="color:var(--t)">${days}</strong></div>
+        </div>
+        <button class="bc-close" id="bcClose">&times;</button>
+      </div>
+      <div class="bc-body">
+        <div class="bc-inputs">
+          <div class="ig">
+            <label>Precio ${bondType==='cer'?'(% VT)':'($)'}</label>
+            <input type="number" id="bci-price" step="0.01" value="${defaultPx}" placeholder="Precio"
+              style="font-size:15px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right">
+          </div>
+          <div class="ig">
+            <label>VNO (cantidad de títulos)</label>
+            <input type="number" id="bci-vno" step="1" value="100"
+              style="font-size:15px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right">
+          </div>
+        </div>
+        <div class="bc-kpis">
+          <div class="bc-kpi"><div class="bv" id="bck-tir">—</div><div class="bl">TIR (TEA${bondType==='cer'?' real':''})</div></div>
+          <div class="bc-kpi"><div class="bv" id="bck-tna">—</div><div class="bl">TNA equiv.</div></div>
+          <div class="bc-kpi"><div class="bv" id="bck-vt" style="font-size:13px">—</div><div class="bl">${bondType==='cer'?'VT Nominal ($)':'VF ($)'}</div></div>
+          <div class="bc-kpi"><div class="bv" id="bck-vno" style="font-size:13px">—</div><div class="bl">VN adquirido</div></div>
+          <div class="bc-kpi"><div class="bv" id="bck-total" style="font-size:13px">—</div><div class="bl">Total cobros</div></div>
+          <div class="bc-kpi"><div class="bv" id="bck-ganancia" style="font-size:13px">—</div><div class="bl">Ganancia</div></div>
+        </div>
+        <div class="bc-prices">
+          <span>BID: <strong style="color:var(--t)">${lp.bid||'—'}</strong></span>
+          <span>LAST: <strong style="color:var(--acl)">${lp.last||'—'}</strong></span>
+          <span>OFFER: <strong style="color:var(--t)">${lp.ask||'—'}</strong></span>
+          <span>Cierre: <strong style="color:var(--t)">${lp.close||'—'}</strong></span>
+          <span style="cursor:pointer;color:var(--acl)" onclick="document.getElementById('bci-price').value=${lp.bid||0};document.getElementById('bci-price').dispatchEvent(new Event('input'))">↑ usar BID</span>
+          <span style="cursor:pointer;color:var(--acl)" onclick="document.getElementById('bci-price').value=${lp.last||0};document.getElementById('bci-price').dispatchEvent(new Event('input'))">↑ usar LAST</span>
+          <span style="cursor:pointer;color:var(--acl)" onclick="document.getElementById('bci-price').value=${lp.ask||0};document.getElementById('bci-price').dispatchEvent(new Event('input'))">↑ usar OFFER</span>
+        </div>
+        <div class="bc-target" style="flex-direction:column;align-items:stretch;gap:10px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="ig">
+              <label>TIR objetivo${bondType==='cer'?' (real)':' (TEA)'} %</label>
+              <input type="number" id="bci-target-tir" step="0.1" placeholder="${bondType==='cer'?'ej: 8.5':'ej: 52'}"
+                style="font-size:13px;font-weight:600;font-family:'IBM Plex Mono',monospace;text-align:right">
+            </div>
+            <div class="ig">
+              <label>${bondType==='cer'?'TNA TF CER objetivo %':'TNA objetivo %'}</label>
+              <input type="number" id="bci-target-tna" step="0.1" placeholder="${bondType==='cer'?'ej: 55':'ej: 40'}"
+                style="font-size:13px;font-weight:600;font-family:'IBM Plex Mono',monospace;text-align:right">
+            </div>
+          </div>
+          <div id="bck-target-result" style="font-size:11px;color:var(--td);min-height:20px">Ingresá TIR o TNA objetivo para ver el precio implícito</div>
+        </div>
+        <div class="bc-flows" id="bck-flows"></div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  document.getElementById('bcClose').addEventListener('click', ()=>overlay.remove());
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+
+  function recalc(){
+    const price=parseFloat(document.getElementById('bci-price').value)||0;
+    const vnoAmount=parseFloat(document.getElementById('bci-vno').value)||100;
+
+    if(bondType==='cer'){
+      const cerLiqVal=parseFloat(document.getElementById("cerLiq").value);
+      const bv=parseFloat(document.getElementById("baseCER").value);
+      const bDate=document.getElementById("baseCERDate").value;
+      const inflMap={};
+      IM.forEach(m=>{inflMap[m.k]=parseFloat(document.getElementById("i_"+m.k).value)||0});
+      let getCER=null;
+      if(bv&&bDate){try{getCER=buildCER(bv,bDate,inflMap)}catch(e){}}
+      const cerEm=parseFloat(document.getElementById("ce_"+b.id)?.value)||b.cerEm;
+
+      let tir=null, tna=null;
+      let flows=[];
+      if(getCER&&cerEm&&cerLiqVal){
+        flows=getBondSchedule(b, settle, getCER, cerLiqVal);
+        if(flows.length&&price>0){
+          const tirRaw=xirrFromFlows(price, flows, 'nominal');
+          if(tirRaw!=null){
+            tir=tirRaw*100;
+            tna=days>0?((Math.pow(1+tir/100,days/365)-1)*(365/days))*100:null;
+          }
+        }
+      }
+
+      const vtNom=flows.length?flows[0].nominal:null;
+      const scale=vnoAmount/100;
+      const totalCobros=vtNom?vtNom*scale:null;
+      const ganancia=totalCobros&&price>0?totalCobros-vnoAmount/100*price:null;
+      const vnAdq=price>0?vnoAmount/price*100:null;
+
+      document.getElementById('bck-tir').textContent=tir!=null?tir.toFixed(2)+'%':'—';
+      document.getElementById('bck-tir').style.color=tir!=null?(tir>=0?'var(--acl)':'var(--neg)'):'var(--td)';
+      document.getElementById('bck-tna').textContent=tna!=null?tna.toFixed(2)+'%':'—';
+      document.getElementById('bck-vt').textContent=vtNom?vtNom.toFixed(4):'—';
+      document.getElementById('bck-vno').textContent=vnAdq?vnAdq.toFixed(0)+' VN':'—';
+      document.getElementById('bck-total').textContent=totalCobros?'$'+totalCobros.toFixed(0):'—';
+      document.getElementById('bck-ganancia').textContent=ganancia!=null?(ganancia>=0?'+':'')+'$'+ganancia.toFixed(0):'—';
+      if(ganancia!=null) document.getElementById('bck-ganancia').style.color=ganancia>=0?'var(--pos)':'var(--neg)';
+
+      if(flows.length){
+        const rows=flows.map(f=>`<tr>
+          <td>${f.date.toLocaleDateString('es-AR')}</td>
+          <td style="text-align:right">${f.days}</td>
+          <td style="text-align:right">${f.nominal.toFixed(4)}</td>
+          <td style="text-align:right">${(f.nominal*scale).toFixed(2)}</td>
+        </tr>`).join('');
+        const totNom=flows.reduce((s,f)=>s+f.nominal,0);
+        document.getElementById('bck-flows').innerHTML=`
+          <div class="st" style="margin-bottom:6px">Flujos de Fondos</div>
+          <table><thead><tr>
+            <th>Fecha</th><th style="text-align:right">Días</th>
+            <th style="text-align:right">Por 100 VN ($)</th>
+            <th style="text-align:right">Por ${vnoAmount.toLocaleString('es-AR')} VNO ($)</th>
+          </tr></thead><tbody>${rows}</tbody>
+          <tfoot><tr>
+            <td>Total</td><td></td>
+            <td style="text-align:right">${totNom.toFixed(4)}</td>
+            <td style="text-align:right">${(totNom*scale).toFixed(2)}</td>
+          </tr></tfoot></table>`;
+      }
+
+      // Target TIR / TNA objetivo → precio implícito (CER single-flow bullet)
+      {
+        const targetTirVal=parseFloat(document.getElementById('bci-target-tir').value);
+        const targetTnaVal=parseFloat(document.getElementById('bci-target-tna').value);
+        const nom=flows.length?flows[0].nominal:null;
+        const fl=flows.length?flows[0]:null;
+        const parts=[];
+        if(!isNaN(targetTirVal)&&nom&&fl){
+          const impliedPx=nom/Math.pow(1+targetTirVal/100,fl.days/365);
+          parts.push(`TIR <strong style="color:var(--acl)">${targetTirVal.toFixed(2)}%</strong> → <strong style="color:var(--acl);font-size:13px">${impliedPx.toFixed(4)}</strong>`);
+        }
+        if(!isNaN(targetTnaVal)&&nom&&fl){
+          // TNA TF CER: simple rate (TNA = (VF/P - 1) * 365/days), same as FIXED TNA logic
+          // P = nom / (1 + TNA * days/365)
+          const impliedPx=nom/(1+targetTnaVal/100*fl.days/365);
+          parts.push(`TNA TF <strong style="color:var(--fx)">${targetTnaVal.toFixed(2)}%</strong> → <strong style="color:var(--fx);font-size:13px">${impliedPx.toFixed(4)}</strong>`);
+        }
+        document.getElementById('bck-target-result').innerHTML=
+          parts.length?parts.join('<span style="color:var(--tm);padding:0 8px">|</span>'):'Ingresá TIR o TNA objetivo para ver el precio implícito';
+      }
+
+    } else {
+      // FIXED (LECAP / BONCAP)
+      const emD=new Date(b.emDate+"T00:00:00");
+      let vf=null;
+      if(b.temIssue>=0&&days>0){
+        const months360=days360US(emD,matD)/30;
+        vf=100*Math.pow(1+b.temIssue,months360);
+      }
+      let tir=null, tna=null;
+      if(price>0&&vf){
+        tir=calcTIRFromPrice(price,vf,days);
+        tna=calcTNAFromPrice(price,vf,days);
+      }
+      const scale=vnoAmount/100;
+      const totalCobros=vf?vf*scale:null;
+      const ganancia=totalCobros&&price>0?totalCobros-(price*scale):null;
+      const vnAdq=price>0?vnoAmount/price*100:null;
+
+      document.getElementById('bck-tir').textContent=tir!=null?tir.toFixed(2)+'%':'—';
+      document.getElementById('bck-tir').style.color=tir!=null?(tir>=0?'var(--acl)':'var(--neg)'):'var(--td)';
+      document.getElementById('bck-tna').textContent=tna!=null?tna.toFixed(2)+'%':'—';
+      document.getElementById('bck-vt').textContent=vf?vf.toFixed(4):'—';
+      document.getElementById('bck-vno').textContent=vnAdq?vnAdq.toFixed(0)+' VN':'—';
+      document.getElementById('bck-total').textContent=totalCobros?'$'+totalCobros.toFixed(0):'—';
+      document.getElementById('bck-ganancia').textContent=ganancia!=null?(ganancia>=0?'+':'')+'$'+ganancia.toFixed(0):'—';
+      if(ganancia!=null) document.getElementById('bck-ganancia').style.color=ganancia>=0?'var(--pos)':'var(--neg)';
+
+      if(vf){
+        document.getElementById('bck-flows').innerHTML=`
+          <div class="st" style="margin-bottom:6px">Flujo de Fondos (bono bullet)</div>
+          <table><thead><tr>
+            <th>Fecha</th><th style="text-align:right">Días</th>
+            <th style="text-align:right">Por 100 VN ($)</th>
+            <th style="text-align:right">Por ${vnoAmount.toLocaleString('es-AR')} VNO ($)</th>
+          </tr></thead><tbody>
+          <tr>
+            <td>${matD.toLocaleDateString('es-AR')}</td>
+            <td style="text-align:right">${days}</td>
+            <td style="text-align:right">${vf.toFixed(4)}</td>
+            <td style="text-align:right">${(vf*scale).toFixed(2)}</td>
+          </tr>
+          </tbody><tfoot><tr>
+            <td>Total</td><td></td>
+            <td style="text-align:right">${vf.toFixed(4)}</td>
+            <td style="text-align:right">${(vf*scale).toFixed(2)}</td>
+          </tr></tfoot></table>`;
+      }
+
+      // Target TIR (TEA) / TNA objetivo → precio implícito FIXED
+      {
+        const targetTirVal=parseFloat(document.getElementById('bci-target-tir').value);
+        const targetTnaVal=parseFloat(document.getElementById('bci-target-tna').value);
+        const parts=[];
+        if(!isNaN(targetTirVal)&&vf&&days>0){
+          const impliedPx=vf/Math.pow(1+targetTirVal/100,days/365);
+          parts.push(`TEA <strong style="color:var(--acl)">${targetTirVal.toFixed(2)}%</strong> → <strong style="color:var(--acl);font-size:13px">${impliedPx.toFixed(4)}</strong>`);
+        }
+        if(!isNaN(targetTnaVal)&&vf&&days>0){
+          // TNA simple: P = VF / (1 + TNA * days/365)
+          const impliedPx=vf/(1+targetTnaVal/100*days/365);
+          parts.push(`TNA <strong style="color:var(--fx)">${targetTnaVal.toFixed(2)}%</strong> → <strong style="color:var(--fx);font-size:13px">${impliedPx.toFixed(4)}</strong>`);
+        }
+        document.getElementById('bck-target-result').innerHTML=
+          parts.length?parts.join('<span style="color:var(--tm);padding:0 8px">|</span>'):'Ingresá TEA o TNA objetivo para ver el precio implícito';
+      }
+    }
+  }
+
+  document.getElementById('bci-price').addEventListener('input', recalc);
+  document.getElementById('bci-vno').addEventListener('input', recalc);
+  document.getElementById('bci-target-tir').addEventListener('input', recalc);
+  document.getElementById('bci-target-tna').addEventListener('input', recalc);
+  recalc();
+}
+
 function calcTIRFromPrice(price,vf,days){
   if(!price||!vf||days<=0)return null;
   return(Math.pow(vf/price,365/days)-1)*100;
@@ -2249,7 +2598,7 @@ function buildLiveTable(){
     const varStr=varPct!=null?(varPct>=0?"+":"")+varPct.toFixed(2)+"%":"—";
 
     rows+=`<tr class="cer-row">
-      <td class="tk" style="color:${b.color}">${b.ticker}</td>
+      <td class="tk live-tk-link" style="color:${b.color}" onclick="openBondCalculator('cer','${b.id}')">${b.ticker}</td>
       <td class="num" style="${varColor};font-size:10px">${varStr}</td>
       <td>CER</td><td class="num">${days}</td>
       <td class="num">${bid||"—"}</td>
@@ -2302,7 +2651,7 @@ function buildLiveTable(){
     const varStr=varPct!=null?(varPct>=0?"+":"")+varPct.toFixed(2)+"%":"—";
 
     rows+=`<tr class="fx-row">
-      <td class="tk" style="color:${f.color}">${f.ticker}</td>
+      <td class="tk live-tk-link" style="color:${f.color}" onclick="openBondCalculator('fixed','${f.id}')">${f.ticker}</td>
       <td class="num" style="${varColor};font-size:10px">${varStr}</td>
       <td>${f.type}</td><td class="num">${days}</td>
       <td class="num">${bid||"—"}</td>
