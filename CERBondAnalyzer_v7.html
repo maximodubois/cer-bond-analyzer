@@ -1548,11 +1548,17 @@ function calcTamarRemainingAvgTEM(bond, settle){
 }
 
 // Clean override of calcTamarAvgTEM after monolithic patching.
+// For each business day in [emDate−10bd, matDate−10bd]:
+//   1. BCRA published TNA  → use it
+//   2. No BCRA, user has monthly TNA input → use it (TNA% ÷ 12)
+//   3. No BCRA, no user input → use avg of last 5 BCRA days (fallback)
 function calcTamarAvgTEM(bond, tamarMonthlyTNAMap, asOfDate){
   const emD=new Date(bond.emDate+"T00:00:00");
   const matD=new Date(bond.mat+"T00:00:00");
   const startRef=SBD(emD,10);
   const endRef=SBD(matD,10);
+  // Pre-compute fallback: avg of last 5 available BCRA TNA values
+  const fallbackTNA=getRecentTamarAvgTNA(5, asOfDate);
   let sumTEM=0, cnt=0, guard=0;
   const cur=new Date(startRef);
   while(cur<=endRef&&guard<5000){
@@ -1565,7 +1571,12 @@ function calcTamarAvgTEM(bond, tamarMonthlyTNAMap, asOfDate){
         const monthKey=ds.slice(0,7);
         const tnaPct=tamarMonthlyTNAMap?.[monthKey];
         if(tnaPct!=null&&isFinite(tnaPct)&&tnaPct>0){
+          // User-provided monthly TNA% assumption
           sumTEM+=tamarTNAtoTEM(tnaPct);
+          cnt++;
+        } else if(fallbackTNA!=null){
+          // No user input → fall back to avg of last 5 BCRA days
+          sumTEM+=tamarTNAtoTEM(fallbackTNA);
           cnt++;
         }
       }
