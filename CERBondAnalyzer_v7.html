@@ -981,14 +981,14 @@ const TAMAR_BONDS=[
   {id:"TMF27",ticker:"TMF27",name:"Bono TAMAR 26-Feb-27",type:"BONTAMAR",mat:"2027-02-26",emDate:"2026-02-13",margin:0.065,color:"#987a00"},
 ];
 
-// ═══ TAMAR MONTHLY ASSUMPTIONS (TNA%) ═══
+// ═══ TAMAR MONTHLY ASSUMPTIONS (TNA%) — defaults near last BCRA published (~26.27%) ═══
 const TM=[
-  {k:"2026-04",l:"Abr 26",d:"31.2"},
-  {k:"2026-05",l:"May 26",d:"30.0"},{k:"2026-06",l:"Jun 26",d:"28.8"},
-  {k:"2026-07",l:"Jul 26",d:"27.6"},{k:"2026-08",l:"Ago 26",d:"26.4"},
-  {k:"2026-09",l:"Sep 26",d:"26.4"},{k:"2026-10",l:"Oct 26",d:"26.4"},
-  {k:"2026-11",l:"Nov 26",d:"26.4"},{k:"2026-12",l:"Dic 26",d:"26.4"},
-  {k:"2027-01",l:"Ene 27",d:"26.4"},{k:"2027-02",l:"Feb 27",d:"26.4"},
+  {k:"2026-04",l:"Abr 26",d:"26.3"},
+  {k:"2026-05",l:"May 26",d:"26.0"},{k:"2026-06",l:"Jun 26",d:"25.5"},
+  {k:"2026-07",l:"Jul 26",d:"25.0"},{k:"2026-08",l:"Ago 26",d:"24.5"},
+  {k:"2026-09",l:"Sep 26",d:"24.0"},{k:"2026-10",l:"Oct 26",d:"24.0"},
+  {k:"2026-11",l:"Nov 26",d:"24.0"},{k:"2026-12",l:"Dic 26",d:"24.0"},
+  {k:"2027-01",l:"Ene 27",d:"24.0"},{k:"2027-02",l:"Feb 27",d:"24.0"},
 ];
 
 // ═══ INFLATION MONTHS ══════════════
@@ -1548,14 +1548,16 @@ function calcTamarRemainingAvgTEM(bond, settle){
 }
 
 // Clean override of calcTamarAvgTEM after monolithic patching.
-// For each business day in [emDate−10bd, matDate−10bd]:
+// Reference period per prospectus: [fechaInt − 10BD, matDate − 10BD]
+// where fechaInt = emDate + 8 BD (Fecha de Integración).
 //   1. BCRA published TNA  → use it
 //   2. No BCRA, user has monthly TNA input → use it (TNA% ÷ 12)
 //   3. No BCRA, no user input → use avg of last 5 BCRA days (fallback)
 function calcTamarAvgTEM(bond, tamarMonthlyTNAMap, asOfDate){
   const emD=new Date(bond.emDate+"T00:00:00");
   const matD=new Date(bond.mat+"T00:00:00");
-  const startRef=SBD(emD,10);
+  const fechaInt=tamarFechaInt(bond);      // emDate + 8 BD
+  const startRef=SBD(fechaInt,10);         // fechaInt − 10 BD (prospectus reference start)
   const endRef=SBD(matD,10);
   // Pre-compute fallback: avg of last 5 available BCRA TNA values
   const fallbackTNA=getRecentTamarAvgTNA(5, asOfDate);
@@ -1598,12 +1600,19 @@ function getMonthsBetween(start,end){
   return months;
 }
 
+// Fecha de Integración = emDate + 8 BD (Argentine primary market convention).
+// Confirmed: TTJ26 licitación 17-ene-25, integración 29-ene-25 (8 BD forward).
+// DIAS = days360US(fechaInt, matDate) — prospectus formula start from settlement.
+function tamarFechaInt(bond){
+  return ABD(new Date(bond.emDate+"T00:00:00"), 8);
+}
+
 // VPV for pure TAMAR / LETAMAR bonds
 // bond.margin stores TNA decimal (e.g., 0.04 = 4% TNA); convert to TEM = /12
 function calcTamarVPV(bond, tamarTEM){
-  const emD=new Date(bond.emDate+"T00:00:00");
+  const fechaInt=tamarFechaInt(bond);
   const matD=new Date(bond.mat+"T00:00:00");
-  const dias=days360US(emD,matD);
+  const dias=days360US(fechaInt,matD);     // ← from Fecha Integración, not emDate
   const marginTEM=bond.margin/12;          // TNA decimal → TEM decimal
   const monthlyRate=tamarTEM+marginTEM;
   return 100*Math.pow(1+monthlyRate, dias/30);
@@ -1612,9 +1621,9 @@ function calcTamarVPV(bond, tamarTEM){
 // VPV for DUAL bonds: MAX(fixed-rate leg, TAMAR leg)
 // temFija is stored as TEM decimal (e.g., 0.0219 = 2.19% TEM)
 function calcDualVPV(bond, tamarTEM){
-  const emD=new Date(bond.emDate+"T00:00:00");
+  const fechaInt=tamarFechaInt(bond);
   const matD=new Date(bond.mat+"T00:00:00");
-  const dias=days360US(emD,matD);
+  const dias=days360US(fechaInt,matD);     // ← from Fecha Integración, not emDate
   const vfTamar=100*Math.pow(1+tamarTEM, dias/30);
   const vfFija =100*Math.pow(1+bond.temFija, dias/30);
   return Math.max(vfTamar, vfFija);
