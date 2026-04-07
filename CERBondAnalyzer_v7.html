@@ -209,21 +209,23 @@
   .chart-toggle input{accent-color:var(--acl);cursor:pointer}
   .chart-toggle.active{border-color:var(--acl);background:var(--acd)}
   .chart-metric-select{background:var(--ib);border:1px solid var(--ibr);border-radius:6px;padding:5px 10px;color:var(--t);font-size:11px;font-family:'IBM Plex Mono',monospace;cursor:pointer}
-  /* Resumen curves grid */
-  .resumen-curves{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
-  .resumen-curve-wrap{background:var(--bg);border-radius:10px;padding:10px 12px;border:1px solid var(--cb)}
+  /* Resumen — layout: 3 tablas | BE strip | gráficos */
   .resumen-curve-label{font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--td);margin-bottom:4px;text-align:center}
-  .resumen-be-line{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;border:1px solid var(--cb);background:linear-gradient(90deg,rgba(240,112,64,0.08),rgba(45,184,168,0.06));overflow:hidden}
-  .resumen-be-head{font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--td);white-space:nowrap}
-  .resumen-be-viewport{position:relative;flex:1;overflow:hidden;min-width:0;cursor:grab;user-select:none}
-  .resumen-be-viewport.dragging{cursor:grabbing}
-  .resumen-be-track{display:flex;align-items:center;gap:8px;width:max-content}
-  .resumen-be-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:999px;background:rgba(8,12,20,0.58);border:1px solid rgba(148,163,184,0.12);font-family:'IBM Plex Mono',monospace;white-space:nowrap}
-  .resumen-be-month{font-size:10px;color:var(--td)}
-  .resumen-be-val{font-size:11px;font-weight:700;color:var(--am)}
-  .resumen-be-sep{font-size:9px;color:var(--tm)}
-  .resumen-be-meta{font-size:10px;color:var(--td);white-space:nowrap}
-  @media(max-width:760px){.resumen-curves{grid-template-columns:1fr}}
+  .resumen-top-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px;align-items:start}
+  .resumen-table-panel{background:var(--card);border:1px solid var(--cb);border-radius:var(--r);padding:10px 10px 8px}
+  .resumen-table-panel .st{margin-bottom:6px;font-size:9px}
+  .resumen-table-panel .lt td,.resumen-table-panel .lt th{padding:3px 5px;font-size:10px}
+  .resumen-table-panel .lt .tk{font-size:10px}
+  .resumen-be-strip{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--cb);border-radius:var(--r);padding:7px 12px;margin-top:6px;overflow-x:auto;flex-wrap:wrap}
+  .resumen-be-strip-label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--td);white-space:nowrap;margin-right:4px}
+  .resumen-be-chip-h{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;background:rgba(8,12,20,0.6);border:1px solid rgba(148,163,184,0.12);white-space:nowrap}
+  .resumen-be-chip-h .be-ticker{font-size:9px;font-weight:700;font-family:'IBM Plex Mono',monospace}
+  .resumen-be-chip-h .be-val{font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--am)}
+  .resumen-be-chip-h .be-range{font-size:8px;color:var(--td)}
+  .resumen-be-avg{font-size:9px;color:var(--td);margin-left:auto;white-space:nowrap}
+  .resumen-charts-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:6px}
+  .resumen-chart-cell{background:var(--card);border:1px solid var(--cb);border-radius:var(--r);padding:8px 10px}
+  @media(max-width:900px){.resumen-top-grid{grid-template-columns:1fr}.resumen-charts-row{grid-template-columns:1fr}}
   /* Bond Calculator Modal */
   .bc-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px}
   .bc-modal{background:var(--card);border:1px solid var(--cb);border-radius:12px;width:100%;max-width:660px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.7)}
@@ -338,93 +340,75 @@
 
 <!-- TAB: RESUMEN -->
 <div id="tab-resumen" style="display:none">
-  <!-- Curvas -->
-  <div class="card" style="margin-top:10px">
-    <div style="display:flex;justify-content:space-between;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:6px">
-      <div>
-        <div class="st" style="margin-bottom:0">Curvas Duration / Rendimiento</div>
-        <span style="font-size:9px;color:var(--td)">Click en bono para calculadora</span>
-      </div>
-      <div class="row-actions" style="display:flex;gap:6px;align-items:end;flex-wrap:wrap">
-        <div class="ig" style="margin-bottom:0"><label style="font-size:9px">Ver gráficos</label>
-          <select id="resumenDurChartSelector" onchange="switchResumenCharts(this.value)" style="font-size:11px;padding:4px 8px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;font-family:'IBM Plex Mono',monospace">
-            <option value="all">Los 3 (miniatura)</option>
-            <option value="fx">Solo Tasa Fija</option>
-            <option value="cer">Solo CER Real</option>
-            <option value="combo">Solo Combinado</option>
-            <option value="fx_cer">Tasa Fija + CER</option>
-            <option value="fx_combo">Tasa Fija + Combinado</option>
-            <option value="cer_combo">CER + Combinado</option>
-          </select>
-        </div>
-        <div class="ig" style="margin-bottom:0"><label>Dur máx</label><input type="number" id="resumenDurMaxInput" step="0.05" min="0.05" placeholder="Auto"></div>
-        <button class="btn-api btn-sm" onclick="setResumenDurZoom('auto')">Auto</button>
-        <button class="btn-api btn-sm" onclick="setResumenDurZoom('in')">+</button>
-        <button class="btn-api btn-sm" onclick="setResumenDurZoom('out')">−</button>
-      </div>
-    </div>
-    <div class="resumen-curves" id="resumenChartsGrid">
-      <div class="resumen-curve-wrap" id="resumenWrapFX">
-        <div class="resumen-curve-label" style="color:var(--fx)">LECAP / BONCAP — TEA</div>
-        <div class="chart-c" id="resumenChartFXContainer" style="height:180px"><canvas id="resumenChartFX"></canvas></div>
-      </div>
-      <div class="resumen-curve-wrap" id="resumenWrapCER">
-        <div class="resumen-curve-label" style="color:var(--acl)">CER — TIR Real</div>
-        <div class="chart-c" id="resumenChartCERContainer" style="height:180px"><canvas id="resumenChartCER"></canvas></div>
-      </div>
-      <div class="resumen-curve-wrap" id="resumenWrapCombo">
-        <div class="resumen-curve-label" style="color:var(--am)">Combinado — Nominal</div>
-        <div class="chart-c" id="resumenChartComboContainer" style="height:180px"><canvas id="resumenChartCombo"></canvas></div>
-      </div>
-    </div>
-    <div class="legend" id="resumenCurveLegend" style="margin-top:8px">
-      <span><span class="ldot" style="background:var(--acl)"></span>CER</span>
-      <span><span class="ldot" style="background:var(--fx)"></span>LECAP/BONCAP</span>
-      <span style="color:var(--td);font-size:9px">— — log&nbsp;&nbsp;━ NSS</span>
-    </div>
-    <div id="resumenCurveNote" class="note" style="text-align:center">Calculá primero para ver curvas</div>
-  </div>
-  <div class="card" id="resumenBECard" style="margin-top:6px;display:none">
-    <div class="resumen-be-line">
-      <div class="resumen-be-head">Breakeven bonos 2026</div>
-      <div class="resumen-be-viewport">
-        <div id="resumenBEStrip" class="resumen-be-track"></div>
-      </div>
-      <div id="resumenBEMeta" class="resumen-be-meta">—</div>
-    </div>
-  </div>
-  <!-- Tabla CER -->
-  <div class="card" style="margin-top:8px">
-    <div class="st">Bonos CER — tasa fija equivalente <span style="font-size:8px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--td)">click en fila → calculadora</span></div>
-    <div style="overflow-x:auto">
+  <!-- Fila 1: 3 tablas comprimidas -->
+  <div class="resumen-top-grid">
+    <!-- CER -->
+    <div class="resumen-table-panel">
+      <div class="st" style="color:var(--acl)">CER <span style="color:var(--td);font-weight:400;text-transform:none;letter-spacing:0">click → calc</span></div>
       <table class="lt">
         <thead><tr>
-          <th>Especie</th><th class="num">Var %</th><th>Vencimiento</th><th class="num">Días</th>
-          <th class="num" style="color:var(--acl)">TEA Nom</th>
-          <th class="num" style="color:var(--am)">Precio</th>
+          <th>Ticker</th><th class="num">Var%</th><th class="num">Px</th>
+          <th class="num" style="color:var(--acl)">TIR</th>
           <th class="num" style="color:var(--acl)">TNA</th>
-          <th class="num">TIR Real</th><th class="num">Duration</th>
+          <th class="num">Días</th>
         </tr></thead>
-        <tbody id="resumenCERBody"><tr><td colspan="9" style="text-align:center;color:var(--tm);padding:14px">Calculá para ver resumen</td></tr></tbody>
+        <tbody id="resumenCERBody"><tr><td colspan="6" style="text-align:center;color:var(--tm);padding:10px">Calculá</td></tr></tbody>
       </table>
     </div>
-  </div>
-  <!-- Tabla FIXED -->
-  <div class="card" style="margin-top:8px">
-    <div class="st">LECAP / BONCAP — tasa fija <span style="font-size:8px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--td)">click en fila → calculadora</span></div>
-    <div style="overflow-x:auto">
+    <!-- LECAP / BONCAP -->
+    <div class="resumen-table-panel">
+      <div class="st" style="color:var(--fx)">LECAP/BONCAP <span style="color:var(--td);font-weight:400;text-transform:none;letter-spacing:0">click → calc</span></div>
       <table class="lt">
         <thead><tr>
-          <th>Especie</th><th class="num">Var %</th><th>Vencimiento</th><th class="num">Días</th>
+          <th>Ticker</th><th class="num">Var%</th><th class="num">Px</th>
           <th class="num" style="color:var(--fx)">TEA</th>
-          <th class="num" style="color:var(--am)">Precio</th>
           <th class="num" style="color:var(--fx)">TNA</th>
-          <th class="num">TEM</th><th class="num">Duration</th>
+          <th class="num">Días</th>
         </tr></thead>
-        <tbody id="resumenFXBody"><tr><td colspan="9" style="text-align:center;color:var(--tm);padding:14px">Calculá para ver resumen</td></tr></tbody>
+        <tbody id="resumenFXBody"><tr><td colspan="6" style="text-align:center;color:var(--tm);padding:10px">Calculá</td></tr></tbody>
+      </table>
+    </div>
+    <!-- TAMAR -->
+    <div class="resumen-table-panel">
+      <div class="st" style="color:var(--bl)">TAMAR <span style="color:var(--td);font-weight:400;text-transform:none;letter-spacing:0">próximamente</span></div>
+      <table class="lt">
+        <thead><tr>
+          <th>Ticker</th><th class="num">Var%</th><th class="num">Px</th>
+          <th class="num" style="color:var(--bl)">Margen</th>
+          <th class="num">Días</th>
+        </tr></thead>
+        <tbody id="resumenTAMARBody"><tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin datos</td></tr></tbody>
       </table>
     </div>
   </div>
+  <!-- Fila 2: Breakeven strip -->
+  <div class="resumen-be-strip" id="resumenBEStripRow">
+    <span class="resumen-be-strip-label">Breakeven Inflación</span>
+    <div id="resumenBEChipsH" style="display:flex;gap:5px;flex-wrap:wrap;flex:1"></div>
+    <span class="resumen-be-avg" id="resumenBEAvg"></span>
+  </div>
+  <!-- Fila 3: Gráficos -->
+  <div class="resumen-charts-row">
+    <div class="resumen-chart-cell">
+      <div class="resumen-curve-label" style="color:var(--fx)">LECAP/BONCAP — TNA</div>
+      <div class="chart-c" id="resumenChartFXContainer" style="height:190px"><canvas id="resumenChartFX"></canvas></div>
+    </div>
+    <div class="resumen-chart-cell">
+      <div class="resumen-curve-label" style="color:var(--acl)">CER — TIR Real</div>
+      <div class="chart-c" id="resumenChartCERContainer" style="height:190px"><canvas id="resumenChartCER"></canvas></div>
+    </div>
+    <div class="resumen-chart-cell">
+      <div class="resumen-curve-label" style="color:var(--am)">Combinado</div>
+      <div class="chart-c" id="resumenChartComboContainer" style="height:190px"><canvas id="resumenChartCombo"></canvas></div>
+    </div>
+  </div>
+  <div class="legend" style="margin-top:5px">
+    <span><span class="ldot" style="background:var(--acl)"></span>CER</span>
+    <span><span class="ldot" style="background:var(--fx)"></span>LECAP/BONCAP</span>
+    <span style="color:var(--td);font-size:9px">— — log&nbsp;&nbsp;━ NSS</span>
+    <span style="color:var(--td);font-size:9px;opacity:0.5">░ cierre ant.</span>
+  </div>
+  <div id="resumenCurveNote" class="note" style="text-align:center;margin-top:5px">Calculá primero para ver curvas</div>
   <!-- Volumen -->
   <div class="card" style="margin-top:8px">
     <div class="st">Volumen Efectivo — Ranking</div>
@@ -1339,9 +1323,7 @@ function setDurZoomByInput(inputId, mode, onChange){
 function setDurZoom(mode){
   setDurZoomByInput("durMaxInput",mode,()=>drawDurationChart3(currentDurData.fx,currentDurData.cerReal,currentDurData.combo));
 }
-function setResumenDurZoom(mode){
-  setDurZoomByInput("resumenDurMaxInput",mode,()=>renderResumenCurves());
-}
+function setResumenDurZoom(mode){renderResumenCurves();}
 function getAutoDurMax(points){
   const v=points.filter(p=>p.x>0&&isFinite(p.x)&&isFinite(p.y));
   return v.length?Math.max(...v.map(p=>p.x))*1.1:1;
@@ -1492,10 +1474,10 @@ function drawCanvasTooltip(ctx, boxX, boxY, tooltip, W, H){
   ctx.restore();
 }
 
-function drawOneChart(canvasId,points,maxXUse,title,curveColor,onPointClick){
+function drawOneChart(canvasId,points,maxXUse,title,curveColor,onPointClick,ghostPoints){
   const cv=document.getElementById(canvasId);
   if(!cv)return;
-  cv._chartArgs={points,maxXUse,title,curveColor};
+  cv._chartArgs={points,maxXUse,title,curveColor,ghostPoints};
   const ct=cv.parentElement;
   const valid=points.filter(p=>p.x>0&&p.x<=maxXUse&&isFinite(p.y));
   if(!valid.length){
@@ -1515,6 +1497,34 @@ function drawOneChart(canvasId,points,maxXUse,title,curveColor,onPointClick){
   const xP=x=>pad.l+((x-minX)/(Math.max(1e-9,maxX-minX)))*cw;
   const yP=y=>pad.t+(1-(y-minY)/(Math.max(1e-9,maxY-minY)))*ch;
   c.clearRect(0,0,W,H);
+  // Ghost curves (cierre día anterior) — casi invisibles
+  if(ghostPoints&&ghostPoints.length>=2){
+    const gv=ghostPoints.filter(p=>p.x>0&&p.x<=maxXUse&&isFinite(p.y));
+    if(gv.length>=2){
+      const gReg=logRegression(gv);
+      const gNSS=fitNSS(gv);
+      if(gReg){
+        c.strokeStyle="rgba(255,255,255,0.07)";c.lineWidth=1;c.setLineDash([3,4]);c.beginPath();
+        let gs=false;
+        for(let i=0;i<80;i++){
+          const x=Math.max(minX+(maxX-minX)*(i/79),1e-6);
+          const y=gReg.predict(x);
+          if(y>=minY-8&&y<=maxY+8){if(!gs){c.moveTo(xP(x),yP(y));gs=true;}else c.lineTo(xP(x),yP(y));}
+        }
+        c.stroke();c.setLineDash([]);
+      }
+      if(gNSS){
+        c.strokeStyle="rgba(255,255,255,0.09)";c.lineWidth=1.5;c.setLineDash([]);c.beginPath();
+        let gs=false;
+        for(let i=0;i<80;i++){
+          const x=Math.max(minX+(maxX-minX)*(i/79),0.01);
+          const y=gNSS.predict(x);
+          if(y>=minY-8&&y<=maxY+8){if(!gs){c.moveTo(xP(x),yP(y));gs=true;}else c.lineTo(xP(x),yP(y));}
+        }
+        c.stroke();
+      }
+    }
+  }
   // Grid
   c.strokeStyle="#1a2233";c.lineWidth=0.5;
   for(let i=0;i<=4;i++){
@@ -1891,6 +1901,41 @@ function calculate(){
     ptsCombo.push({x:p.x,y:p.y,label:p.label,color:"#2a9d8f"});
   });
   drawDurationChart3(ptsFX, ptsCERReal, ptsCombo);
+
+  // --- Curva de cierre (día hábil anterior) para overlay fantasma ---
+  const _cdf={fx:[],cerReal:[]};
+  FIXED.forEach(f=>{
+    const lp=_livePrices[f.ticker]||{};
+    const closeP=lp.close;
+    if(!closeP||closeP<=0) return;
+    const matDate=new Date(f.mat+"T00:00:00");
+    const days=DB(settle,matDate);
+    if(days<=0) return;
+    const emDate=new Date(f.emDate+"T00:00:00");
+    const monthsIssue=days360US(emDate,matDate)/30;
+    const vf=100*Math.pow(1+f.temIssue,monthsIssue);
+    const tea=(Math.pow(vf/closeP,365/days)-1)*100;
+    const tna=((Math.pow(1+tea/100,days/365)-1)*(365/days))*100;
+    const dur=modDuration(days,tea);
+    if(isFinite(tna)&&isFinite(dur)&&dur>0) _cdf.fx.push({x:dur,y:tna});
+  });
+  BONDS.forEach(b=>{
+    const lp=_livePrices[b.ticker]||{};
+    const closeP=lp.close;
+    if(!closeP||closeP<=0) return;
+    const matDate=new Date(b.mat+"T00:00:00");
+    const days=DB(settle,matDate);
+    if(days<=0) return;
+    const flows=getBondSchedule(b,settle,getCERActual,cerLiqInput);
+    if(!flows.length) return;
+    const yReal=xirrFromFlows(closeP,flows,'real');
+    if(yReal==null) return;
+    const tirRealTEA=yReal*100;
+    const tnaReal=((Math.pow(1+tirRealTEA/100,days/365)-1)*(365/days))*100;
+    const dur=durationFromFlows(yReal,flows,'nominal');
+    if(dur!=null&&isFinite(tnaReal)&&dur>0) _cdf.cerReal.push({x:dur,y:tnaReal});
+  });
+  _closeDurData=_cdf;
 
   calcImpliedInflation(settle, cerLiqInput, getCER);
   buildQuantDashboard();
@@ -2288,19 +2333,7 @@ function applyDurChartLayout({mode,gridId,wrapFXId,wrapCERId,wrapComboId,chartFX
   if(cCombo)cCombo.style.height=h;
 }
 
-function switchResumenCharts(mode){
-  applyDurChartLayout({
-    mode,
-    gridId:"resumenChartsGrid",
-    wrapFXId:"resumenWrapFX",
-    wrapCERId:"resumenWrapCER",
-    wrapComboId:"resumenWrapCombo",
-    chartFXId:"resumenChartFXContainer",
-    chartCERId:"resumenChartCERContainer",
-    chartComboId:"resumenChartComboContainer"
-  });
-  setTimeout(()=>renderResumenCurves(),50);
-}
+function switchResumenCharts(mode){renderResumenCurves();}
 
 function renderResumenLegacy(){
   const sd=document.getElementById("settleDate").value;
@@ -2358,7 +2391,7 @@ function getPriceVariationMeta(ticker, manualInputId){
     last,
     varPct,
     text:varPct!=null?(varPct>=0?"+":"")+varPct.toFixed(2)+"%":"—",
-    color:varPct!=null?(varPct>=0?"var(--pos)":"#ef4444"):"var(--tm)"
+    color:varPct!=null?(varPct>=0?"var(--bl)":"var(--am)"):"var(--tm)"
   };
 }
 
@@ -2375,16 +2408,13 @@ function renderResumen(){
       rows+=`<tr class="clickable-row cer-row" onclick="openBondCalculator('cer','${b.id}')" title="Click para calculadora">
         <td class="tk" style="color:${b.color}">${b.ticker}</td>
         <td class="num" style="color:${chg.color};font-weight:600">${chg.text}</td>
-        <td>${FD(new Date(b.mat+"T00:00:00"))}</td>
-        <td class="num">${days}</td>
-        <td class="num" style="color:var(--acl);font-weight:600">${b._tn!=null?b._tn.toFixed(2)+"%":"—"}</td>
-        <td class="num" style="color:var(--am);font-weight:600">${px?px.toFixed(2):"—"}</td>
+        <td class="num">${px?px.toFixed(2):"—"}</td>
+        <td class="num" style="color:var(--acl);font-weight:600">${b._tr!=null?b._tr.toFixed(2)+"%":"—"}</td>
         <td class="num" style="color:var(--acl)">${b._tnaTF!=null?b._tnaTF.toFixed(2)+"%":"—"}</td>
-        <td class="num">${b._tr!=null?b._tr.toFixed(2)+"%":"—"}</td>
-        <td class="num">${b._dur!=null?b._dur.toFixed(3):"—"}</td>
+        <td class="num">${days}</td>
       </tr>`;
     });
-    cerBody.innerHTML=rows||'<tr><td colspan="9" style="text-align:center;color:var(--tm);padding:14px">Calculá primero</td></tr>';
+    cerBody.innerHTML=rows||'<tr><td colspan="6" style="text-align:center;color:var(--tm);padding:10px">Calculá primero</td></tr>';
   }
   const fxBody=document.getElementById("resumenFXBody");
   if(fxBody){
@@ -2396,51 +2426,66 @@ function renderResumen(){
       rows+=`<tr class="clickable-row fx-row" onclick="openBondCalculator('fixed','${f.id}')" title="Click para calculadora">
         <td class="tk" style="color:${f.color}">${f.ticker}</td>
         <td class="num" style="color:${chg.color};font-weight:600">${chg.text}</td>
-        <td>${FD(new Date(f.mat+"T00:00:00"))}</td>
-        <td class="num">${days}</td>
+        <td class="num">${px?px.toFixed(3):"—"}</td>
         <td class="num" style="color:var(--fx);font-weight:600">${f._tea!=null?f._tea.toFixed(2)+"%":"—"}</td>
-        <td class="num" style="color:var(--am);font-weight:600">${px?px.toFixed(3):"—"}</td>
         <td class="num" style="color:var(--fx)">${f._tna!=null?f._tna.toFixed(2)+"%":"—"}</td>
-        <td class="num">${f._temCurrent!=null?f._temCurrent.toFixed(4)+"%":"—"}</td>
-        <td class="num">${f._dur!=null?f._dur.toFixed(3):"—"}</td>
+        <td class="num">${days}</td>
       </tr>`;
     });
-    fxBody.innerHTML=rows||'<tr><td colspan="9" style="text-align:center;color:var(--tm);padding:14px">Calculá primero</td></tr>';
+    fxBody.innerHTML=rows||'<tr><td colspan="6" style="text-align:center;color:var(--tm);padding:10px">Calculá primero</td></tr>';
   }
-  // Dibujar curvas en Resumen usando los datos calculados en Análisis
   renderResumenCurves();
-  renderResumenBreakevenStrip();
+  renderResumenBreakevenVertical();
 }
 
 function renderResumenCurves(){
   const cd=typeof currentDurData!=='undefined'?currentDurData:null;
   const note=document.getElementById('resumenCurveNote');
   if(!cd||(!cd.fx.length&&!cd.cerReal.length&&!cd.combo.length)){
-    if(note) note.textContent='Calculá primero para ver curvas (o abrí la pestaña Análisis)';
-    stopResumenBEStripAuto();
-    stopResumenBEStripAuto();
+    if(note) note.textContent='Calculá primero para ver curvas';
     return;
   }
   if(note) note.textContent='';
-  const mode=document.getElementById("resumenDurChartSelector")?.value||"all";
-  applyDurChartLayout({
-    mode,
-    gridId:"resumenChartsGrid",
-    wrapFXId:"resumenWrapFX",
-    wrapCERId:"resumenWrapCER",
-    wrapComboId:"resumenWrapCombo",
-    chartFXId:"resumenChartFXContainer",
-    chartCERId:"resumenChartCERContainer",
-    chartComboId:"resumenChartComboContainer"
-  });
   const all=[...cd.fx,...cd.cerReal,...cd.combo].filter(p=>p.x>0&&isFinite(p.y));
   if(!all.length) return;
-  const userMax=parseFloat(document.getElementById("resumenDurMaxInput")?.value);
   const autoMax=getAutoDurMax(all);
-  const maxXUse=(userMax&&userMax>0)?userMax:autoMax;
-  drawOneChart('resumenChartFX', cd.fx, maxXUse, 'LECAP/BONCAP','#9b7af0',lbl=>{const f=FIXED.find(x=>x.ticker===lbl);if(f)openBondCalculator('fixed',f.id);});
-  drawOneChart('resumenChartCER', cd.cerReal, maxXUse, 'CER Real','#2db8a8',lbl=>{const b=BONDS.find(x=>x.ticker===lbl);if(b)openBondCalculator('cer',b.id);});
-  drawOneChart('resumenChartCombo', cd.combo, maxXUse, 'Combinado','#f07040',lbl=>{const b=BONDS.find(x=>x.ticker===lbl);if(b){openBondCalculator('cer',b.id)}else{const f=FIXED.find(x=>x.ticker===lbl);if(f)openBondCalculator('fixed',f.id);}});
+  const maxXUse=autoMax;
+  drawOneChart('resumenChartFX', cd.fx, maxXUse, 'LECAP/BONCAP','#9b7af0',
+    lbl=>{const f=FIXED.find(x=>x.ticker===lbl);if(f)openBondCalculator('fixed',f.id);},
+    _closeDurData.fx);
+  drawOneChart('resumenChartCER', cd.cerReal, maxXUse, 'CER Real','#2db8a8',
+    lbl=>{const b=BONDS.find(x=>x.ticker===lbl);if(b)openBondCalculator('cer',b.id);},
+    _closeDurData.cerReal);
+  drawOneChart('resumenChartCombo', cd.combo, maxXUse, 'Combinado','#f07040',
+    lbl=>{const b=BONDS.find(x=>x.ticker===lbl);if(b){openBondCalculator('cer',b.id)}else{const f=FIXED.find(x=>x.ticker===lbl);if(f)openBondCalculator('fixed',f.id);}});
+}
+
+function renderResumenBreakevenVertical(){
+  const chips=document.getElementById("resumenBEChipsH");
+  const avgEl=document.getElementById("resumenBEAvg");
+  if(!chips) return;
+  const series=(_implInflResults||[])
+    .filter(r=>{const bond=BONDS.find(b=>b.ticker===r.ticker);return bond&&bond._ok;})
+    .sort((a,b)=>{
+      const bA=BONDS.find(x=>x.ticker===a.ticker);
+      const bB=BONDS.find(x=>x.ticker===b.ticker);
+      return new Date(bA.mat+"T00:00:00")-new Date(bB.mat+"T00:00:00");
+    });
+  if(!series.length){
+    chips.innerHTML='<span style="color:var(--tm);font-size:10px">Sin datos de breakeven</span>';
+    if(avgEl) avgEl.textContent="";
+    return;
+  }
+  chips.innerHTML=series.map(pt=>`
+    <span class="resumen-be-chip-h" title="${pt.firstMonth.label} → ${pt.lastMonth.label}">
+      <span class="be-ticker" style="color:${pt.color}">${pt.ticker}</span>
+      <span class="be-val">${pt.implPi.toFixed(2)}%</span>
+      <span class="be-range">${pt.firstMonth.label}→${pt.lastMonth.label}</span>
+    </span>`).join("");
+  if(avgEl){
+    const prom=series.reduce((s,x)=>s+x.implPi,0)/series.length;
+    avgEl.textContent=`prom ${prom.toFixed(2)}% TEM`;
+  }
 }
 
 function renderResumenBreakevenStrip(){
@@ -2995,6 +3040,7 @@ setInterval(()=>{
 
 // ═══ LIVE PRICES (via Python server.py → Google Sheets) ═════════
 let _livePrices={};
+let _closeDurData={fx:[],cerReal:[]};
 let _priceTimer=null;
 let _priceConnected=false;
 let _autoCalcTimer=null;
@@ -5177,7 +5223,7 @@ setTimeout(initSortableTables,200);
 })();
 
 document.getElementById("durMaxInput").addEventListener("change",()=>drawDurationChart3(currentDurData.fx,currentDurData.cerReal,currentDurData.combo));
-document.getElementById("resumenDurMaxInput").addEventListener("change",()=>renderResumenCurves());
+// resumenDurMaxInput removed — charts auto-scale
 document.getElementById("settleDate").addEventListener("change",function(){
   const sd=this.value;
   if(sd){
