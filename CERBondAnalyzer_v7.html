@@ -223,8 +223,9 @@
   .resumen-be-chip-h .be-val{font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--am)}
   .resumen-be-chip-h .be-range{font-size:8px;color:var(--td)}
   .resumen-be-avg{font-size:9px;color:var(--td);margin-left:auto;white-space:nowrap}
-  .resumen-charts-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:6px}
+  .resumen-charts-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-top:6px}
   .resumen-chart-cell{background:var(--card);border:1px solid var(--cb);border-radius:var(--r);padding:8px 10px}
+  .resumen-chart-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
   @media(max-width:900px){.resumen-top-grid{grid-template-columns:1fr}.resumen-charts-row{grid-template-columns:1fr}}
   /* Bond Calculator Modal */
   .bc-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -331,6 +332,12 @@
 
 <div class="fixed-grid" id="fixedRow"></div>
 
+<div class="card" style="margin-top:6px">
+  <div class="st" style="color:var(--bl)">TAMAR <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:9px;color:var(--td)">Tasa Activa de Referencia — bonos floating rate</span></div>
+  <div class="note" style="margin-bottom:8px">Para cada bono TAMAR se busca la LECAP/BONCAP con duration más cercana. Breakeven: tasa TAMAR tal que el bono rinde igual que esa LECAP (TNA equiv. = TAMAR* + margen).</div>
+</div>
+<div class="fixed-grid" id="tamarRow"></div>
+
 <div style="display:flex;gap:10px;margin-top:10px">
   <button class="btn" onclick="calculate()" style="flex:1">Calcular todo</button>
   <button class="btn" onclick="clearAllManual()" style="flex:0 0 auto;background:#1e2d44;color:var(--am);border:1px solid var(--am);width:auto;padding:10px 20px">Borrar manuales</button>
@@ -387,26 +394,38 @@
     <div id="resumenBEChipsH" style="display:flex;gap:5px;flex-wrap:wrap;flex:1"></div>
     <span class="resumen-be-avg" id="resumenBEAvg"></span>
   </div>
-  <!-- Fila 3: Gráficos -->
-  <div class="resumen-charts-row">
-    <div class="resumen-chart-cell">
-      <div class="resumen-curve-label" style="color:var(--fx)">LECAP/BONCAP — TNA</div>
-      <div class="chart-c" id="resumenChartFXContainer" style="height:190px"><canvas id="resumenChartFX"></canvas></div>
-    </div>
-    <div class="resumen-chart-cell">
-      <div class="resumen-curve-label" style="color:var(--acl)">CER — TIR Real</div>
-      <div class="chart-c" id="resumenChartCERContainer" style="height:190px"><canvas id="resumenChartCER"></canvas></div>
-    </div>
-    <div class="resumen-chart-cell">
-      <div class="resumen-curve-label" style="color:var(--am)">Combinado</div>
-      <div class="chart-c" id="resumenChartComboContainer" style="height:190px"><canvas id="resumenChartCombo"></canvas></div>
-    </div>
+  <!-- Fila 3: Selector + Gráficos -->
+  <div class="resumen-chart-controls">
+    <span style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--td);font-weight:600">Ver</span>
+    <select id="resumenDurChartSelector" onchange="switchResumenCharts(this.value)" style="font-size:11px;padding:3px 8px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;font-family:'IBM Plex Mono',monospace">
+      <option value="all">Los 4</option>
+      <option value="fx">Solo Tasa Fija</option>
+      <option value="cer">Solo CER Real</option>
+      <option value="combo">Solo Combinado</option>
+      <option value="tamar">Solo TAMAR</option>
+      <option value="fx_cer">Tasa Fija + CER</option>
+      <option value="fx_combo">Tasa Fija + Combinado</option>
+      <option value="cer_combo">CER + Combinado</option>
+    </select>
+    <span style="font-size:9px;color:var(--td)">— — log &nbsp; ━ NSS &nbsp; <span style="opacity:0.5">░ cierre ant.</span></span>
   </div>
-  <div class="legend" style="margin-top:5px">
-    <span><span class="ldot" style="background:var(--acl)"></span>CER</span>
-    <span><span class="ldot" style="background:var(--fx)"></span>LECAP/BONCAP</span>
-    <span style="color:var(--td);font-size:9px">— — log&nbsp;&nbsp;━ NSS</span>
-    <span style="color:var(--td);font-size:9px;opacity:0.5">░ cierre ant.</span>
+  <div class="resumen-charts-row" id="resumenChartsGrid">
+    <div id="resumenWrapFX" class="resumen-chart-cell">
+      <div class="resumen-curve-label" style="color:var(--fx)">LECAP/BONCAP — TNA</div>
+      <div class="chart-c" id="resumenChartFXContainer" style="height:200px"><canvas id="resumenChartFX"></canvas></div>
+    </div>
+    <div id="resumenWrapCER" class="resumen-chart-cell">
+      <div class="resumen-curve-label" style="color:var(--acl)">CER — TIR Real</div>
+      <div class="chart-c" id="resumenChartCERContainer" style="height:200px"><canvas id="resumenChartCER"></canvas></div>
+    </div>
+    <div id="resumenWrapCombo" class="resumen-chart-cell">
+      <div class="resumen-curve-label" style="color:var(--am)">Combinado</div>
+      <div class="chart-c" id="resumenChartComboContainer" style="height:200px"><canvas id="resumenChartCombo"></canvas></div>
+    </div>
+    <div id="resumenWrapTAMAR" class="resumen-chart-cell">
+      <div class="resumen-curve-label" style="color:var(--bl)">TAMAR — TNA efectiva</div>
+      <div class="chart-c" id="resumenChartTAMARContainer" style="height:200px"><canvas id="resumenChartTAMAR"></canvas></div>
+    </div>
   </div>
   <div id="resumenCurveNote" class="note" style="text-align:center;margin-top:5px">Calculá primero para ver curvas</div>
   <!-- Volumen -->
@@ -907,6 +926,11 @@ const FIXED=[
   {id:"T30J7",ticker:"T30J7",type:"BONCAP",mat:"2027-06-30",emDate:"2026-01-16",temIssue:0.0258,price:0,color:"#d946ef"},
 ];
 
+// ═══ TAMAR BONDS ═══════════════════
+// Formato: {id, ticker, name, mat:"YYYY-MM-DD", color, margen1816, margen90}
+// margen1816 y margen90 en bps (ej: 300 = +300bps sobre TAMAR)
+const TAMAR_BONDS=[];
+
 // ═══ INFLATION MONTHS ══════════════
 const IM=[
   {k:"2026-03",l:"Mar 26",d:"2.7"},
@@ -1250,6 +1274,43 @@ function buildFixedCards(){
       <input type="hidden" id="fxe_${f.id}" value="${f.emDate}">
       <input type="hidden" id="fxm_${f.id}" value="${f.mat}">
       <input type="hidden" id="fxmonths_${f.id}" value="">
+    </div>
+  `).join("");
+}
+function buildTAMARCards(){
+  const row=document.getElementById("tamarRow");
+  if(!row) return;
+  if(!TAMAR_BONDS.length){
+    row.innerHTML='<div class="note" style="padding:10px;text-align:center;color:var(--tm)">Agregá bonos al array TAMAR_BONDS para verlos aquí.</div>';
+    return;
+  }
+  row.innerHTML='<div class="section-band">TAMAR</div>'+TAMAR_BONDS.map(t=>`
+    <div class="list-row" style="border-left:3px solid ${t.color}" id="tamarc_${t.id}">
+      <div class="list-head">
+        <div>
+          <div class="list-title">
+            <span class="tag" style="background:${t.color}22;color:${t.color}">${t.ticker}</span>
+            <span class="tag" style="background:var(--bld);color:var(--bl)">TAMAR</span>
+          </div>
+          <div class="list-meta">${t.name||t.ticker} · Vto: ${FD(new Date(t.mat+"T00:00:00"))}<br>
+            Margen 1816: <strong>${t.margen1816!=null?'+'+t.margen1816.toFixed(0)+' bps':'—'}</strong>
+            &nbsp;·&nbsp; Margen 90/365: <strong>${t.margen90!=null?'+'+t.margen90.toFixed(0)+' bps':'—'}</strong>
+          </div>
+        </div>
+        <div class="list-inputs">
+          <div class="price-row">
+            <div class="ig"><label><span class="live-badge off" id="tlb_${t.id}"></span>Precio Live</label><div class="px-live stale" id="tpl_${t.id}">—</div></div>
+            <div class="ig"><label style="color:var(--am)">Manual</label><input type="number" id="tpm_${t.id}" class="px-manual" step="0.01" value="" placeholder="vacío=live"></div>
+          </div>
+          <input type="hidden" id="tpx_${t.id}" value="">
+        </div>
+        <div class="list-metrics" style="margin-top:0;padding-top:0;border-top:none">
+          <div class="metric"><div class="mv" style="color:var(--bl)" id="td_${t.id}">—</div><div class="ml">días al vto</div></div>
+          <div class="metric"><div class="mv" style="color:var(--bl)" id="tbe1816_${t.id}">—</div><div class="ml">BE TAMAR 1816</div></div>
+          <div class="metric"><div class="mv" style="color:var(--bl)" id="tbe90_${t.id}">—</div><div class="ml">BE TAMAR 90</div></div>
+          <div class="metric"><div class="ms" style="color:var(--td)" id="tcomp_${t.id}">—</div><div class="ml">comparable</div></div>
+        </div>
+      </div>
     </div>
   `).join("");
 }
@@ -1859,6 +1920,38 @@ function calculate(){
 
   FIXED.forEach(f=>calcFixedOne(f));
 
+  // ── TAMAR breakeven calculation ──────────────────────────────────
+  if(TAMAR_BONDS.length){
+    const okFixed=FIXED.filter(f=>f._ok&&f._dur!=null&&f._dur>0);
+    TAMAR_BONDS.forEach(t=>{
+      t._ok=false;
+      const matDate=new Date(t.mat+"T00:00:00");
+      const days=DB(settle,matDate);
+      if(days<=0) return;
+      t._days=days;
+      t._dur=days/365; // simplified duration for zero-coupon-like floating
+      // Find closest-duration LECAP
+      if(!okFixed.length){ t._ok=true; return; }
+      const best=okFixed.reduce((a,b)=>Math.abs(b._dur-t._dur)<Math.abs(a._dur-t._dur)?b:a);
+      const compTNA=best._tna/100; // as decimal
+      t._tamarBE1816 = t.margen1816!=null ? (compTNA - t.margen1816/10000)*100 : null;
+      t._tamarBE90   = t.margen90!=null   ? (compTNA - t.margen90/10000)*100   : null;
+      t._compTicker  = best.ticker;
+      t._compTNA     = best._tna;
+      t._ok=true;
+      t._tnaNeta = t._tamarBE1816!=null ? t._tamarBE1816 : (t._tamarBE90!=null ? t._tamarBE90 : null);
+      // Update CALCULADORAS card DOM
+      const tdEl=document.getElementById("td_"+t.id);
+      const tbe1816El=document.getElementById("tbe1816_"+t.id);
+      const tbe90El=document.getElementById("tbe90_"+t.id);
+      const tcompEl=document.getElementById("tcomp_"+t.id);
+      if(tdEl) tdEl.textContent=days;
+      if(tbe1816El) tbe1816El.textContent=t._tamarBE1816!=null?t._tamarBE1816.toFixed(2)+'%':'—';
+      if(tbe90El)   tbe90El.textContent  =t._tamarBE90!=null  ?t._tamarBE90.toFixed(2)  +'%':'—';
+      if(tcompEl)   tcompEl.textContent  =t._compTicker||'—';
+    });
+  }
+
   const chosen2=FIXED.find(f=>f.id===document.getElementById("fixedComparable").value);
   if(chosen2&&chosen2._ok) document.getElementById("lecapYield").value=chosen2._tea.toFixed(2);
 
@@ -2333,7 +2426,33 @@ function applyDurChartLayout({mode,gridId,wrapFXId,wrapCERId,wrapComboId,chartFX
   if(cCombo)cCombo.style.height=h;
 }
 
-function switchResumenCharts(mode){renderResumenCurves();}
+function switchResumenCharts(mode){
+  const show={fx:false,cer:false,combo:false,tamar:false};
+  if(mode==='all'){show.fx=show.cer=show.combo=show.tamar=true;}
+  else if(mode==='fx'){show.fx=true;}
+  else if(mode==='cer'){show.cer=true;}
+  else if(mode==='combo'){show.combo=true;}
+  else if(mode==='tamar'){show.tamar=true;}
+  else if(mode==='fx_cer'){show.fx=show.cer=true;}
+  else if(mode==='fx_combo'){show.fx=show.combo=true;}
+  else if(mode==='cer_combo'){show.cer=show.combo=true;}
+  const grid=document.getElementById('resumenChartsGrid');
+  const wFX=document.getElementById('resumenWrapFX');
+  const wCER=document.getElementById('resumenWrapCER');
+  const wCombo=document.getElementById('resumenWrapCombo');
+  const wTAMAR=document.getElementById('resumenWrapTAMAR');
+  if(!grid) return;
+  wFX&&(wFX.style.display=show.fx?'':'none');
+  wCER&&(wCER.style.display=show.cer?'':'none');
+  wCombo&&(wCombo.style.display=show.combo?'':'none');
+  wTAMAR&&(wTAMAR.style.display=show.tamar?'':'none');
+  const count=[show.fx,show.cer,show.combo,show.tamar].filter(Boolean).length;
+  grid.style.gridTemplateColumns=count>=3?'repeat('+count+',1fr)':count===2?'1fr 1fr':'1fr';
+  const h=count===1?'400px':count===2?'280px':'200px';
+  ['resumenChartFXContainer','resumenChartCERContainer','resumenChartComboContainer','resumenChartTAMARContainer']
+    .forEach(id=>{const el=document.getElementById(id);if(el)el.style.height=h;});
+  setTimeout(()=>renderResumenCurves(),30);
+}
 
 function renderResumenLegacy(){
   const sd=document.getElementById("settleDate").value;
@@ -2434,6 +2553,28 @@ function renderResumen(){
     });
     fxBody.innerHTML=rows||'<tr><td colspan="6" style="text-align:center;color:var(--tm);padding:10px">Calculá primero</td></tr>';
   }
+  const tamarBody=document.getElementById("resumenTAMARBody");
+  if(tamarBody){
+    if(!TAMAR_BONDS.length){
+      tamarBody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin datos</td></tr>';
+    } else {
+      let rows="";
+      TAMAR_BONDS.forEach(t=>{
+        const days=DB(settle,new Date(t.mat+"T00:00:00"));
+        const lp=_livePrices[t.ticker]||{};
+        const px=lp.last||lp.bid||null;
+        const chg=getPriceVariationMeta(t.ticker,"");
+        rows+=`<tr class="clickable-row" onclick="openBondCalculator('tamar','${t.id}')" title="Click para calculadora">
+          <td class="tk" style="color:${t.color}">${t.ticker}</td>
+          <td class="num" style="color:${chg.color};font-weight:600">${chg.text}</td>
+          <td class="num">${px!=null?px.toFixed(2):'—'}</td>
+          <td class="num" style="color:var(--bl)">${t.margen1816!=null?'+'+t.margen1816.toFixed(0)+'bps':'—'}</td>
+          <td class="num">${days}</td>
+        </tr>`;
+      });
+      tamarBody.innerHTML=rows;
+    }
+  }
   renderResumenCurves();
   renderResumenBreakevenVertical();
 }
@@ -2446,10 +2587,12 @@ function renderResumenCurves(){
     return;
   }
   if(note) note.textContent='';
+  // Apply current selector visibility
+  const mode=document.getElementById('resumenDurChartSelector')?.value||'all';
+  switchResumenCharts(mode);
   const all=[...cd.fx,...cd.cerReal,...cd.combo].filter(p=>p.x>0&&isFinite(p.y));
   if(!all.length) return;
-  const autoMax=getAutoDurMax(all);
-  const maxXUse=autoMax;
+  const maxXUse=getAutoDurMax(all);
   drawOneChart('resumenChartFX', cd.fx, maxXUse, 'LECAP/BONCAP','#9b7af0',
     lbl=>{const f=FIXED.find(x=>x.ticker===lbl);if(f)openBondCalculator('fixed',f.id);},
     _closeDurData.fx);
@@ -2458,6 +2601,14 @@ function renderResumenCurves(){
     _closeDurData.cerReal);
   drawOneChart('resumenChartCombo', cd.combo, maxXUse, 'Combinado','#f07040',
     lbl=>{const b=BONDS.find(x=>x.ticker===lbl);if(b){openBondCalculator('cer',b.id)}else{const f=FIXED.find(x=>x.ticker===lbl);if(f)openBondCalculator('fixed',f.id);}});
+  // TAMAR chart — duration vs TNA efectiva (TAMAR proyectada + margen)
+  const ptsTAMAR=TAMAR_BONDS.filter(t=>t._ok&&t._dur!=null).map(t=>({
+    x:t._dur, y:t._tnaNeta, label:t.ticker, color:t.color, id:t.id
+  })).filter(p=>p.x>0&&isFinite(p.y));
+  if(ptsTAMAR.length){
+    drawOneChart('resumenChartTAMAR', ptsTAMAR, maxXUse, 'TAMAR','#4da6ff',
+      lbl=>{const t=TAMAR_BONDS.find(x=>x.ticker===lbl);if(t)openBondCalculator('tamar',t.id);});
+  }
 }
 
 function renderResumenBreakevenVertical(){
@@ -2623,7 +2774,9 @@ function clearAllManual(){
 // ═══ LIVE TABLE ══════════════════════════════════════════════════
 function openBondCalculator(bondType, bondId){
   document.getElementById('bondCalcModal')?.remove();
-  const b = bondType==='cer' ? BONDS.find(x=>x.id===bondId) : FIXED.find(x=>x.id===bondId);
+  const b = bondType==='cer' ? BONDS.find(x=>x.id===bondId)
+          : bondType==='tamar' ? TAMAR_BONDS.find(x=>x.id===bondId)
+          : FIXED.find(x=>x.id===bondId);
   if(!b) return;
 
   // Settle mutable: T+1 hábil (del form global) por default; CI = hoy
@@ -2634,7 +2787,7 @@ function openBondCalculator(bondType, bondId){
   const matD=new Date(b.mat+"T00:00:00");
   const lp=_livePrices[b.ticker]||{};
   const defaultPx=lp.last||lp.bid||lp.ask||'';
-  const typeLabel=bondType==='cer'?'CER':b.type;
+  const typeLabel=bondType==='cer'?'CER':bondType==='tamar'?'TAMAR':(b.type||'LECAP');
 
   // Global setter accesible desde los botones inline
   window._bcSetSettle=function(mode){
@@ -2714,6 +2867,45 @@ function openBondCalculator(bondType, bondId){
           </div>
           <div id="bck-target-result" style="font-size:11px;color:var(--td);min-height:20px">Ingresá TIR o TNA objetivo para ver el precio implícito</div>
         </div>
+        ${bondType==='tamar'?`
+        <div style="margin-top:10px;border-top:1px solid var(--cb);padding-top:10px">
+          <div class="st" style="margin-bottom:6px;color:var(--bl)">Márgenes TAMAR</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+            <div class="bc-kpi"><div class="bv" style="color:var(--bl)">${b.margen1816!=null?'+'+b.margen1816.toFixed(0)+' bps':'—'}</div><div class="bl">Margen 1816</div></div>
+            <div class="bc-kpi"><div class="bv" style="color:var(--bl)">${b.margen90!=null?'+'+b.margen90.toFixed(0)+' bps':'—'}</div><div class="bl">Margen 90/365</div></div>
+            <div class="bc-kpi"><div class="bv" id="bck-tamar-be1816" style="color:var(--acl)">${b._tamarBE1816!=null?b._tamarBE1816.toFixed(2)+'%':'—'}</div><div class="bl">BE TAMAR 1816</div></div>
+            <div class="bc-kpi"><div class="bv" id="bck-tamar-be90" style="color:var(--acl)">${b._tamarBE90!=null?b._tamarBE90.toFixed(2)+'%':'—'}</div><div class="bl">BE TAMAR 90/365</div></div>
+          </div>
+          <div style="border-top:1px solid var(--cb);padding-top:10px">
+            <div class="st" style="margin-bottom:4px">Proyección TAMAR</div>
+            <div style="font-size:10px;color:var(--td);margin-bottom:8px">Ingresá una TAMAR TNA% proyectada para ver el rendimiento efectivo vs la LECAP comparable</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end">
+              <div class="ig">
+                <label>TAMAR proyectada TNA %</label>
+                <input type="number" id="bci-tamar-proj" step="0.1" placeholder="ej: 32"
+                  style="font-size:13px;font-weight:600;font-family:'IBM Plex Mono',monospace;text-align:right">
+              </div>
+              <div id="bc-tamar-proj-result" style="font-size:11px;color:var(--td);line-height:1.7;padding-bottom:3px">
+                Ingresá TAMAR para ver rendimiento efectivo
+              </div>
+            </div>
+          </div>
+        </div>`:''}
+        ${bondType==='cer'?`
+        <div style="margin-top:12px;border-top:1px solid var(--cb);padding-top:12px">
+          <div class="st" style="margin-bottom:6px">Breakeven Inflación</div>
+          <div id="bc-be-market" style="font-size:11px;color:var(--td);margin-bottom:10px;min-height:16px;line-height:1.6">—</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end">
+            <div class="ig">
+              <label>Probar inflación TEM %</label>
+              <input type="number" id="bci-infla" step="0.1" placeholder="ej: 3.5"
+                style="font-size:13px;font-weight:600;font-family:'IBM Plex Mono',monospace;text-align:right">
+            </div>
+            <div id="bc-infla-result" style="font-size:11px;color:var(--td);line-height:1.7;padding-bottom:3px">
+              Ingresá inflación para ver impacto en TIR real
+            </div>
+          </div>
+        </div>`:''}
         <div class="bc-flows" id="bck-flows"></div>
       </div>
     </div>`;
@@ -2721,6 +2913,83 @@ function openBondCalculator(bondType, bondId){
   document.body.appendChild(overlay);
   document.getElementById('bcClose').addEventListener('click', ()=>{ delete window._bcSetSettle; overlay.remove(); });
   overlay.addEventListener('click', e=>{ if(e.target===overlay){ delete window._bcSetSettle; overlay.remove(); } });
+
+  // TAMAR projection sensitivity
+  if(bondType==='tamar'){
+    const tamarInput=document.getElementById('bci-tamar-proj');
+    if(tamarInput){
+      tamarInput.addEventListener('input',()=>{
+        const resultEl=document.getElementById('bc-tamar-proj-result');
+        if(!resultEl) return;
+        const tamarTNA=parseFloat(tamarInput.value);
+        if(isNaN(tamarTNA)||tamarInput.value.trim()===''){
+          resultEl.innerHTML='Ingresá TAMAR para ver rendimiento efectivo';
+          return;
+        }
+        const efectiva1816=b.margen1816!=null?(tamarTNA+b.margen1816/100).toFixed(2)+'%':null;
+        const efectiva90=b.margen90!=null?(tamarTNA+b.margen90/100).toFixed(2)+'%':null;
+        const compTNA=b._compTNA!=null?b._compTNA.toFixed(2)+'%':'—';
+        const diff1816=b.margen1816!=null&&b._compTNA!=null?(tamarTNA+b.margen1816/100-b._compTNA).toFixed(2):null;
+        const diff90=b.margen90!=null&&b._compTNA!=null?(tamarTNA+b.margen90/100-b._compTNA).toFixed(2):null;
+        let html='';
+        if(efectiva1816) html+=`<span style="color:var(--acl)">TNA efectiva (1816): <strong>${efectiva1816}</strong></span>`;
+        if(efectiva90)   html+=`${efectiva1816?' &nbsp;':''}<span style="color:var(--bl)">TNA efectiva (90/365): <strong>${efectiva90}</strong></span><br>`;
+        html+=`<span style="color:var(--td)">LECAP comp. (${b._compTicker||'—'}): <strong>${compTNA}</strong></span>`;
+        if(diff1816!=null){
+          const d=parseFloat(diff1816);
+          html+=` &nbsp;<span style="color:${d>=0?'var(--pos)':'var(--neg)'}">${d>=0?'+':''}${diff1816}% vs LECAP (1816)</span>`;
+        }
+        resultEl.innerHTML=html;
+      });
+    }
+  }
+
+  // Inflation sensitivity — CER only
+  if(bondType==='cer'){
+    const inflInput=document.getElementById('bci-infla');
+    if(inflInput){
+      const recalcBE=()=>{
+        const resultEl=document.getElementById('bc-infla-result');
+        if(!resultEl) return;
+        const inflTEM=parseFloat(inflInput.value);
+        if(isNaN(inflTEM)||inflInput.value.trim()===''){
+          resultEl.innerHTML='Ingresá inflación para ver impacto en TIR real';
+          return;
+        }
+        const price=parseFloat(document.getElementById('bci-price').value)||0;
+        if(!price){resultEl.textContent='Ingresá precio primero';return;}
+        const cerLiqVal2=parseFloat(document.getElementById("cerLiq").value);
+        const bvL=parseFloat(document.getElementById("baseCER").value);
+        const bDateL=document.getElementById("baseCERDate").value;
+        if(!bvL||!bDateL||!cerLiqVal2){resultEl.textContent='Completá los datos CER base primero';return;}
+        const inflMap2={};
+        for(let y=2025;y<=2027;y++){
+          for(let m=1;m<=12;m++){
+            inflMap2[y+'-'+String(m).padStart(2,'0')]=inflTEM;
+          }
+        }
+        let trialCER=null;
+        try{trialCER=buildCER(bvL,bDateL,inflMap2);}catch(e){}
+        if(!trialCER){resultEl.textContent='Error construyendo CER';return;}
+        const flows2=getBondSchedule(b,settle,trialCER,cerLiqVal2);
+        if(!flows2.length){resultEl.textContent='Sin flujos';return;}
+        const yReal=xirrFromFlows(price,flows2,'real');
+        const yNom=xirrFromFlows(price,flows2,'nominal');
+        if(yReal==null){resultEl.textContent='XIRR no converge';return;}
+        const dCur=DB(settle,matD);
+        const tirReal=yReal*100;
+        const tirNom=yNom!=null?yNom*100:null;
+        const tnaReal=dCur>0?((Math.pow(1+tirReal/100,dCur/365)-1)*(365/dCur))*100:null;
+        const tnaNom=tirNom!=null&&dCur>0?((Math.pow(1+tirNom/100,dCur/365)-1)*(365/dCur))*100:null;
+        resultEl.innerHTML=
+          `<span style="color:var(--acl)">TIR real: <strong>${tirReal.toFixed(2)}%</strong> TEA</span> &nbsp;`+
+          `<span style="color:var(--td)">TNA real: <strong>${tnaReal!=null?tnaReal.toFixed(2)+'%':'—'}</strong></span><br>`+
+          `<span style="color:var(--fx)">TIR nom: <strong>${tirNom!=null?tirNom.toFixed(2)+'%':'—'}</strong> TEA</span> &nbsp;`+
+          `<span style="color:var(--td)">TNA nom: <strong>${tnaNom!=null?tnaNom.toFixed(2)+'%':'—'}</strong></span>`;
+      };
+      inflInput.addEventListener('input',recalcBE);
+    }
+  }
 
   function recalc(){
     const price=parseFloat(document.getElementById('bci-price').value)||0;
@@ -2767,6 +3036,19 @@ function openBondCalculator(bondType, bondId){
       document.getElementById('bck-total').textContent=totalCobros?'$'+totalCobros.toFixed(0):'—';
       document.getElementById('bck-ganancia').textContent=ganancia!=null?(ganancia>=0?'+':'')+'$'+ganancia.toFixed(0):'—';
       if(ganancia!=null) document.getElementById('bck-ganancia').style.color=ganancia>=0?'var(--pos)':'var(--neg)';
+
+      // Breakeven inflation display
+      const beData=(_implInflResults||[]).find(r=>r.ticker===b.ticker);
+      const beEl=document.getElementById('bc-be-market');
+      if(beEl){
+        if(beData&&beData.implPi!=null){
+          const compFx=FIXED.find(f=>f.ticker===beData.comp);
+          const compColor=compFx?.color||'var(--fx)';
+          beEl.innerHTML=`Vs <strong style="color:${compColor}">${beData.comp}</strong> @ <strong style="color:var(--fx)">${beData.compTEA.toFixed(2)}%</strong> TEA &nbsp;·&nbsp; BE: <strong style="color:var(--am)">${beData.implPi.toFixed(2)}%</strong> TEM (${beData.firstMonth.label}→${beData.lastMonth.label})`;
+        } else {
+          beEl.innerHTML='Sin datos de breakeven &mdash; calculá primero en la pestaña principal';
+        }
+      }
 
       if(flows.length){
         const rows=flows.map(f=>`<tr>
@@ -5209,7 +5491,7 @@ function initSortableTables(){
 }
 
 // ═══ INIT ════════════════════════════════════════════════════════
-buildInflGrid();buildBondCards();buildFixedCards();buildComparableSelect();buildPosSelect();buildPaseSelect();
+buildInflGrid();buildBondCards();buildFixedCards();buildTAMARCards();buildComparableSelect();buildPosSelect();buildPaseSelect();
 setTimeout(initSortableTables,200);
 
 // Setear settlement = T+1 hábil dinámico
