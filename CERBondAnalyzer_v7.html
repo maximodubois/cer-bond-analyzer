@@ -927,15 +927,15 @@ const FIXED=[
 ];
 
 // ═══ TAMAR BONDS ═══════════════════
-// Formato: {id, ticker, name, mat:"YYYY-MM-DD", color, margen1816, margen90}
-// margen1816 y margen90 en bps (ej: 300 = +300bps sobre TAMAR)
+// Formato: {id, ticker, name, mat:"YYYY-MM-DD", color, margen (bps sobre TAMAR)}
+// margen en bps (ej: 300 = +300bps sobre TAMAR). DUAL: margen=0 + temFija (TEM decimal).
 const TAMAR_BONDS=[
-  {id:"M30A6", ticker:"M30A6", name:"LETAMAR 30-Abr-26",  type:"LETAMAR",  mat:"2026-04-30", emDate:"2025-11-28", margen1816:400, margen90:400, color:"#e6a817"},
-  {id:"TTJ26", ticker:"TTJ26", name:"Dual TAMAR 30-Jun-26",type:"DUAL",     mat:"2026-06-30", emDate:"2025-01-17", margen1816:0,   margen90:0,   temFija:0.0219, color:"#d4a017"},
-  {id:"M31G6", ticker:"M31G6", name:"LETAMAR 31-Ago-26",  type:"LETAMAR",  mat:"2026-08-31", emDate:"2026-01-30", margen1816:500, margen90:500, color:"#c4960f"},
-  {id:"TTS26", ticker:"TTS26", name:"Dual TAMAR 30-Sep-26",type:"DUAL",     mat:"2026-09-30", emDate:"2025-01-17", margen1816:0,   margen90:0,   temFija:0.0217, color:"#b8900a"},
-  {id:"TTD26", ticker:"TTD26", name:"Dual TAMAR 15-Dic-26",type:"DUAL",     mat:"2026-12-15", emDate:"2025-01-17", margen1816:0,   margen90:0,   temFija:0.0214, color:"#a88505"},
-  {id:"TMF27", ticker:"TMF27", name:"Bono TAMAR 26-Feb-27",type:"BONTAMAR", mat:"2027-02-26", emDate:"2026-02-13", margen1816:650, margen90:650, color:"#987a00"},
+  {id:"M30A6", ticker:"M30A6", name:"LETAMAR 30-Abr-26",  type:"LETAMAR",  mat:"2026-04-30", emDate:"2025-11-28", margen:400, color:"#e6a817"},
+  {id:"TTJ26", ticker:"TTJ26", name:"Dual TAMAR 30-Jun-26",type:"DUAL",     mat:"2026-06-30", emDate:"2025-01-17", margen:0,   temFija:0.0219, color:"#d4a017"},
+  {id:"M31G6", ticker:"M31G6", name:"LETAMAR 31-Ago-26",  type:"LETAMAR",  mat:"2026-08-31", emDate:"2026-01-30", margen:500, color:"#c4960f"},
+  {id:"TTS26", ticker:"TTS26", name:"Dual TAMAR 30-Sep-26",type:"DUAL",     mat:"2026-09-30", emDate:"2025-01-17", margen:0,   temFija:0.0217, color:"#b8900a"},
+  {id:"TTD26", ticker:"TTD26", name:"Dual TAMAR 15-Dic-26",type:"DUAL",     mat:"2026-12-15", emDate:"2025-01-17", margen:0,   temFija:0.0214, color:"#a88505"},
+  {id:"TMF27", ticker:"TMF27", name:"Bono TAMAR 26-Feb-27",type:"BONTAMAR", mat:"2027-02-26", emDate:"2026-02-13", margen:650, color:"#987a00"},
 ];
 
 // ═══ TAMAR MONTHLY ASSUMPTIONS (TEM%) ═══
@@ -1322,12 +1322,12 @@ function calcTamarAvgTEM(bond, tamarMonthlyMap){
   return cnt>0?sumTEM/cnt:null;
 }
 // VF for pure TAMAR / LETAMAR bullets
-// margin stored as TNA decimal (e.g., margen1816/10000); convert to TEM = /12
+// margin stored in bps TNA (e.g., margen=400 → 4% TNA → TEM = /1200)
 function calcTamarVPV(bond, tamarTEM){
   const emD=new Date(bond.emDate+"T00:00:00");
   const matD=new Date(bond.mat+"T00:00:00");
   const dias=days360US(emD,matD);
-  const marginTEM=(bond.margen1816||0)/10000/12;
+  const marginTEM=(bond.margen||0)/120000;
   return 100*Math.pow(1+tamarTEM+marginTEM, dias/30);
 }
 // VF for DUAL bonds: MAX(TAMAR leg, fixed leg)
@@ -1370,8 +1370,8 @@ function buildTAMARCards(){
             <span class="tag" style="background:var(--bld);color:var(--bl)">TAMAR</span>
           </div>
           <div class="list-meta">${t.name||t.ticker} · Vto: ${FD(new Date(t.mat+"T00:00:00"))}<br>
-            Margen 1816: <strong>${t.margen1816!=null?'+'+t.margen1816.toFixed(0)+' bps':'—'}</strong>
-            &nbsp;·&nbsp; Margen 90/365: <strong>${t.margen90!=null?'+'+t.margen90.toFixed(0)+' bps':'—'}</strong>
+            Margen emisión: <strong>${t.margen!=null?'+'+t.margen.toFixed(0)+' bps':'—'}</strong>
+            ${t.temFija!=null?`&nbsp;·&nbsp; Piso fijo: <strong>${(t.temFija*100).toFixed(2)}% TEM</strong>`:''}
           </div>
         </div>
         <div class="list-inputs">
@@ -1383,8 +1383,7 @@ function buildTAMARCards(){
         </div>
         <div class="list-metrics" style="margin-top:0;padding-top:0;border-top:none">
           <div class="metric"><div class="mv" style="color:var(--bl)" id="td_${t.id}">—</div><div class="ml">días al vto</div></div>
-          <div class="metric"><div class="mv" style="color:var(--bl)" id="tbe1816_${t.id}">—</div><div class="ml">BE TAMAR 1816</div></div>
-          <div class="metric"><div class="mv" style="color:var(--bl)" id="tbe90_${t.id}">—</div><div class="ml">BE TAMAR 90</div></div>
+          <div class="metric"><div class="mv" style="color:var(--bl)" id="tbe_${t.id}">—</div><div class="ml">BE TAMAR</div></div>
           <div class="metric"><div class="ms" style="color:var(--td)" id="tcomp_${t.id}">—</div><div class="ml">comparable</div></div>
         </div>
       </div>
@@ -1998,6 +1997,11 @@ function calculate(){
   FIXED.forEach(f=>calcFixedOne(f));
 
   // ── TAMAR breakeven calculation ──────────────────────────────────
+  // BE TAMAR: at what average TAMAR TNA (%) would this bond, bought at current price,
+  // yield the same TEA as the closest-duration LECAP?
+  // Formula: VF(tamarTEM_BE) / price = (1 + compTEA)^(days/365)
+  //   → tamarTEM_BE = (price/100 * (1+compTEA)^(days/365))^(1/months_em) - 1 - marginTEM
+  //   → tamarTNA_BE = tamarTEM_BE * 1200  (decimal TEM → TNA %)
   if(TAMAR_BONDS.length){
     const okFixed=FIXED.filter(f=>f._ok&&f._dur!=null&&f._dur>0);
     TAMAR_BONDS.forEach(t=>{
@@ -2006,26 +2010,34 @@ function calculate(){
       const days=DB(settle,matDate);
       if(days<=0) return;
       t._days=days;
-      t._dur=days/365; // simplified duration for zero-coupon-like floating
-      // Find closest-duration LECAP
-      if(!okFixed.length){ t._ok=true; return; }
-      const best=okFixed.reduce((a,b)=>Math.abs(b._dur-t._dur)<Math.abs(a._dur-t._dur)?b:a);
-      const compTNA=best._tna/100; // as decimal
-      t._tamarBE1816 = t.margen1816!=null ? (compTNA - t.margen1816/10000)*100 : null;
-      t._tamarBE90   = t.margen90!=null   ? (compTNA - t.margen90/10000)*100   : null;
-      t._compTicker  = best.ticker;
-      t._compTNA     = best._tna;
-      t._ok=true;
-      t._tnaNeta = t._tamarBE1816!=null ? t._tamarBE1816 : (t._tamarBE90!=null ? t._tamarBE90 : null);
-      // Update CALCULADORAS card DOM
+      t._dur=days/365;
+      t._tamarBE=null; t._tnaNeta=null;
       const tdEl=document.getElementById("td_"+t.id);
-      const tbe1816El=document.getElementById("tbe1816_"+t.id);
-      const tbe90El=document.getElementById("tbe90_"+t.id);
+      const tbeEl=document.getElementById("tbe_"+t.id);
       const tcompEl=document.getElementById("tcomp_"+t.id);
       if(tdEl) tdEl.textContent=days;
-      if(tbe1816El) tbe1816El.textContent=t._tamarBE1816!=null?t._tamarBE1816.toFixed(2)+'%':'—';
-      if(tbe90El)   tbe90El.textContent  =t._tamarBE90!=null  ?t._tamarBE90.toFixed(2)  +'%':'—';
-      if(tcompEl)   tcompEl.textContent  =t._compTicker||'—';
+      if(!okFixed.length){ t._ok=true; if(tbeEl) tbeEl.textContent='—'; return; }
+      const best=okFixed.reduce((a,b)=>Math.abs(b._dur-t._dur)<Math.abs(a._dur-t._dur)?b:a);
+      t._compTicker=best.ticker; t._compTNA=best._tna;
+      if(tcompEl) tcompEl.textContent=best.ticker;
+      // Need price to compute BE
+      const price=parseFloat(document.getElementById("tpx_"+t.id)?.value)||0;
+      if(price>0){
+        const emD=new Date(t.emDate+"T00:00:00");
+        const months_em=days360US(emD,matDate)/30;
+        const marginTEM=(t.margen||0)/120000; // bps TNA → decimal TEM
+        const compTEA=best._tea/100;
+        // VF implied by holding at current price to get same return as LECAP
+        const vfRequired=price*Math.pow(1+compTEA,days/365);
+        const allInTEM=Math.pow(vfRequired/100,1/months_em)-1;
+        const tamarTEM_BE=allInTEM-marginTEM;
+        t._tamarBE=tamarTEM_BE*1200; // → TNA %
+        t._tnaNeta=t._tamarBE;
+        if(tbeEl) tbeEl.textContent=t._tamarBE.toFixed(2)+'%';
+      } else {
+        if(tbeEl) tbeEl.textContent='—';
+      }
+      t._ok=true;
     });
   }
 
@@ -2641,11 +2653,24 @@ function renderResumen(){
         const lp=_livePrices[t.ticker]||{};
         const px=lp.last||lp.bid||null;
         const chg=getPriceVariationMeta(t.ticker,"");
+        // Live implied spread over TAMAR from current price
+        let margenDisplay='—';
+        if(px&&px>0&&days>0){
+          const tamarMap=getTamarMap();
+          const avgTEM=calcTamarAvgTEM(t,tamarMap);
+          const vf=getTamarVF(t,avgTEM);
+          if(avgTEM!=null&&vf){
+            const impliedTEA=Math.pow(vf/px,365/days)-1;
+            const tamarTEA=Math.pow(1+avgTEM,12)-1;
+            const spreadBps=Math.round((impliedTEA-tamarTEA)*10000);
+            margenDisplay=(spreadBps>=0?'+':'')+spreadBps+'bps';
+          }
+        }
         rows+=`<tr class="clickable-row" onclick="openBondCalculator('tamar','${t.id}')" title="Click para calculadora">
           <td class="tk" style="color:${t.color}">${t.ticker}</td>
           <td class="num" style="color:${chg.color};font-weight:600">${chg.text}</td>
           <td class="num">${px!=null?px.toFixed(2):'—'}</td>
-          <td class="num" style="color:var(--bl)">${t.margen1816!=null?'+'+t.margen1816.toFixed(0)+'bps':'—'}</td>
+          <td class="num" style="color:var(--bl)">${margenDisplay}</td>
           <td class="num">${days}</td>
         </tr>`;
       });
@@ -2947,11 +2972,10 @@ function openBondCalculator(bondType, bondId){
         ${bondType==='tamar'?`
         <div style="margin-top:10px;border-top:1px solid var(--cb);padding-top:10px">
           <div class="st" style="margin-bottom:6px;color:var(--bl)">Márgenes TAMAR</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px">
-            <div class="bc-kpi"><div class="bv" style="color:var(--bl)">${b.margen1816!=null?'+'+b.margen1816.toFixed(0)+' bps':'—'}</div><div class="bl">Margen 1816</div></div>
-            <div class="bc-kpi"><div class="bv" style="color:var(--bl)">${b.margen90!=null?'+'+b.margen90.toFixed(0)+' bps':'—'}</div><div class="bl">Margen 90/365</div></div>
-            <div class="bc-kpi"><div class="bv" id="bck-tamar-be1816" style="color:var(--acl)">${b._tamarBE1816!=null?b._tamarBE1816.toFixed(2)+'%':'—'}</div><div class="bl">BE TAMAR 1816</div></div>
-            <div class="bc-kpi"><div class="bv" id="bck-tamar-be90" style="color:var(--acl)">${b._tamarBE90!=null?b._tamarBE90.toFixed(2)+'%':'—'}</div><div class="bl">BE TAMAR 90/365</div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+            <div class="bc-kpi"><div class="bv" style="color:var(--bl)">${b.margen!=null?'+'+b.margen.toFixed(0)+' bps':'—'}</div><div class="bl">Margen emisión</div></div>
+            <div class="bc-kpi"><div class="bv" id="bck-tamar-be" style="color:var(--acl)">${b._tamarBE!=null?b._tamarBE.toFixed(2)+'%':'—'}</div><div class="bl">BE TAMAR</div></div>
+            <div class="bc-kpi"><div class="bv" style="color:var(--td)">${b._compTicker||'—'}</div><div class="bl">comparable</div></div>
           </div>
           <div style="border-top:1px solid var(--cb);padding-top:10px">
             <div class="st" style="margin-bottom:4px">Proyección TAMAR</div>
@@ -3003,18 +3027,15 @@ function openBondCalculator(bondType, bondId){
           resultEl.innerHTML='Ingresá TAMAR para ver rendimiento efectivo';
           return;
         }
-        const efectiva1816=b.margen1816!=null?(tamarTNA+b.margen1816/100).toFixed(2)+'%':null;
-        const efectiva90=b.margen90!=null?(tamarTNA+b.margen90/100).toFixed(2)+'%':null;
+        const efectiva=b.margen!=null?(tamarTNA+b.margen/100).toFixed(2)+'%':null;
         const compTNA=b._compTNA!=null?b._compTNA.toFixed(2)+'%':'—';
-        const diff1816=b.margen1816!=null&&b._compTNA!=null?(tamarTNA+b.margen1816/100-b._compTNA).toFixed(2):null;
-        const diff90=b.margen90!=null&&b._compTNA!=null?(tamarTNA+b.margen90/100-b._compTNA).toFixed(2):null;
+        const diff=b.margen!=null&&b._compTNA!=null?(tamarTNA+b.margen/100-b._compTNA).toFixed(2):null;
         let html='';
-        if(efectiva1816) html+=`<span style="color:var(--acl)">TNA efectiva (1816): <strong>${efectiva1816}</strong></span>`;
-        if(efectiva90)   html+=`${efectiva1816?' &nbsp;':''}<span style="color:var(--bl)">TNA efectiva (90/365): <strong>${efectiva90}</strong></span><br>`;
+        if(efectiva) html+=`<span style="color:var(--acl)">TNA efectiva: <strong>${efectiva}</strong></span><br>`;
         html+=`<span style="color:var(--td)">LECAP comp. (${b._compTicker||'—'}): <strong>${compTNA}</strong></span>`;
-        if(diff1816!=null){
-          const d=parseFloat(diff1816);
-          html+=` &nbsp;<span style="color:${d>=0?'var(--pos)':'var(--neg)'}">${d>=0?'+':''}${diff1816}% vs LECAP (1816)</span>`;
+        if(diff!=null){
+          const d=parseFloat(diff);
+          html+=` &nbsp;<span style="color:${d>=0?'var(--pos)':'var(--neg)'}">${d>=0?'+':''}${diff}% vs LECAP</span>`;
         }
         resultEl.innerHTML=html;
       });
@@ -3177,9 +3198,9 @@ function openBondCalculator(bondType, bondId){
       const projTNA=projInput?parseFloat(projInput.value):NaN;
       const tamarMap=getTamarMap();
 
-      // Override TM map with projected TNA if entered (convert TNA → TEM monthly)
+      // Override TM map with projected TNA if entered (TAMAR TNA simple → TEM = TNA/12)
       if(!isNaN(projTNA)&&projTNA>0){
-        Object.keys(tamarMap).forEach(k=>{ tamarMap[k]=(Math.pow(1+projTNA/100,1/12)-1)*100; });
+        Object.keys(tamarMap).forEach(k=>{ tamarMap[k]=projTNA/12; });
       }
 
       const avgTEM=calcTamarAvgTEM(b, tamarMap);
