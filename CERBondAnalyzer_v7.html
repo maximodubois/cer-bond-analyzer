@@ -938,6 +938,18 @@ const TAMAR_BONDS=[
   {id:"TMF27", ticker:"TMF27", name:"Bono TAMAR 26-Feb-27",type:"BONTAMAR", mat:"2027-02-26", emDate:"2026-02-13", margen1816:650, margen90:650, color:"#987a00"},
 ];
 
+// ═══ TAMAR MONTHLY ASSUMPTIONS (TEM%) ═══
+const TM=[
+  {k:"2025-11",l:"Nov 25",d:"3.2"},{k:"2025-12",l:"Dic 25",d:"3.0"},
+  {k:"2026-01",l:"Ene 26",d:"2.9"},{k:"2026-02",l:"Feb 26",d:"2.8"},
+  {k:"2026-03",l:"Mar 26",d:"2.7"},{k:"2026-04",l:"Abr 26",d:"2.6"},
+  {k:"2026-05",l:"May 26",d:"2.5"},{k:"2026-06",l:"Jun 26",d:"2.4"},
+  {k:"2026-07",l:"Jul 26",d:"2.3"},{k:"2026-08",l:"Ago 26",d:"2.2"},
+  {k:"2026-09",l:"Sep 26",d:"2.2"},{k:"2026-10",l:"Oct 26",d:"2.2"},
+  {k:"2026-11",l:"Nov 26",d:"2.2"},{k:"2026-12",l:"Dic 26",d:"2.2"},
+  {k:"2027-01",l:"Ene 27",d:"2.2"},{k:"2027-02",l:"Feb 27",d:"2.2"},
+];
+
 // ═══ INFLATION MONTHS ══════════════
 const IM=[
   {k:"2026-03",l:"Mar 26",d:"2.7"},
@@ -1284,6 +1296,66 @@ function buildFixedCards(){
     </div>
   `).join("");
 }
+// ═══ TAMAR MATH ═══════════════════════════════════════════════════
+// Returns average TEM (decimal) for the bond's life using TM assumptions
+// (uses real BCRA data if available via _bcraHistTamar, else TM grid)
+let _bcraHistTamar=new Map();
+function calcTamarAvgTEM(bond, tamarMonthlyMap){
+  const emD=new Date(bond.emDate+"T00:00:00");
+  const matD=new Date(bond.mat+"T00:00:00");
+  const startRef=SBD(emD,10);
+  const endRef=SBD(matD,10);
+  let sumTEM=0, cnt=0;
+  const cur=new Date(startRef);
+  while(cur<=endRef){
+    const ds=DS(cur);
+    if(_bcraHistTamar.has(ds)){
+      sumTEM+=_bcraHistTamar.get(ds)/100/12; cnt++;
+    } else {
+      const dow=cur.getDay();
+      if(dow!==0&&dow!==6){
+        const monthKey=ds.slice(0,7);
+        const temPct=tamarMonthlyMap[monthKey];
+        if(temPct!=null&&temPct>0){ sumTEM+=temPct/100; cnt++; }
+      }
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+  return cnt>0?sumTEM/cnt:null;
+}
+// VF for pure TAMAR / LETAMAR bullets
+// margin stored as TNA decimal (e.g., margen1816/10000); convert to TEM = /12
+function calcTamarVPV(bond, tamarTEM){
+  const emD=new Date(bond.emDate+"T00:00:00");
+  const matD=new Date(bond.mat+"T00:00:00");
+  const dias=days360US(emD,matD);
+  const marginTEM=(bond.margen1816||0)/10000/12;
+  return 100*Math.pow(1+tamarTEM+marginTEM, dias/30);
+}
+// VF for DUAL bonds: MAX(TAMAR leg, fixed leg)
+function calcDualVPV(bond, tamarTEM){
+  const emD=new Date(bond.emDate+"T00:00:00");
+  const matD=new Date(bond.mat+"T00:00:00");
+  const dias=days360US(emD,matD);
+  const vfTamar=100*Math.pow(1+tamarTEM, dias/30);
+  const vfFija=100*Math.pow(1+(bond.temFija||0), dias/30);
+  return Math.max(vfTamar,vfFija);
+}
+// Get TAMAR monthly map from TM grid inputs (falls back to TM defaults)
+function getTamarMap(){
+  const m={};
+  TM.forEach(t=>{
+    const el=document.getElementById("tm_"+t.k);
+    m[t.k]=el?parseFloat(el.value)||parseFloat(t.d):parseFloat(t.d);
+  });
+  return m;
+}
+// Get VF for a TAMAR bond given projected avgTEM
+function getTamarVF(bond, avgTEM){
+  if(avgTEM==null) return null;
+  return bond.type==="DUAL"?calcDualVPV(bond,avgTEM):calcTamarVPV(bond,avgTEM);
+}
+
 function buildTAMARCards(){
   const row=document.getElementById("tamarRow");
   if(!row) return;
@@ -3100,6 +3172,84 @@ function openBondCalculator(bondType, bondId){
           parts.length?parts.join('<span style="color:var(--tm);padding:0 8px">|</span>'):'Ingresá TIR o TNA objetivo para ver el precio implícito';
       }
 
+    } else if(bondType==='tamar'){
+      // ── TAMAR / LETAMAR / DUAL ──────────────────────────────────
+      // Get projected TAMAR: use input bci-tamar-proj if present, else TM grid
+      const projInput=document.getElementById('bci-tamar-proj');
+      const projTNA=projInput?parseFloat(projInput.value):NaN;
+      const tamarMap=getTamarMap();
+
+      // Override TM map with projected TNA if entered (convert TNA → TEM monthly)
+      if(!isNaN(projTNA)&&projTNA>0){
+        Object.keys(tamarMap).forEach(k=>{ tamarMap[k]=(Math.pow(1+projTNA/100,1/12)-1)*100; });
+      }
+
+      const avgTEM=calcTamarAvgTEM(b, tamarMap);
+      const vf=getTamarVF(b, avgTEM);
+      const emD=new Date(b.emDate+"T00:00:00");
+      const dias360=days360US(emD,matD);
+
+      let tir=null, tna=null;
+      if(price>0&&vf&&days>0){
+        tir=(Math.pow(vf/price, 365/days)-1)*100;
+        tna=((Math.pow(1+tir/100,days/365)-1)*(365/days))*100;
+      }
+      const scale=vnoAmount/100;
+      const totalCobros=vf?vf*scale:null;
+      const ganancia=totalCobros&&price>0?totalCobros-(price*scale):null;
+      const vnAdq=price>0?vnoAmount/price*100:null;
+
+      document.getElementById('bck-tir').textContent=tir!=null?tir.toFixed(2)+'%':'—';
+      document.getElementById('bck-tir').style.color=tir!=null?(tir>=0?'var(--acl)':'var(--neg)'):'var(--td)';
+      document.getElementById('bck-tna').textContent=tna!=null?tna.toFixed(2)+'%':'—';
+      document.getElementById('bck-vt').textContent=vf?vf.toFixed(4):'—';
+      document.getElementById('bck-vno').textContent=vnAdq?vnAdq.toFixed(0)+' VN':'—';
+      document.getElementById('bck-total').textContent=totalCobros?'$'+totalCobros.toFixed(0):'—';
+      document.getElementById('bck-ganancia').textContent=ganancia!=null?(ganancia>=0?'+':'')+'$'+ganancia.toFixed(0):'—';
+      if(ganancia!=null) document.getElementById('bck-ganancia').style.color=ganancia>=0?'var(--pos)':'var(--neg)';
+
+      if(vf){
+        const avgTEMpct=avgTEM!=null?(avgTEM*100).toFixed(4)+'%':'-';
+        document.getElementById('bck-flows').innerHTML=`
+          <div class="st" style="margin-bottom:6px">Flujo de Fondos (bullet)</div>
+          <div style="font-size:9px;color:var(--td);margin-bottom:6px">TAMAR proyectada TEM: <strong>${avgTEMpct}</strong>${b.type==="DUAL"?' &nbsp;·&nbsp; DUAL: MAX(TAMAR, fija)':''}</div>
+          <table><thead><tr>
+            <th>Fecha</th><th style="text-align:right">Días</th>
+            <th style="text-align:right">Por 100 VN ($)</th>
+            <th style="text-align:right">Por ${vnoAmount.toLocaleString('es-AR')} VNO ($)</th>
+          </tr></thead><tbody>
+          <tr>
+            <td>${matD.toLocaleDateString('es-AR')}</td>
+            <td style="text-align:right">${days}</td>
+            <td style="text-align:right">${vf.toFixed(4)}</td>
+            <td style="text-align:right">${(vf*scale).toFixed(2)}</td>
+          </tr>
+          </tbody><tfoot><tr>
+            <td>Total</td><td></td>
+            <td style="text-align:right">${vf.toFixed(4)}</td>
+            <td style="text-align:right">${(vf*scale).toFixed(2)}</td>
+          </tr></tfoot></table>`;
+      } else {
+        document.getElementById('bck-flows').innerHTML=`<div class="note" style="padding:10px;color:var(--tm)">Sin datos TAMAR — completá los supuestos TEM en la pestaña CALCULADORAS.</div>`;
+      }
+
+      // Target TIR / TNA objetivo → precio implícito
+      {
+        const targetTirVal=parseFloat(document.getElementById('bci-target-tir').value);
+        const targetTnaVal=parseFloat(document.getElementById('bci-target-tna').value);
+        const parts=[];
+        if(!isNaN(targetTirVal)&&vf&&days>0){
+          const impliedPx=vf/Math.pow(1+targetTirVal/100,days/365);
+          parts.push(`TEA <strong style="color:var(--acl)">${targetTirVal.toFixed(2)}%</strong> → <strong style="color:var(--acl);font-size:13px">${impliedPx.toFixed(4)}</strong>`);
+        }
+        if(!isNaN(targetTnaVal)&&vf&&days>0){
+          const impliedPx=vf/(1+targetTnaVal/100*days/365);
+          parts.push(`TNA <strong style="color:var(--fx)">${targetTnaVal.toFixed(2)}%</strong> → <strong style="color:var(--fx);font-size:13px">${impliedPx.toFixed(4)}</strong>`);
+        }
+        document.getElementById('bck-target-result').innerHTML=
+          parts.length?parts.join('<span style="color:var(--tm);padding:0 8px">|</span>'):'Ingresá TEA o TNA objetivo para ver el precio implícito';
+      }
+
     } else {
       // FIXED (LECAP / BONCAP)
       const emD=new Date(b.emDate+"T00:00:00");
@@ -3172,6 +3322,10 @@ function openBondCalculator(bondType, bondId){
   document.getElementById('bci-vno').addEventListener('input', recalc);
   document.getElementById('bci-target-tir').addEventListener('input', recalc);
   document.getElementById('bci-target-tna').addEventListener('input', recalc);
+  if(bondType==='tamar'){
+    const projEl=document.getElementById('bci-tamar-proj');
+    if(projEl) projEl.addEventListener('input', recalc);
+  }
   recalc();
 }
 
