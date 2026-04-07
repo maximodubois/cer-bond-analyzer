@@ -3492,6 +3492,7 @@ function getAllTickers(){
   const tickers=[];
   BONDS.forEach(b=>tickers.push(b.ticker));
   FIXED.forEach(f=>tickers.push(f.ticker));
+  TAMAR_BONDS.forEach(t=>tickers.push(t.ticker));
   return tickers;
 }
 
@@ -3594,6 +3595,28 @@ function updateLivePrice(ticker){
     const manual=document.getElementById("fpm_"+ticker);
     if(manual&&!manual.value){
       const hidden=document.getElementById("fxp_"+ticker);
+      if(hidden){
+        hidden.value=lp.last||"";
+        scheduleAutoCalc();
+      }
+    }
+  }
+
+  const isTAMAR=TAMAR_BONDS.some(t=>t.ticker===ticker);
+  if(isTAMAR){
+    const el=document.getElementById("tpl_"+ticker);
+    const lb=document.getElementById("tlb_"+ticker);
+    if(el){
+      const px=lp.last;
+      el.textContent=px?px.toFixed(2):"—";
+      el.className="px-live"+(px?" ":" stale");
+      el.title=`Bid:${lp.bid} Ask:${lp.ask} Last:${lp.last}`;
+    }
+    if(lb)lb.className="live-badge";
+
+    const manual=document.getElementById("tpm_"+ticker);
+    if(manual&&!manual.value){
+      const hidden=document.getElementById("tpx_"+ticker);
       if(hidden){
         hidden.value=lp.last||"";
         scheduleAutoCalc();
