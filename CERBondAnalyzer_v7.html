@@ -223,8 +223,8 @@
   .resumen-be-chip-h .be-val{font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--am)}
   .resumen-be-chip-h .be-range{font-size:8px;color:var(--td)}
   .resumen-be-avg{font-size:9px;color:var(--td);margin-left:auto;white-space:nowrap}
-  .resumen-charts-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-top:6px}
-  .resumen-chart-cell{background:var(--card);border:1px solid var(--cb);border-radius:var(--r);padding:8px 10px}
+  .resumen-charts-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:6px;min-width:0;overflow:hidden}
+  .resumen-chart-cell{background:var(--card);border:1px solid var(--cb);border-radius:var(--r);padding:8px 10px;min-width:0;overflow:hidden}
   .resumen-chart-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
   @media(max-width:900px){.resumen-top-grid{grid-template-columns:1fr}.resumen-charts-row{grid-template-columns:1fr}}
   /* Bond Calculator Modal */
@@ -377,7 +377,7 @@
     </div>
     <!-- TAMAR -->
     <div class="resumen-table-panel">
-      <div class="st" style="color:var(--bl)">TAMAR <span style="color:var(--td);font-weight:400;text-transform:none;letter-spacing:0">próximamente</span></div>
+      <div class="st" style="color:var(--bl)">TAMAR</div>
       <table class="lt">
         <thead><tr>
           <th>Ticker</th><th class="num">Var%</th><th class="num">Px</th>
@@ -929,7 +929,14 @@ const FIXED=[
 // ═══ TAMAR BONDS ═══════════════════
 // Formato: {id, ticker, name, mat:"YYYY-MM-DD", color, margen1816, margen90}
 // margen1816 y margen90 en bps (ej: 300 = +300bps sobre TAMAR)
-const TAMAR_BONDS=[];
+const TAMAR_BONDS=[
+  {id:"M30A6", ticker:"M30A6", name:"LETAMAR 30-Abr-26",  type:"LETAMAR",  mat:"2026-04-30", emDate:"2025-11-28", margen1816:400, margen90:400, color:"#e6a817"},
+  {id:"TTJ26", ticker:"TTJ26", name:"Dual TAMAR 30-Jun-26",type:"DUAL",     mat:"2026-06-30", emDate:"2025-01-17", margen1816:0,   margen90:0,   temFija:0.0219, color:"#d4a017"},
+  {id:"M31G6", ticker:"M31G6", name:"LETAMAR 31-Ago-26",  type:"LETAMAR",  mat:"2026-08-31", emDate:"2026-01-30", margen1816:500, margen90:500, color:"#c4960f"},
+  {id:"TTS26", ticker:"TTS26", name:"Dual TAMAR 30-Sep-26",type:"DUAL",     mat:"2026-09-30", emDate:"2025-01-17", margen1816:0,   margen90:0,   temFija:0.0217, color:"#b8900a"},
+  {id:"TTD26", ticker:"TTD26", name:"Dual TAMAR 15-Dic-26",type:"DUAL",     mat:"2026-12-15", emDate:"2025-01-17", margen1816:0,   margen90:0,   temFija:0.0214, color:"#a88505"},
+  {id:"TMF27", ticker:"TMF27", name:"Bono TAMAR 26-Feb-27",type:"BONTAMAR", mat:"2027-02-26", emDate:"2026-02-13", margen1816:650, margen90:650, color:"#987a00"},
+];
 
 // ═══ INFLATION MONTHS ══════════════
 const IM=[

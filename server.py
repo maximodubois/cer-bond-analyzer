@@ -11,6 +11,9 @@ Deploy:  Railway / Render (auto-detecta PORT env var)
 import os
 import sys
 import json
+# Fix Unicode output on Windows (cp1252 can't handle emoji)
+if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 import time
 import hashlib
 import secrets
