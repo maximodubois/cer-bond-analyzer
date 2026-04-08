@@ -946,7 +946,7 @@ const FIXED=[
 // margen1816 y margen90 en bps (ej: 300 = +300bps sobre TAMAR)
 const TAMAR_DEFAULT_FALLBACK_TNA=26.2375;
 const TAMAR_BONDS=[
-  {id:"M30A6", ticker:"M30A6", name:"LETAMAR 30-Abr-26",  type:"LETAMAR",  mat:"2026-04-30", emDate:"2025-05-16", margen1816:400, margen90:400, color:"#e6a817"},
+  {id:"M30A6", ticker:"M30A6", name:"LETAMAR 30-Abr-26",  type:"LETAMAR",  mat:"2026-04-30", emDate:"2025-11-28", margen1816:400, margen90:400, color:"#e6a817"},
   {id:"TTJ26", ticker:"TTJ26", name:"Dual TAMAR 30-Jun-26",type:"DUAL",     mat:"2026-06-30", emDate:"2025-01-29", margen1816:0,   margen90:0,   temFija:0.0219, color:"#d4a017"},
   {id:"M31G6", ticker:"M31G6", name:"LETAMAR 31-Ago-26",  type:"LETAMAR",  mat:"2026-08-31", emDate:"2025-11-10", margen1816:500, margen90:500, color:"#c4960f"},
   {id:"TTS26", ticker:"TTS26", name:"Dual TAMAR 15-Sep-26",type:"DUAL",     mat:"2026-09-15", emDate:"2025-01-29", margen1816:0,   margen90:0,   temFija:0.0217, color:"#b8900a"},
@@ -2298,10 +2298,24 @@ function calculate(){
       // Find closest-duration LECAP for BE TAMAR reference
       if(okFixed.length){
         const best=okFixed.reduce((a,b)=>Math.abs(b._dur-t._dur)<Math.abs(a._dur-t._dur)?b:a);
-        const compTNA=best._tna/100; // as decimal
-        t._tamarBE = compTNA!=null ? (compTNA - getTamarMarginBps(t)/10000)*100 : null;
-        t._compTicker  = best.ticker;
-        t._compTNA     = best._tna;
+        t._compTicker=best.ticker;
+        t._compTNA=best._tna;
+        // BE TAMAR: TAMAR TNA at which buying this bond at current price yields same TEA as closest LECAP
+        if(price>0&&days>0){
+          const compTEA=best._tea/100;
+          const emD=new Date(t.emDate+"T00:00:00");
+          const months_em=days360US(emD,matDate)/30;
+          if(months_em>0){
+            const vfRequired=price*Math.pow(1+compTEA,days/365);
+            const allInTEM=Math.pow(vfRequired/100,1/months_em)-1;
+            const den=365/32;
+            const allInTNA_pct=((Math.pow(1+allInTEM,12/den)-1)*den)*100;
+            t._tamarBE=allInTNA_pct-getTamarMarginBps(t)/100;
+          }
+        } else {
+          // Sin precio: aproximación lineal
+          t._tamarBE=best._tna-getTamarMarginBps(t)/100;
+        }
       }
       t._ok=true;
       t._tnaNeta = t._impliedTNA!=null ? t._impliedTNA : t._tamarBE;
