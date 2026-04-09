@@ -250,6 +250,23 @@
   .bc-flows tfoot td{font-weight:700;border-top:2px solid var(--cb);border-bottom:none;color:var(--acl)}
   .live-tk-link{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
   .live-tk-link:hover{opacity:0.8}
+  /* FX Calculator Modal */
+  .fxc-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px}
+  .fxc-modal{background:var(--card);border:1px solid var(--cb);border-radius:12px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.7)}
+  .fxc-header{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 20px;border-bottom:1px solid var(--cb)}
+  .fxc-body{padding:16px 20px}
+  .fxc-inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .fxc-kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+  .fxc-kpi{background:var(--bg);border-radius:8px;padding:10px 14px}
+  .fxc-kpi .bv{font-size:20px;font-weight:700;font-family:'IBM Plex Mono',monospace}
+  .fxc-kpi .bl{font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-top:2px}
+  .fxc-badge{font-size:9px;padding:2px 7px;border-radius:4px;font-weight:600;letter-spacing:0.05em;flex-shrink:0}
+  .fxc-badge-live{background:rgba(45,184,168,0.15);color:#2db8a8;border:1px solid rgba(45,184,168,0.3)}
+  .fxc-badge-manual{background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)}
+  .fxc-reset-btn{font-size:9px;padding:2px 8px;cursor:pointer;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);color:#fbbf24;border-radius:4px;flex-shrink:0}
+  .fxc-reset-btn:hover{background:rgba(251,191,36,0.2)}
+  .fxc-row-clickable{cursor:pointer;transition:background 0.12s}
+  .fxc-row-clickable:hover{background:rgba(255,255,255,0.04)}
 </style>
 </head>
 <body>
@@ -920,13 +937,20 @@
     </table>
   </div>
 
-  <!-- Combined Chart: DL + Futures -->
-  <div class="card">
-    <div class="st">Curva TNA — Dollar Linked + Futuros ROFEX</div>
-    <div class="chart-c" id="fxCurveContainer" style="height:260px">
-      <canvas id="fxCurveChart"></canvas>
+  <!-- Charts: DL and Futures separate -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div class="card">
+      <div class="st" style="color:#22d3ee">Curva TNA — Dollar Linked</div>
+      <div class="chart-c" id="fxDLCurveContainer" style="height:240px">
+        <canvas id="fxDLCurveChart"></canvas>
+      </div>
     </div>
-    <div class="legend" id="fxCurveLegend"></div>
+    <div class="card">
+      <div class="st" style="color:#f97316">Curva TNA — Futuros ROFEX</div>
+      <div class="chart-c" id="fxFutCurveContainer" style="height:240px">
+        <canvas id="fxFutCurveChart"></canvas>
+      </div>
+    </div>
   </div>
 
   <!-- Intraday Charts -->
@@ -3904,6 +3928,9 @@ let _closeDurData={fx:[],cerReal:[]};
 let _priceTimer=null;
 let _priceConnected=false;
 let _autoCalcTimer=null;
+let _fxSpotOverride=null; // null = live; number = manual override for all FX curves
+let _fxCalcCtx=null;      // context of currently open FX calculator modal
+let _fxCalcUpdating=false;
 
 function getAllTickers(){
   const tickers=[];
@@ -3947,6 +3974,7 @@ async function fetchPricesFromServer(){
     }
     const ts=new Date().toLocaleTimeString("es-AR");
     log.innerHTML=`<span class="api-ok">✓ ${updated} precios · ${ts}</span>`;
+    syncFxCalcModal();
   }catch(e){
     const ts=new Date().toLocaleTimeString("es-AR");
     log.innerHTML=`<span class="api-err">✗ ${e.message} · ${ts}</span> — Verificá que <code style="color:var(--ac)">python server.py</code> esté corriendo`;
@@ -6200,6 +6228,7 @@ setTimeout(()=>{
 
 // ═══ FX TAB: RENDER + INTRADAY ═══════════════════════════════
 function getFxSpot(){
+  if(_fxSpotOverride!==null) return _fxSpotOverride;
   const lp=_livePrices["DLR/SPOT"];
   return lp&&lp.last?lp.last:0;
 }
@@ -6236,7 +6265,7 @@ function renderFX(){
     }
     // TNA = (100 / (pxDL / pxUSD) - 1) * 365 / days
     const tna=(100/(px/spot)-1)*365/days*100;
-    dlRows+=`<tr>
+    dlRows+=`<tr class="fxc-row-clickable" onclick="openFxCalculator('dl','${b.id}')">
       <td class="tk" style="color:${b.color}">${b.ticker}</td>
       <td class="num">${px.toFixed(2)}</td>
       <td class="num">${spot.toFixed(2)}</td>
@@ -6262,7 +6291,7 @@ function renderFX(){
     }
     // TNA = (pxFuturo / pxSpot - 1) * 365 / days
     const tna=(px/spot-1)*365/days*100;
-    futRows+=`<tr>
+    futRows+=`<tr class="fxc-row-clickable" onclick="openFxCalculator('fut','${f.id}')">
       <td class="tk" style="color:${f.color}">${f.ticker.replace("DLR/","")}</td>
       <td class="num">${px.toFixed(2)}</td>
       <td class="num">${spot.toFixed(2)}</td>
@@ -6273,24 +6302,273 @@ function renderFX(){
   });
   futBody.innerHTML=futRows||'<tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin precios futuros</td></tr>';
 
-  // Combined chart
-  const allPts=[...dlPoints,...futPoints].filter(p=>isFinite(p.y)&&p.x>0);
-  if(allPts.length>=1){
-    const maxX=Math.max(...allPts.map(p=>p.x))*1.1;
-    drawFxCurveChart("fxCurveChart",allPts,maxX);
+  // DL curve chart
+  const dlPtsValid=dlPoints.filter(p=>isFinite(p.y)&&p.x>0);
+  if(dlPtsValid.length>=1){
+    const maxX=Math.max(...dlPtsValid.map(p=>p.x))*1.1;
+    drawFxCurveChart("fxDLCurveChart",dlPtsValid,maxX);
   }
 
-  // Legend
-  const leg=document.getElementById("fxCurveLegend");
-  if(leg){
-    let html='<span><span class="ldot" style="background:#22d3ee"></span>Dollar Linked</span>';
-    html+='<span><span class="ldot" style="background:#f97316"></span>Futuros ROFEX</span>';
-    leg.innerHTML=html;
+  // Futures curve chart
+  const futPtsValid=futPoints.filter(p=>isFinite(p.y)&&p.x>0);
+  if(futPtsValid.length>=1){
+    const maxX=Math.max(...futPtsValid.map(p=>p.x))*1.1;
+    drawFxCurveChart("fxFutCurveChart",futPtsValid,maxX);
   }
 
   // Intraday charts (SPOT 10-15, MEP 10-17)
   drawIntradayChart("fxSpotIntradayChart",_intradaySpot,"DLR/SPOT","#2db8a8",15);
   drawIntradayChart("fxMepIntradayChart",_intradayMep,"MEP","#4da6ff",17);
+}
+
+// ═══ FX CALCULATOR MODAL ═════════════════════════════════════════
+function openFxCalculator(type, id){
+  document.getElementById('fxCalcModal')?.remove();
+
+  const today=new Date(); today.setHours(0,0,0,0);
+  const sd=document.getElementById("settleDate").value;
+  const settle=sd?new Date(sd+"T00:00:00"):ABD(today,1);
+
+  let item;
+  if(type==='dl') item=DL_BONDS.find(b=>b.id===id);
+  else item=ROFEX_FUTURES.find(f=>f.id===id);
+  if(!item) return;
+
+  const color=item.color;
+  const ticker=item.ticker;
+  const name=item.name;
+  const endDate=type==='dl'?new Date(item.mat+"T00:00:00"):new Date(item.exp+"T00:00:00");
+  const days=type==='dl'?DB(settle,endDate):DB(today,endDate);
+
+  const lp=_livePrices[ticker]||{};
+  const livePx=lp.last||0;
+  const spot=getFxSpot();
+  const isSpotOverride=_fxSpotOverride!==null;
+
+  let initTna=0;
+  if(livePx&&spot&&days>0){
+    if(type==='dl') initTna=(100*spot/livePx-1)*365/days*100;
+    else initTna=(livePx/spot-1)*365/days*100;
+  }
+  let initPxDL=0;
+  if(livePx&&spot){
+    if(type==='dl') initPxDL=livePx/spot*100;
+    else initPxDL=(livePx/spot-1)*100;
+  }
+
+  const typeLabel=type==='dl'?'Dollar Linked':'Futuro ROFEX';
+  const endLabel=type==='dl'?`Vto: ${item.mat}`:`Exp: ${item.exp}`;
+  const settleLabel=type==='dl'?`T+1 | ${DS(settle)}`:'T+0';
+  const pxLabel=type==='dl'?'PX / DL  (% VN)':'PX Futuro  (ARS/USD)';
+  const tnaColor=type==='dl'?'#22d3ee':'#f97316';
+  const pxDLLabel=type==='dl'?'Paridad USD (% VN)':'Devaluación implícita';
+
+  const overlay=document.createElement('div');
+  overlay.id='fxCalcModal';
+  overlay.className='fxc-overlay';
+  overlay.innerHTML=`
+    <div class="fxc-modal" onclick="event.stopPropagation()">
+      <div class="fxc-header">
+        <div>
+          <div class="bc-title" style="color:${color}">${ticker}
+            <span style="font-size:11px;color:var(--td);font-weight:400">${name}</span>
+          </div>
+          <div class="bc-sub">${typeLabel} · ${endLabel} · Días: <strong style="color:var(--t)">${days>0?days:'vencido'}</strong> · ${settleLabel}</div>
+        </div>
+        <button class="bc-close" onclick="document.getElementById('fxCalcModal')?.remove()">&times;</button>
+      </div>
+      <div class="fxc-body">
+
+        <!-- Row 1: PX + SPOT -->
+        <div class="fxc-inputs">
+          <div class="ig">
+            <label>${pxLabel}</label>
+            <input type="number" id="fxci-px" step="0.01"
+              value="${livePx?livePx.toFixed(2):''}" placeholder="Precio"
+              style="font-size:15px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right">
+          </div>
+          <div class="ig">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <label style="margin:0;flex:1">DLR SPOT  (ARS/USD)</label>
+              <span id="fxci-spot-badge" class="fxc-badge ${isSpotOverride?'fxc-badge-manual':'fxc-badge-live'}">${isSpotOverride?'MANUAL':'LIVE'}</span>
+              <button id="fxci-spot-reset" class="fxc-reset-btn" onclick="window._fxcResetSpot()"
+                style="${isSpotOverride?'':'display:none'}">↺ Live</button>
+            </div>
+            <input type="number" id="fxci-spot" step="0.01"
+              value="${spot?spot.toFixed(2):''}" placeholder="Spot ARS/USD"
+              style="font-size:15px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right">
+          </div>
+        </div>
+
+        <!-- Row 2: TNA (editable) -->
+        <div class="fxc-inputs">
+          <div class="ig">
+            <label>TNA implícita  (% anual) — editable</label>
+            <input type="number" id="fxci-tna" step="0.01"
+              value="${initTna?initTna.toFixed(4):''}" placeholder="TNA %"
+              style="font-size:15px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right;color:${tnaColor}">
+          </div>
+          <div style="display:flex;align-items:flex-end;padding-bottom:4px">
+            <span style="font-size:9px;color:var(--td);line-height:1.5">
+              Editá TNA para calcular<br>PX Teórico ↓
+            </span>
+          </div>
+        </div>
+
+        <!-- KPI outputs -->
+        <div class="fxc-kpis">
+          <div class="fxc-kpi">
+            <div class="bv" id="fxck-pxteo" style="color:${color}">${livePx?livePx.toFixed(2):'—'}</div>
+            <div class="bl">${type==='dl'?'PX Teórico (% VN)':'PX Teórico (ARS/USD)'}</div>
+          </div>
+          <div class="fxc-kpi">
+            <div class="bv" id="fxck-pxdl" style="color:${tnaColor}">${initPxDL?initPxDL.toFixed(2)+'%':'—'}</div>
+            <div class="bl">${pxDLLabel}</div>
+          </div>
+        </div>
+
+        <!-- Live market prices strip -->
+        <div class="bc-prices">
+          <span>BID: <strong style="color:var(--t)">${lp.bid||'—'}</strong></span>
+          <span>LAST: <strong style="color:var(--acl)">${lp.last||'—'}</strong></span>
+          <span>OFFER: <strong style="color:var(--t)">${lp.ask||'—'}</strong></span>
+          <span>Cierre: <strong style="color:var(--t)">${lp.close||'—'}</strong></span>
+          ${lp.bid?`<span style="cursor:pointer;color:var(--acl)" onclick="_fxcSetPx(${lp.bid})">usar BID</span>`:''}
+          ${lp.last?`<span style="cursor:pointer;color:var(--acl)" onclick="_fxcSetPx(${lp.last})">usar LAST</span>`:''}
+          ${lp.ask?`<span style="cursor:pointer;color:var(--acl)" onclick="_fxcSetPx(${lp.ask})">usar OFFER</span>`:''}
+        </div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+
+  // Store context for live sync
+  _fxCalcCtx={type, id, ticker, days};
+
+  // ── Recalc logic ──────────────────────────────────────────────
+  function _fxcRecalc(source){
+    if(_fxCalcUpdating) return;
+    _fxCalcUpdating=true;
+    try{
+      const pxIn=parseFloat(document.getElementById('fxci-px').value)||0;
+      const spotIn=parseFloat(document.getElementById('fxci-spot').value)||0;
+      const tnaIn=parseFloat(document.getElementById('fxci-tna').value)||0;
+      if(!spotIn||days<=0){ _fxCalcUpdating=false; return; }
+
+      if(source==='tna'){
+        // TNA → back-calculate PX Teórico
+        let pxTeo=0;
+        if(type==='dl') pxTeo=100*spotIn/(1+tnaIn*days/36500);
+        else pxTeo=spotIn*(1+tnaIn*days/36500);
+        document.getElementById('fxck-pxteo').textContent=pxTeo?pxTeo.toFixed(2):'—';
+        let pxDLCalc=0;
+        if(pxTeo&&spotIn){
+          if(type==='dl') pxDLCalc=pxTeo/spotIn*100;
+          else pxDLCalc=(pxTeo/spotIn-1)*100;
+        }
+        document.getElementById('fxck-pxdl').textContent=pxDLCalc?pxDLCalc.toFixed(2)+'%':'—';
+      } else {
+        // PX or SPOT → derive TNA
+        if(pxIn&&spotIn){
+          let tnaCalc=0;
+          if(type==='dl') tnaCalc=(100*spotIn/pxIn-1)*365/days*100;
+          else tnaCalc=(pxIn/spotIn-1)*365/days*100;
+          document.getElementById('fxci-tna').value=tnaCalc.toFixed(4);
+          document.getElementById('fxck-pxteo').textContent=pxIn.toFixed(2);
+          let pxDLCalc=0;
+          if(type==='dl') pxDLCalc=pxIn/spotIn*100;
+          else pxDLCalc=(pxIn/spotIn-1)*100;
+          document.getElementById('fxck-pxdl').textContent=pxDLCalc.toFixed(2)+'%';
+        }
+      }
+    } finally { _fxCalcUpdating=false; }
+  }
+
+  // ── Exposed helpers for inline onclick ────────────────────────
+  window._fxcSetPx=function(v){
+    const el=document.getElementById('fxci-px');
+    if(el){ el.value=v; el.dataset.manualPx=''; _fxcRecalc('px'); }
+  };
+  window._fxcResetSpot=function(){
+    _fxSpotOverride=null;
+    const badge=document.getElementById('fxci-spot-badge');
+    const btn=document.getElementById('fxci-spot-reset');
+    if(badge){ badge.className='fxc-badge fxc-badge-live'; badge.textContent='LIVE'; }
+    if(btn) btn.style.display='none';
+    const newSpot=getFxSpot();
+    const spotEl=document.getElementById('fxci-spot');
+    if(spotEl&&newSpot) spotEl.value=newSpot.toFixed(2);
+    _fxcRecalc('px');
+    renderFX();
+  };
+
+  // ── Event listeners ───────────────────────────────────────────
+  document.getElementById('fxci-px').addEventListener('input',()=>{
+    document.getElementById('fxci-px').dataset.manualPx='1';
+    _fxcRecalc('px');
+  });
+  document.getElementById('fxci-tna').addEventListener('input',()=>_fxcRecalc('tna'));
+  document.getElementById('fxci-spot').addEventListener('input',()=>{
+    const v=parseFloat(document.getElementById('fxci-spot').value)||0;
+    if(v>0){
+      _fxSpotOverride=v;
+      const badge=document.getElementById('fxci-spot-badge');
+      const btn=document.getElementById('fxci-spot-reset');
+      if(badge){ badge.className='fxc-badge fxc-badge-manual'; badge.textContent='MANUAL'; }
+      if(btn) btn.style.display='';
+      renderFX(); // propagate to all FX curves immediately
+    }
+    _fxcRecalc('px');
+  });
+
+  // ESC to close
+  const _fxcKey=e=>{ if(e.key==='Escape'){ document.getElementById('fxCalcModal')?.remove(); _fxCalcCtx=null; document.removeEventListener('keydown',_fxcKey); } };
+  document.addEventListener('keydown',_fxcKey);
+}
+
+// Called after each server price fetch to keep open modal in sync
+function syncFxCalcModal(){
+  if(!_fxCalcCtx) return;
+  const modal=document.getElementById('fxCalcModal');
+  if(!modal){ _fxCalcCtx=null; return; }
+
+  const lp=_livePrices[_fxCalcCtx.ticker];
+  const pxEl=document.getElementById('fxci-px');
+  const spotEl=document.getElementById('fxci-spot');
+  const tnaEl=document.getElementById('fxci-tna');
+  if(!pxEl||!spotEl||!tnaEl) return;
+
+  // Update PX from live unless user manually set it
+  if(lp&&lp.last&&!pxEl.dataset.manualPx){
+    pxEl.value=lp.last.toFixed(2);
+  }
+  // Update SPOT from live unless overridden
+  if(_fxSpotOverride===null){
+    const newSpot=getFxSpot();
+    if(newSpot) spotEl.value=newSpot.toFixed(2);
+  }
+
+  // Recalc TNA from current PX+SPOT (non-TNA source)
+  if(!_fxCalcUpdating){
+    _fxCalcUpdating=true;
+    try{
+      const pxIn=parseFloat(pxEl.value)||0;
+      const spotIn=parseFloat(spotEl.value)||0;
+      const {type,days}=_fxCalcCtx;
+      if(pxIn&&spotIn&&days>0){
+        let tna=0;
+        if(type==='dl') tna=(100*spotIn/pxIn-1)*365/days*100;
+        else tna=(pxIn/spotIn-1)*365/days*100;
+        tnaEl.value=tna.toFixed(4);
+        document.getElementById('fxck-pxteo').textContent=pxIn.toFixed(2);
+        let pxDL=0;
+        if(type==='dl') pxDL=pxIn/spotIn*100;
+        else pxDL=(pxIn/spotIn-1)*100;
+        document.getElementById('fxck-pxdl').textContent=pxDL.toFixed(2)+'%';
+      }
+    } finally { _fxCalcUpdating=false; }
+  }
 }
 
 function drawFxCurveChart(canvasId,points,maxX){
