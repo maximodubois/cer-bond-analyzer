@@ -433,6 +433,18 @@
         <tbody id="resumenTAMARBody"><tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin datos</td></tr></tbody>
       </table>
     </div>
+    <!-- DL Bonds -->
+    <div class="resumen-table-panel">
+      <div class="st" style="color:#22d3ee">Dollar Linked <span style="color:var(--td);font-weight:400;text-transform:none;letter-spacing:0">click → calc</span></div>
+      <table class="lt">
+        <thead><tr>
+          <th>Ticker</th><th class="num">Var%</th><th class="num">Px</th>
+          <th class="num" style="color:#22d3ee">TNA</th>
+          <th class="num">Días</th>
+        </tr></thead>
+        <tbody id="resumenDLBody"><tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin datos</td></tr></tbody>
+      </table>
+    </div>
   </div>
   <!-- Fila 2: Breakeven strip -->
   <div class="resumen-be-strip" id="resumenBEStripRow">
@@ -3164,6 +3176,33 @@ function renderResumen(){
       tamarBody.innerHTML=rows;
     }
   }
+  // DL Bonds
+  const dlBody=document.getElementById("resumenDLBody");
+  if(dlBody){
+    const today=new Date();today.setHours(0,0,0,0);
+    const spot=getFxSpot();
+    const spotClose=(_livePrices["DLR/SPOT"]||{}).close||0;
+    let rows="";
+    DL_BONDS.forEach(b=>{
+      const lp=_livePrices[b.ticker]||{};
+      const px=lp.last||0;
+      const matD=new Date(b.mat+"T00:00:00");
+      const days=DB(settle,matD);
+      if(days<=0){rows+=`<tr><td class="tk" style="color:${b.color}">${b.ticker}</td><td class="num" colspan="4" style="color:var(--tm)">vencido</td></tr>`;return;}
+      const tna=(px&&spot&&days>0)?(100*spot/px-1)*365/days*100:null;
+      // Var% vs cierre anterior
+      let varPct=null, varColor="var(--td)";
+      if(px&&lp.close&&lp.close>0){ varPct=(px/lp.close-1)*100; varColor=varPct>0?'var(--ac)':varPct<0?'var(--w)':'var(--td)'; }
+      rows+=`<tr class="fxc-row-clickable" onclick="openFxCalculator('dl','${b.id}')" title="Click para calculadora">
+        <td class="tk" style="color:${b.color}">${b.ticker}</td>
+        <td class="num" style="color:${varColor};font-weight:600">${varPct!=null?(varPct>0?'+':'')+varPct.toFixed(2)+'%':'—'}</td>
+        <td class="num">${px?px.toFixed(2):'—'}</td>
+        <td class="num" style="color:#22d3ee;font-weight:600">${tna!=null?tna.toFixed(2)+'%':'—'}</td>
+        <td class="num">${days}</td>
+      </tr>`;
+    });
+    dlBody.innerHTML=rows||'<tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin datos</td></tr>';
+  }
   renderResumenCurves();
   renderResumenBreakevenVertical();
 }
@@ -3323,7 +3362,8 @@ function renderVolume(){
   const allTickers=[
     ...BONDS.map(b=>({ticker:b.ticker,color:b.color,type:"CER"})),
     ...FIXED.map(f=>({ticker:f.ticker,color:f.color,type:f.type})),
-    ...TAMAR_BONDS.map(t=>({ticker:t.ticker,color:t.color,type:"TAMAR"}))
+    ...TAMAR_BONDS.map(t=>({ticker:t.ticker,color:t.color,type:"TAMAR"})),
+    ...DL_BONDS.map(d=>({ticker:d.ticker,color:d.color,type:"DL"}))
   ];
   const items=[];
   allTickers.forEach(a=>{
@@ -6405,18 +6445,49 @@ function renderFX(){
   });
   futBody.innerHTML=futRows||'<tr><td colspan="4" style="text-align:center;color:var(--tm);padding:10px">Sin precios futuros</td></tr>';
 
+  // ── Yesterday's close points (gray overlay) ──────────────────
+  const spotClose=(_livePrices["DLR/SPOT"]||{}).close||0;
+  const dlPointsPrev=[];
+  if(spotClose>0){
+    DL_BONDS.forEach(b=>{
+      const lp=_livePrices[b.ticker]||{};
+      const pxClose=lp.close||0;
+      if(!pxClose) return;
+      const matDate=new Date(b.mat+"T00:00:00");
+      const days=DB(settle,matDate);
+      if(days<=0) return;
+      const tnaPrev=(100*spotClose/pxClose-1)*365/days*100;
+      if(isFinite(tnaPrev)) dlPointsPrev.push({x:days,y:tnaPrev,label:b.ticker,color:'#475569'});
+    });
+  }
+  const futPointsPrev=[];
+  if(spotClose>0){
+    ROFEX_FUTURES.forEach(f=>{
+      const lp=_livePrices[f.ticker]||{};
+      const pxClose=lp.close||0;
+      if(!pxClose) return;
+      const expDate=new Date(f.exp+"T00:00:00");
+      const days=DB(today,expDate);
+      if(days<=0) return;
+      const tnaPrev=(pxClose/spotClose-1)*365/days*100;
+      if(isFinite(tnaPrev)) futPointsPrev.push({x:days,y:tnaPrev,label:f.ticker.replace("DLR/",""),color:'#475569'});
+    });
+  }
+
   // DL curve chart
   const dlPtsValid=dlPoints.filter(p=>isFinite(p.y)&&p.x>0);
-  if(dlPtsValid.length>=1){
-    const maxX=Math.max(...dlPtsValid.map(p=>p.x))*1.1;
-    drawFxCurveChart("fxDLCurveChart",dlPtsValid,maxX);
+  const allDLX=[...dlPtsValid,...dlPointsPrev].filter(p=>p.x>0);
+  if(dlPtsValid.length>=1||dlPointsPrev.length>=1){
+    const maxX=allDLX.length?Math.max(...allDLX.map(p=>p.x))*1.1:365;
+    drawFxCurveChart("fxDLCurveChart",dlPtsValid,maxX,dlPointsPrev,'#22d3ee');
   }
 
   // Futures curve chart
   const futPtsValid=futPoints.filter(p=>isFinite(p.y)&&p.x>0);
-  if(futPtsValid.length>=1){
-    const maxX=Math.max(...futPtsValid.map(p=>p.x))*1.1;
-    drawFxCurveChart("fxFutCurveChart",futPtsValid,maxX);
+  const allFutX=[...futPtsValid,...futPointsPrev].filter(p=>p.x>0);
+  if(futPtsValid.length>=1||futPointsPrev.length>=1){
+    const maxX=allFutX.length?Math.max(...allFutX.map(p=>p.x))*1.1:400;
+    drawFxCurveChart("fxFutCurveChart",futPtsValid,maxX,futPointsPrev,'#f97316');
   }
 
   // Intraday charts (SPOT 10-15, MEP 10-17)
@@ -6677,24 +6748,30 @@ function syncFxCalcModal(){
   }
 }
 
-function drawFxCurveChart(canvasId,points,maxX){
+function drawFxCurveChart(canvasId,points,maxX,prevPoints=[],seriesColor='#94a3b8'){
   const cv=document.getElementById(canvasId);
   if(!cv)return;
   const ct=cv.parentElement;
   const valid=points.filter(p=>p.x>0&&p.x<=maxX&&isFinite(p.y));
-  if(!valid.length){const c2=cv.getContext("2d");c2.clearRect(0,0,cv.width,cv.height);return;}
+  const validPrev=(prevPoints||[]).filter(p=>p.x>0&&p.x<=maxX&&isFinite(p.y));
+  if(!valid.length&&!validPrev.length){const c2=cv.getContext("2d");c2.clearRect(0,0,cv.width,cv.height);return;}
   const dpr=window.devicePixelRatio||1,W=ct.clientWidth,H=ct.clientHeight;
   cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+"px";cv.style.height=H+"px";
   const c=cv.getContext("2d");c.setTransform(dpr,0,0,dpr,0,0);
-  const pad={t:14,r:14,b:30,l:50},cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
+  const pad={t:20,r:70,b:30,l:50},cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
   const minX=0;
-  const ySpread=Math.max(...valid.map(p=>p.y))-Math.min(...valid.map(p=>p.y));
+
+  // Y range: include prev points and fitted curves in range
+  const allYs=[...valid.map(p=>p.y),...validPrev.map(p=>p.y)].filter(isFinite);
+  if(!allYs.length) return;
+  const ySpread=Math.max(...allYs)-Math.min(...allYs);
   const yPad=Math.max(ySpread*0.2,2);
-  const minY=Math.min(...valid.map(p=>p.y))-yPad;
-  const maxY=Math.max(...valid.map(p=>p.y))+yPad;
+  const minY=Math.min(...allYs)-yPad;
+  const maxY=Math.max(...allYs)+yPad;
   const xP=x=>pad.l+((x-minX)/(Math.max(1e-9,maxX-minX)))*cw;
   const yP=y=>pad.t+(1-(y-minY)/(Math.max(1e-9,maxY-minY)))*ch;
   c.clearRect(0,0,W,H);
+
   // Grid
   c.strokeStyle="#1a2233";c.lineWidth=0.5;
   for(let i=0;i<=5;i++){
@@ -6707,12 +6784,84 @@ function drawFxCurveChart(canvasId,points,maxX){
     c.beginPath();c.moveTo(px,pad.t);c.lineTo(px,H-pad.b);c.stroke();
     c.fillStyle="#475569";c.textAlign="center";c.font="8px 'IBM Plex Mono',monospace";c.fillText(Math.round(x)+"d",px,H-14);
   }
-  // Points
+
+  // ── Prev-day curve (gray) ─────────────────────────────────────
+  if(validPrev.length>=1){
+    const sorted=[...validPrev].sort((a,b)=>a.x-b.x);
+    // Connect prev points with dashed gray line
+    c.save();c.setLineDash([4,3]);c.strokeStyle="rgba(100,116,139,0.5)";c.lineWidth=1;
+    c.beginPath();
+    sorted.forEach((p,i)=>{
+      const px=xP(p.x),py=yP(p.y);
+      i===0?c.moveTo(px,py):c.lineTo(px,py);
+    });
+    c.stroke();c.restore();
+    // Gray dots
+    sorted.forEach(p=>{
+      const px=xP(p.x),py=yP(p.y);
+      c.beginPath();c.arc(px,py,4,0,Math.PI*2);
+      c.fillStyle="rgba(100,116,139,0.35)";c.fill();
+      c.strokeStyle="rgba(100,116,139,0.6)";c.lineWidth=1;c.stroke();
+    });
+  }
+
+  // ── Fit curves (log regression + NSS) on current points ──────
+  if(valid.length>=2){
+    const fitPts=valid.map(p=>({x:p.x,y:p.y}));
+    const logFit=logRegression(fitPts);
+    const nssFit=valid.length>=3?fitNSS(fitPts):null;
+    const steps=80;
+    const dx=(maxX-1)/steps;
+
+    // Log regression — dashed
+    if(logFit){
+      c.save();c.setLineDash([5,3]);c.strokeStyle=seriesColor+'99';c.lineWidth=1.5;
+      c.beginPath();let first=true;
+      for(let i=0;i<=steps;i++){
+        const x=1+i*dx;
+        const y=logFit.predict(x);
+        if(!isFinite(y)||y<minY-5||y>maxY+5){first=true;continue;}
+        const px=xP(x),py=yP(y);
+        first?(c.moveTo(px,py),first=false):c.lineTo(px,py);
+      }
+      c.stroke();c.restore();
+      // Label at right edge
+      const yEdge=logFit.predict(maxX);
+      if(isFinite(yEdge)&&yEdge>=minY&&yEdge<=maxY){
+        c.fillStyle=seriesColor+'aa';c.font="7px 'IBM Plex Mono',monospace";c.textAlign="left";
+        c.fillText("LOG",W-pad.r+3,yP(yEdge)+3);
+      }
+    }
+
+    // NSS — solid
+    if(nssFit){
+      c.save();c.setLineDash([]);c.strokeStyle=seriesColor+'cc';c.lineWidth=1.8;
+      c.beginPath();let first=true;
+      for(let i=0;i<=steps;i++){
+        const x=Math.max(1,1+i*dx);
+        const y=nssFit.predict(x);
+        if(!isFinite(y)||y<minY-5||y>maxY+5){first=true;continue;}
+        const px=xP(x),py=yP(y);
+        first?(c.moveTo(px,py),first=false):c.lineTo(px,py);
+      }
+      c.stroke();c.restore();
+      const yEdge=nssFit.predict(maxX);
+      if(isFinite(yEdge)&&yEdge>=minY&&yEdge<=maxY){
+        c.fillStyle=seriesColor;c.font="7px 'IBM Plex Mono',monospace";c.textAlign="left";
+        c.fillText("NSS",W-pad.r+3,yP(yEdge)+3);
+      }
+    }
+  }
+
+  // ── Current points ────────────────────────────────────────────
   valid.forEach(p=>{
     const px=xP(p.x),py=yP(p.y);
-    c.beginPath();c.arc(px,py,5,0,Math.PI*2);c.fillStyle=p.color;c.fill();c.strokeStyle="#080c14";c.lineWidth=1.2;c.stroke();
-    c.fillStyle=p.color;c.font="bold 8px 'IBM Plex Mono',monospace";c.textAlign="center";c.fillText(p.label,px,py-10);
-    c.fillStyle="#94a3b8";c.font="8px 'IBM Plex Mono',monospace";c.fillText(p.y.toFixed(1)+"%",px,py+16);
+    c.beginPath();c.arc(px,py,5,0,Math.PI*2);c.fillStyle=p.color;c.fill();
+    c.strokeStyle="#080c14";c.lineWidth=1.2;c.stroke();
+    c.fillStyle=p.color;c.font="bold 8px 'IBM Plex Mono',monospace";c.textAlign="center";
+    c.fillText(p.label,px,py-10);
+    c.fillStyle="#94a3b8";c.font="8px 'IBM Plex Mono',monospace";
+    c.fillText(p.y.toFixed(1)+"%",px,py+16);
   });
 }
 
