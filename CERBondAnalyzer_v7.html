@@ -275,8 +275,20 @@
     <h1>Dashboard</h1>
     <div class="sub">CER · LECAP · BONCAP — Análisis Quant</div>
   </div>
-  <div style="font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace;text-align:right">
-    <span id="headerClock" style="color:var(--acl)"></span>
+  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:flex-end">
+    <div style="display:flex;gap:12px;align-items:center">
+      <div style="font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace;text-align:right">
+        <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-bottom:1px">SPOT</div>
+        <span id="hdrSpotPrice" style="font-size:13px;font-weight:700;color:var(--acl)">—</span>
+      </div>
+      <div style="font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace;text-align:right">
+        <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-bottom:1px">MEP</div>
+        <span id="hdrMepPrice" style="font-size:13px;font-weight:700;color:#4da6ff">—</span>
+      </div>
+    </div>
+    <div style="font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace;text-align:right">
+      <span id="headerClock" style="color:var(--acl)"></span>
+    </div>
   </div>
 </div>
 
@@ -3974,6 +3986,11 @@ async function fetchPricesFromServer(){
     }
     const ts=new Date().toLocaleTimeString("es-AR");
     log.innerHTML=`<span class="api-ok">✓ ${updated} precios · ${ts}</span>`;
+    // Always update header FX chips regardless of active tab
+    const _hs=document.getElementById("hdrSpotPrice");
+    const _hm=document.getElementById("hdrMepPrice");
+    if(_hs){ const sv=getFxSpot(); _hs.textContent=sv?sv.toFixed(2):"—"; }
+    if(_hm){ const mv=getFxMep(); _hm.textContent=mv?mv.toFixed(2):"—"; }
     syncFxCalcModal();
   }catch(e){
     const ts=new Date().toLocaleTimeString("es-AR");
@@ -6246,9 +6263,13 @@ function renderFX(){
   const sd=document.getElementById("settleDate").value;
   const settle=sd?new Date(sd+"T00:00:00"):ABD(today,1);
 
-  // Top prices
+  // Top prices (FX tab card + persistent header)
   document.getElementById("fxSpotPrice").textContent=spot?("$ "+spot.toFixed(2)):"—";
   document.getElementById("fxMepPrice").textContent=mep?("$ "+mep.toFixed(2)):"—";
+  const hdrSpot=document.getElementById("hdrSpotPrice");
+  const hdrMep=document.getElementById("hdrMepPrice");
+  if(hdrSpot) hdrSpot.textContent=spot?spot.toFixed(2):"—";
+  if(hdrMep) hdrMep.textContent=mep?mep.toFixed(2):"—";
 
   // DL Bonds table
   const dlBody=document.getElementById("fxDLBody");
@@ -6259,8 +6280,15 @@ function renderFX(){
     const px=lp&&lp.last?lp.last:0;
     const matDate=new Date(b.mat+"T00:00:00");
     const days=DB(settle,matDate);
-    if(days<=0||!px||!spot) {
-      dlRows+=`<tr><td class="tk" style="color:${b.color}">${b.ticker}</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">${days>0?days:'vencido'}</td></tr>`;
+    if(days<=0){
+      dlRows+=`<tr><td class="tk" style="color:${b.color}">${b.ticker}</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">vencido</td></tr>`;
+      return;
+    }
+    if(!px||!spot){
+      dlRows+=`<tr class="fxc-row-clickable" onclick="openFxCalculator('dl','${b.id}')">
+        <td class="tk" style="color:${b.color}">${b.ticker}</td><td class="num">—</td>
+        <td class="num">—</td><td class="num">—</td><td class="num">${days}</td>
+      </tr>`;
       return;
     }
     // TNA = (100 / (pxDL / pxUSD) - 1) * 365 / days
@@ -6285,8 +6313,15 @@ function renderFX(){
     const px=lp&&lp.last?lp.last:0;
     const expDate=new Date(f.exp+"T00:00:00");
     const days=DB(today,expDate); // T+0 para futuros
-    if(days<=0||!px||!spot){
-      futRows+=`<tr><td class="tk" style="color:${f.color}">${f.ticker.replace("DLR/","")}</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">${days>0?days:'vencido'}</td></tr>`;
+    if(days<=0){
+      futRows+=`<tr><td class="tk" style="color:${f.color}">${f.ticker.replace("DLR/","")}</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">vencido</td></tr>`;
+      return;
+    }
+    if(!px||!spot){
+      futRows+=`<tr class="fxc-row-clickable" onclick="openFxCalculator('fut','${f.id}')">
+        <td class="tk" style="color:${f.color}">${f.ticker.replace("DLR/","")}</td>
+        <td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">${days}</td>
+      </tr>`;
       return;
     }
     // TNA = (pxFuturo / pxSpot - 1) * 365 / days
