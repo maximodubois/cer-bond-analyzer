@@ -937,13 +937,20 @@
     </table>
   </div>
 
-  <!-- Combined Chart: DL + Futures -->
-  <div class="card">
-    <div class="st">Curva TNA — Dollar Linked + Futuros ROFEX</div>
-    <div class="chart-c" id="fxCurveContainer" style="height:260px">
-      <canvas id="fxCurveChart"></canvas>
+  <!-- Charts: DL and Futures separate -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div class="card">
+      <div class="st" style="color:#22d3ee">Curva TNA — Dollar Linked</div>
+      <div class="chart-c" id="fxDLCurveContainer" style="height:240px">
+        <canvas id="fxDLCurveChart"></canvas>
+      </div>
     </div>
-    <div class="legend" id="fxCurveLegend"></div>
+    <div class="card">
+      <div class="st" style="color:#f97316">Curva TNA — Futuros ROFEX</div>
+      <div class="chart-c" id="fxFutCurveContainer" style="height:240px">
+        <canvas id="fxFutCurveChart"></canvas>
+      </div>
+    </div>
   </div>
 
   <!-- Intraday Charts -->
@@ -6295,19 +6302,18 @@ function renderFX(){
   });
   futBody.innerHTML=futRows||'<tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin precios futuros</td></tr>';
 
-  // Combined chart
-  const allPts=[...dlPoints,...futPoints].filter(p=>isFinite(p.y)&&p.x>0);
-  if(allPts.length>=1){
-    const maxX=Math.max(...allPts.map(p=>p.x))*1.1;
-    drawFxCurveChart("fxCurveChart",allPts,maxX);
+  // DL curve chart
+  const dlPtsValid=dlPoints.filter(p=>isFinite(p.y)&&p.x>0);
+  if(dlPtsValid.length>=1){
+    const maxX=Math.max(...dlPtsValid.map(p=>p.x))*1.1;
+    drawFxCurveChart("fxDLCurveChart",dlPtsValid,maxX);
   }
 
-  // Legend
-  const leg=document.getElementById("fxCurveLegend");
-  if(leg){
-    let html='<span><span class="ldot" style="background:#22d3ee"></span>Dollar Linked</span>';
-    html+='<span><span class="ldot" style="background:#f97316"></span>Futuros ROFEX</span>';
-    leg.innerHTML=html;
+  // Futures curve chart
+  const futPtsValid=futPoints.filter(p=>isFinite(p.y)&&p.x>0);
+  if(futPtsValid.length>=1){
+    const maxX=Math.max(...futPtsValid.map(p=>p.x))*1.1;
+    drawFxCurveChart("fxFutCurveChart",futPtsValid,maxX);
   }
 
   // Intraday charts (SPOT 10-15, MEP 10-17)
