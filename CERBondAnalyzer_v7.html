@@ -996,7 +996,7 @@
   <!-- SYNTHETICS: DL vs Futuro, Spot vs Futuro -->
   <div class="card">
     <div class="st" style="color:#c084fc">Sintéticos FX — Arbitraje DL / Futuros / Spot</div>
-    <div class="note" style="margin-bottom:10px">Compará TNA de bonos DL contra futuros ROFEX a vencimientos similares. Spread > 0 → conviene Long DL / Short Futuro (carry del DL supera al devaluatorio del futuro).</div>
+    <div class="note" style="margin-bottom:10px">Retorno Directo = Px Futuro / Px DL − 1. El precio del bono DL es el FX implícito hoy; el precio del futuro es el FX implícito al vencimiento. TNA = Retorno × 365/días. Hacé click en una fila para ver el detalle.</div>
 
     <!-- Strategy selector -->
     <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
@@ -1019,6 +1019,7 @@
         <button class="btn-api" onclick="calcFxSynthetic()">Calcular</button>
       </div>
       <div id="fxSynthDLFResult" style="margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.8">Seleccioná DL y futuro para ver el spread</div>
+      <div id="fxSynthDLFSingle" style="font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.8"></div>
     </div>
 
     <!-- Spot vs Futuro (Cash & Carry) -->
@@ -7018,59 +7019,103 @@ function calcFxSynthetic(){
   const today=new Date();today.setHours(0,0,0,0);
   const sd=document.getElementById("settleDate").value;
   const settle=sd?new Date(sd+"T00:00:00"):ABD(today,1);
-  const spot=getFxSpot();
+
+  // Retorno Directo = futPx/dlPx − 1
+  // Px DL = FX implícito hoy; Px Futuro = FX implícito al vencimiento
+  // TNA = Retorno × 365/días ; TIR = (1+Retorno)^(365/días) − 1
+  const tableRows=[];
+  DL_BONDS.forEach(b=>{
+    const dlLp=_livePrices[b.ticker]||{};
+    const dlPx=dlLp.last||0;
+    const bondMat=new Date(b.mat+"T00:00:00");
+    let bestFut=null,bestDiff=Infinity;
+    ROFEX_FUTURES.forEach(f=>{
+      const diff=Math.abs(new Date(f.exp+"T00:00:00")-bondMat);
+      if(diff<bestDiff){bestDiff=diff;bestFut=f;}
+    });
+    const futLp=bestFut?(_livePrices[bestFut.ticker]||{}):{};
+    const futPx=futLp.last||0;
+    const futExp=bestFut?new Date(bestFut.exp+"T00:00:00"):null;
+    const futDays=futExp?DB(settle,futExp):0;
+    const ret=(dlPx&&futPx&&futDays>0)?(futPx/dlPx-1):null;
+    const tna=ret!==null?ret*365/futDays*100:null;
+    const tir=ret!==null?(Math.pow(1+ret,365/futDays)-1)*100:null;
+    tableRows.push({b,dlPx,futPx,futDays,ret,tna,tir,fut:bestFut,futExp});
+  });
+
+  const na='<span style="color:var(--td)">N/A</span>';
+  let tableHtml='<table class="lt" style="width:100%;margin-bottom:14px"><thead><tr>';
+  tableHtml+='<th>Ticker</th><th class="num">Liq Spot</th><th class="num">Liq Fut</th>';
+  tableHtml+='<th class="num">Días</th><th class="num">Px Fut</th><th class="num">Px DL</th>';
+  tableHtml+='<th class="num">Retorno</th><th class="num" style="color:#22d3ee">TNA</th><th class="num">TIR</th>';
+  tableHtml+='</tr></thead><tbody>';
+  tableRows.forEach(r=>{
+    const fmtPx=v=>v?v.toFixed(2):na;
+    const fmtRet=v=>v!==null?`<span style="color:${v>0?'var(--ac)':'var(--w)'}">${(v*100).toFixed(2)}%</span>`:na;
+    const fmtTna=v=>v!==null?`<span style="color:${v>0?'#22d3ee':'var(--w)'}"><b>${v.toFixed(2)}%</b></span>`:na;
+    const fmtTir=v=>v!==null?`<span style="color:var(--td)">${v.toFixed(2)}%</span>`:na;
+    tableHtml+=`<tr class="fxc-row-clickable" onclick="document.getElementById('fxSynthDL').value='${r.b.id}';${r.fut?`document.getElementById('fxSynthFut').value='${r.fut.id}';`:''}calcFxSyntheticSingle()">`;
+    tableHtml+=`<td style="color:#22d3ee"><b>${r.b.ticker}</b></td>`;
+    tableHtml+=`<td class="num" style="color:var(--td)">${settle.toLocaleDateString('es-AR')}</td>`;
+    tableHtml+=`<td class="num" style="color:var(--td)">${r.futExp?r.futExp.toLocaleDateString('es-AR'):na}</td>`;
+    tableHtml+=`<td class="num">${r.futDays>0?r.futDays:na}</td>`;
+    tableHtml+=`<td class="num">${fmtPx(r.futPx)}</td>`;
+    tableHtml+=`<td class="num">${fmtPx(r.dlPx)}</td>`;
+    tableHtml+=`<td class="num">${fmtRet(r.ret)}</td>`;
+    tableHtml+=`<td class="num">${fmtTna(r.tna)}</td>`;
+    tableHtml+=`<td class="num">${fmtTir(r.tir)}</td>`;
+    tableHtml+='</tr>';
+  });
+  tableHtml+='</tbody></table>';
+  el.innerHTML=tableHtml;
+  calcFxSyntheticSingle();
+}
+
+function calcFxSyntheticSingle(){
+  const el=document.getElementById("fxSynthDLFSingle");
+  if(!el) return;
+  const today=new Date();today.setHours(0,0,0,0);
+  const sd=document.getElementById("settleDate").value;
+  const settle=sd?new Date(sd+"T00:00:00"):ABD(today,1);
 
   const dlId=document.getElementById("fxSynthDL").value;
   const futId=document.getElementById("fxSynthFut").value;
   const tasaPesos=parseFloat(document.getElementById("fxSynthTasaPesos").value)||0;
-
   const dlBond=DL_BONDS.find(b=>b.id===dlId);
   const fut=ROFEX_FUTURES.find(f=>f.id===futId);
-  if(!dlBond||!fut||!spot){el.textContent="Faltan datos";return;}
+  if(!dlBond||!fut){el.textContent="";return;}
 
   const dlLp=_livePrices[dlBond.ticker]||{};
   const futLp=_livePrices[fut.ticker]||{};
   const dlPx=dlLp.last||0;
   const futPx=futLp.last||0;
-  if(!dlPx||!futPx){el.textContent="Sin precios live para DL o futuro";return;}
+  const futDays=DB(settle,new Date(fut.exp+"T00:00:00"));
 
-  const dlDays=DB(settle,new Date(dlBond.mat+"T00:00:00"));
-  const futDays=DB(today,new Date(fut.exp+"T00:00:00"));
+  if(!dlPx||!futPx||futDays<=0){el.innerHTML='<div style="color:var(--td);font-size:11px">Sin precios live o futuro vencido</div>';return;}
 
-  // TNAs
-  const dlTna=(100*spot/dlPx-1)*365/dlDays*100;
-  const futTna=(futPx/spot-1)*365/futDays*100;
-  const spread=dlTna-futTna;
-  const devalPct=(futPx/spot-1)*100;
+  const ret=futPx/dlPx-1;
+  const tna=ret*365/futDays*100;
+  const tir=(Math.pow(1+ret,365/futDays)-1)*100;
+  const spread=tna-tasaPesos;
+  const col=ret>0?'var(--ac)':'var(--w)';
 
-  // vs tasa pesos
-  const spreadVsPesos=tasaPesos-futTna;
-
-  let html=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:12px">`;
-  html+=`<div class="metric"><div class="ms" style="color:#22d3ee">TNA ${dlTna.toFixed(2)}%</div><div class="ml">${dlBond.ticker} (DL, ${dlDays}d)</div></div>`;
-  html+=`<div class="metric"><div class="ms" style="color:#f97316">TNA ${futTna.toFixed(2)}%</div><div class="ml">${fut.ticker.replace("DLR/","")} (Fut, ${futDays}d)</div></div>`;
-  html+=`<div class="metric"><div class="mv" style="color:${spread>0?'var(--ac)':'var(--w)'};font-size:16px">${spread>0?'+':''}${spread.toFixed(2)}%</div><div class="ml">Spread DL − Futuro</div></div>`;
-  html+=`<div class="metric"><div class="ms" style="color:var(--bl)">Devalúa ${devalPct.toFixed(2)}%</div><div class="ml">Implícita futuro (${futDays}d)</div></div>`;
-  if(tasaPesos) html+=`<div class="metric"><div class="mv" style="color:${spreadVsPesos>0?'var(--ac)':'var(--w)'};font-size:14px">${spreadVsPesos>0?'+':''}${spreadVsPesos.toFixed(2)}%</div><div class="ml">Tasa pesos − Futuro</div></div>`;
+  let html=`<div class="st" style="color:var(--td);font-size:11px;margin:10px 0 6px">${dlBond.ticker} vs ${fut.ticker.replace("DLR/","")}</div>`;
+  html+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:10px">`;
+  html+=`<div class="metric"><div class="ms" style="color:#22d3ee">${dlPx.toFixed(2)}</div><div class="ml">Precio DL — FX hoy implícito</div></div>`;
+  html+=`<div class="metric"><div class="ms" style="color:#f97316">${futPx.toFixed(2)}</div><div class="ml">Precio Futuro — FX al vto</div></div>`;
+  html+=`<div class="metric"><div class="ms" style="color:${ret>0?'var(--ac)':'var(--w)'}">${(ret*100).toFixed(2)}%</div><div class="ml">Retorno directo (${futDays}d)</div></div>`;
+  html+=`<div class="metric"><div class="mv" style="color:#22d3ee;font-size:16px"><b>${tna.toFixed(2)}%</b></div><div class="ml">TNA sintético</div></div>`;
+  html+=`<div class="metric"><div class="ms" style="color:var(--td)">${tir.toFixed(2)}%</div><div class="ml">TIR (TEA)</div></div>`;
+  if(tasaPesos) html+=`<div class="metric"><div class="mv" style="color:${spread>0?'var(--ac)':'var(--w)'};font-size:16px">${spread>0?'+':''}${spread.toFixed(2)}%</div><div class="ml">Spread vs Pesos</div></div>`;
   html+=`</div>`;
-
-  if(spread>0){
-    html+=`<div class="beb" style="border-left:3px solid var(--ac);padding:10px">`;
-    html+=`<div style="color:var(--ac);font-weight:700;font-size:12px">LONG DL / SHORT FUTURO</div>`;
-    html+=`<div style="font-size:10px;color:var(--td);margin-top:4px;line-height:1.6">`;
-    html+=`1. Comprar ${dlBond.ticker} a $${dlPx.toFixed(2)} (TNA ${dlTna.toFixed(2)}%)<br>`;
-    html+=`2. Vender ${fut.ticker} a $${futPx.toFixed(2)} (TNA impl ${futTna.toFixed(2)}%)<br>`;
-    html+=`<b style="color:var(--ac)">Carry neto: +${spread.toFixed(2)}% TNA — DL rinde más que la devaluación del futuro</b>`;
-    html+=`</div></div>`;
-  } else {
-    html+=`<div class="beb" style="border-left:3px solid var(--w);padding:10px">`;
-    html+=`<div style="color:var(--w);font-weight:700;font-size:12px">SHORT DL / LONG FUTURO</div>`;
-    html+=`<div style="font-size:10px;color:var(--td);margin-top:4px;line-height:1.6">`;
-    html+=`1. Vender ${dlBond.ticker} a $${dlPx.toFixed(2)} (TNA ${dlTna.toFixed(2)}%)<br>`;
-    html+=`2. Comprar ${fut.ticker} a $${futPx.toFixed(2)} (TNA impl ${futTna.toFixed(2)}%)<br>`;
-    html+=`<b style="color:var(--w)">Futuro rinde más: ${Math.abs(spread).toFixed(2)}% TNA de diferencia</b>`;
-    html+=`</div></div>`;
-  }
+  html+=`<div class="beb" style="border-left:3px solid ${col};padding:10px">`;
+  html+=`<div style="color:${col};font-weight:700;font-size:12px">${ret>0?'LONG DL / SHORT FUTURO':'FUTURO > DL'}</div>`;
+  html+=`<div style="font-size:10px;color:var(--td);margin-top:4px;line-height:1.7">`;
+  html+=`1. Comprar ${dlBond.ticker} a $${dlPx.toFixed(2)} (FX implícito hoy)<br>`;
+  html+=`2. Vender ${fut.ticker} a $${futPx.toFixed(2)} (FX implícito a ${futDays}d)<br>`;
+  html+=`<b style="color:${col}">Retorno: ${(ret*100).toFixed(2)}% en ${futDays}d → TNA ${tna.toFixed(2)}% / TIR ${tir.toFixed(2)}%</b>`;
+  if(tasaPesos) html+=`<br><span style="color:${spread>0?'var(--ac)':'var(--w)'}">vs Pesos (${tasaPesos}% TNA): spread ${spread>0?'+':''}${spread.toFixed(2)}%</span>`;
+  html+=`</div></div>`;
   el.innerHTML=html;
 }
 
