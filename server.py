@@ -158,7 +158,9 @@ def fetch_prices():
             is_24hs = "24hs" in lower_inst or "24 hs" in lower_inst
             is_ci = (not is_24hs) and (" ci " in (" " + lower_inst + " ") or "- ci -" in lower_inst or "- ci" == lower_inst[-4:] or " ci-" in lower_inst)
             is_dlr = "dlr" in lower_inst
-            if not (is_24hs or is_ci or is_dlr):
+            # Naked tickers (no " - " separator) — DL bonds, futures, etc.
+            is_naked = " - " not in inst
+            if not (is_24hs or is_ci or is_dlr or is_naked):
                 continue
             parts = [p.strip() for p in inst.split(" - ")]
             ticker = parts[2] if len(parts) >= 3 else parts[0] if parts else ""
@@ -181,6 +183,12 @@ def fetch_prices():
             ask_size = parse_num(row[5])
             close = parse_num(row[6])
             volume = parse_num(row[9])
+
+            # DLR/SPOT special layout: last price in column I (index 8)
+            if "dlr/spot" in lower_inst and len(row) > 8:
+                spot_last = parse_num(row[8])
+                if spot_last:
+                    last = spot_last
 
             if bid or ask or last or close:
                 mid = (bid + ask) / 2 if bid and ask else (last or bid or ask or close)
