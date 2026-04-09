@@ -154,12 +154,19 @@ def fetch_prices():
             inst = row[0].strip() if row[0] else ""
             if not inst:
                 continue
-            if "24hs" not in inst.lower() and "24 hs" not in inst.lower():
+            lower_inst = inst.lower()
+            is_24hs = "24hs" in lower_inst or "24 hs" in lower_inst
+            is_ci = (not is_24hs) and (" ci " in (" " + lower_inst + " ") or "- ci -" in lower_inst or "- ci" == lower_inst[-4:] or " ci-" in lower_inst)
+            is_dlr = "dlr" in lower_inst
+            if not (is_24hs or is_ci or is_dlr):
                 continue
             parts = [p.strip() for p in inst.split(" - ")]
             ticker = parts[2] if len(parts) >= 3 else parts[0] if parts else ""
             if not ticker:
                 continue
+            # CI instruments: suffix ticker to differentiate from 24hs
+            if is_ci and not is_dlr:
+                ticker = ticker + " CI"
 
             def parse_num(val):
                 try:
