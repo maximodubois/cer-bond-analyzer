@@ -9,16 +9,17 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
   :root{
-    --bg:#07090e;--card:#0d1219;--cb:#18222e;--cbf:#1f2d3d;
-    --ac:#1D6D65;--acd:#1D6D6520;--acl:#2db8a8;--acll:#3dd5c3;
-    --w:#f07040;--wd:#f0704020;--bl:#4da6ff;--bld:#4da6ff20;
-    --am:#f07040;--amd:#f0704020;--fx:#9b7af0;--fxd:#9b7af020;
-    --t:#dde4ee;--td:#5a6a80;--tm:#3a4a5c;
-    --ib:#090d14;--ibr:#1c2838;
-    --pos:#2db8a8;--neg:#f07040;--grn:#E6F2DE;
-    --r:14px;--rs:8px;
-    --sh:0 2px 12px rgba(0,0,0,0.4),0 0 0 1px rgba(255,255,255,0.03);
-    --sh-lg:0 8px 32px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.04)
+    --bg:#0C0D12;--card:#131720;--cb:#1E2535;--cbf:#28334A;
+    --ac:#94A3B8;--acd:#E2E8F015;--acl:#E2E8F0;--acll:#F8FAFC;
+    --w:#F87171;--wd:#F8717120;--bl:#94A3B8;--bld:#94A3B820;
+    --am:#F87171;--amd:#F8717120;--fx:#A78BFA;--fxd:#A78BFA20;
+    --t:#F1F5F9;--td:#4A5568;--tm:#2D3A4A;
+    --ib:#0A0C14;--ibr:#1E2435;
+    --pos:#4ADE80;--neg:#F87171;--grn:#E6F2DE;
+    --fut:#FBBF24;--futd:#FBBF2420;
+    --r:10px;--rs:5px;
+    --sh:0 2px 16px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.04);
+    --sh-lg:0 8px 40px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.05)
   }
   *{margin:0;padding:0;box-sizing:border-box}
   ::-webkit-scrollbar{width:4px;height:4px}
@@ -28,20 +29,20 @@
   .hdr{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;margin-bottom:0;border-bottom:1px solid var(--cb)}
   .hdr h1{font-size:17px;font-weight:700;color:var(--acl);letter-spacing:-0.03em;font-family:'Inter',sans-serif}
   .hdr .sub{font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;margin-top:2px}
-  .card{background:var(--card);border:1px solid var(--cb);border-radius:var(--r);padding:16px 18px;margin-bottom:10px;box-shadow:var(--sh);transition:border-color 0.2s}
-  .card:hover{border-color:var(--cbf)}
-  .st{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--td);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .card{background:var(--card);border:1px solid rgba(255,255,255,0.07);border-radius:var(--r);padding:16px 18px;margin-bottom:10px;box-shadow:var(--sh);transition:border-color 0.2s}
+  .card:hover{border-color:rgba(255,255,255,0.13)}
+  .st{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-bottom:14px;display:flex;align-items:center;gap:8px;padding-left:9px;border-left:2px solid rgba(255,255,255,0.11)}
   .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
   .g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
   .ig{display:flex;flex-direction:column;gap:4px}
-  label{font-size:9px;font-weight:500;color:var(--td);text-transform:uppercase;letter-spacing:0.07em}
+  label{font-size:10px;font-weight:500;color:var(--td);text-transform:uppercase;letter-spacing:0.07em}
   input[type="number"],input[type="date"],input[type="text"],input[type="password"],select{background:var(--ib);border:1px solid var(--ibr);border-radius:var(--rs);padding:7px 10px;color:var(--t);font-size:12px;font-family:'IBM Plex Mono',monospace;outline:none;width:100%;transition:border-color 0.15s,box-shadow 0.15s}
   input:focus,select:focus{border-color:var(--acl);box-shadow:0 0 0 2px var(--acd)}
   .ii{text-align:right;padding:5px;font-size:11px}
   .ic{position:relative}.ic .p{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:9px;color:var(--tm);pointer-events:none}
   .il{font-size:8px;text-align:center;color:var(--td);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:1px}
-  .note{font-size:9px;color:var(--tm);margin-top:6px;line-height:1.5}
+  .note{font-size:10px;color:var(--tm);margin-top:6px;line-height:1.5}
   .tag{display:inline-block;font-size:8px;font-weight:600;padding:2px 6px;border-radius:4px;letter-spacing:0.04em;text-transform:uppercase}
   .mb{background:var(--bg);border-radius:var(--rs);padding:10px;margin-bottom:8px}
   .mv{font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace;letter-spacing:-0.02em}
@@ -61,7 +62,7 @@
   .live-badge{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--acl);margin-right:4px;animation:pulse 1.5s infinite}
   .live-badge.off{background:var(--w);animation:none}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
-  .px-live{background:var(--acd);border:1px solid rgba(45,184,168,0.3);border-radius:var(--rs);padding:7px 10px;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:var(--acl);min-width:100px;text-align:right;min-height:36px;display:flex;align-items:center;justify-content:flex-end}
+  .px-live{background:rgba(226,232,240,0.08);border:1px solid rgba(226,232,240,0.35);border-radius:var(--rs);padding:7px 10px;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:var(--acl);min-width:100px;text-align:right;min-height:36px;display:flex;align-items:center;justify-content:flex-end}
   .px-live.stale{color:var(--tm);border-color:var(--ibr);background:var(--ib)}
   .px-manual{border:1px solid var(--am)!important;font-size:15px!important;padding:7px 10px!important;font-weight:600!important}
   .px-manual:not(:placeholder-shown){background:rgba(240,112,64,0.05)!important;border-color:var(--am)!important}
@@ -79,17 +80,17 @@
   .method p{margin:0 0 4px;font-size:9px;color:var(--td);line-height:1.5}
   .method strong{color:var(--tm)}
   .bonds-grid,.fixed-grid{display:flex;flex-direction:column;gap:6px}
-  .list-row{background:var(--card);border:1px solid var(--cb);border-radius:var(--r);padding:10px 14px;margin-bottom:0;transition:border-color 0.15s,box-shadow 0.15s;box-shadow:var(--sh)}
-  .list-row:hover{border-color:var(--acl);box-shadow:0 4px 20px rgba(45,184,168,0.08)}
+  .list-row{background:var(--card);border:1px solid rgba(255,255,255,0.07);border-radius:var(--r);padding:10px 14px;margin-bottom:0;transition:border-color 0.15s,box-shadow 0.15s;box-shadow:var(--sh)}
+  .list-row:hover{border-color:var(--acl);box-shadow:0 4px 20px rgba(226,232,240,0.10)}
   .list-row + .list-row{margin-top:0}
   .list-head{display:grid;grid-template-columns:200px 400px 1fr;gap:12px;align-items:center}
   .list-title{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .list-meta{font-size:9px;color:var(--td);line-height:1.5}
   .list-inputs{display:grid;grid-template-columns:minmax(130px,1.3fr) auto;gap:8px;align-items:end}
   .list-metrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--cb)}
-  .metric{background:var(--bg);border-radius:10px;padding:8px 10px;min-height:52px;transition:background 0.15s}
-  .metric:hover{background:#0c1420}
-  .metric .mv{font-size:15px}
+  .metric{background:var(--bg);border-radius:10px;padding:10px 12px;min-height:54px;transition:background 0.15s}
+  .metric:hover{background:#0e1222}
+  .metric .mv{font-size:16px}
   .metric .ms{font-size:11px}
   .list-detail{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin-top:8px;font-size:9px;color:var(--td)}
   .list-detail .v{color:var(--t);font-family:'IBM Plex Mono',monospace}
@@ -157,19 +158,19 @@
   .gi{display:grid;grid-template-columns:repeat(auto-fill,minmax(65px,1fr));gap:5px}
   .row-actions{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
   /* Tab bar */
-  .tab-btn{background:transparent;border:none;color:var(--td);font-family:'Inter',sans-serif;font-size:11.5px;font-weight:500;padding:12px 16px;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;letter-spacing:0.01em;white-space:nowrap}
+  .tab-btn{background:transparent;border:none;color:var(--td);font-family:'Inter',sans-serif;font-size:12px;font-weight:400;padding:12px 16px 10px;cursor:pointer;border-bottom:2px solid transparent;border-radius:0;transition:color 0.15s,border-color 0.15s;letter-spacing:0;white-space:nowrap;margin:0}
   .tab-btn:hover{color:var(--t)}
-  .tab-btn.active{color:var(--acl);border-bottom-color:var(--acl);font-weight:600}
+  .tab-btn.active{color:var(--t);border-bottom-color:var(--acl);font-weight:600}
   /* Tables — minimal dark */
   .lt{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px}
-  .lt th{text-align:left;font-size:9px;font-weight:600;color:var(--td);text-transform:uppercase;letter-spacing:0.07em;padding:9px 10px;border-bottom:1px solid var(--cbf);white-space:nowrap;cursor:pointer;user-select:none;transition:color 0.15s;position:relative}
+  .lt th{text-align:left;font-size:10px;font-weight:600;color:var(--td);text-transform:uppercase;letter-spacing:0.07em;padding:9px 10px;border-bottom:1px solid var(--cbf);white-space:nowrap;cursor:pointer;user-select:none;transition:color 0.15s;position:relative}
   .lt th:hover{color:var(--acl)}
   .lt th.sorted-asc::after{content:" ▲";font-size:7px;color:var(--acl)}
   .lt th.sorted-desc::after{content:" ▼";font-size:7px;color:var(--acl)}
-  .lt td{padding:7px 10px;border-bottom:1px solid rgba(24,34,46,0.8);white-space:nowrap;transition:background 0.1s}
-  .lt tr:hover td{background:rgba(45,184,168,0.05)}
+  .lt td{padding:7px 10px;border-bottom:1px solid rgba(30,36,53,0.8);white-space:nowrap;transition:background 0.1s}
+  .lt tr:hover td{background:rgba(226,232,240,0.04)}
   .lt tr.clickable-row{cursor:pointer}
-  .lt tr.clickable-row:hover td{background:rgba(45,184,168,0.07)}
+  .lt tr.clickable-row:hover td{background:rgba(226,232,240,0.07)}
   .lt .num{text-align:right}
   .lt .hl-g{color:var(--acl)}
   .lt .hl-b{color:var(--am)}
@@ -179,14 +180,14 @@
   .fwd-matrix{border-collapse:collapse;font-size:8px;font-family:'IBM Plex Mono',monospace;width:100%}
   .fwd-matrix th,.fwd-matrix td{padding:3px 5px;text-align:center;border:1px solid var(--cb);white-space:nowrap}
   .fwd-matrix th{background:var(--bg);color:var(--td);font-weight:600;font-size:7px}
-  .fwd-matrix td.fwd-hi{background:rgba(45,184,168,0.10);color:var(--acl)}
+  .fwd-matrix td.fwd-hi{background:rgba(226,232,240,0.10);color:var(--acl)}
   .fwd-matrix td.fwd-lo{background:rgba(240,112,64,0.10);color:var(--w)}
   .fwd-matrix td.fwd-mid{color:var(--t)}
   /* Quant additions */
   .stress-grid{display:grid;gap:2px;font-family:'IBM Plex Mono',monospace;font-size:10px}
   .stress-cell{padding:4px 6px;text-align:center;border-radius:2px;white-space:nowrap}
   .stress-hdr{background:var(--bg);color:var(--td);font-weight:600;font-size:8px;text-transform:uppercase}
-  .stress-pos{background:rgba(45,184,168,0.07);color:var(--acl)}
+  .stress-pos{background:rgba(226,232,240,0.07);color:var(--acl)}
   .stress-neg{background:rgba(240,112,64,0.07);color:var(--w)}
   .stress-zero{background:var(--bg);color:var(--t)}
   .rv-heat{display:grid;gap:3px;font-family:'IBM Plex Mono',monospace;font-size:10px}
@@ -206,14 +207,14 @@
   /* Chart toggle controls */
   .chart-toggles{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center}
   .chart-toggle{display:flex;align-items:center;gap:4px;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--td);cursor:pointer;padding:3px 8px;border-radius:4px;border:1px solid var(--cb);transition:all 0.15s;user-select:none}
-  .chart-toggle:hover{border-color:var(--acl)}
+  .chart-toggle:hover{border-color:var(--acl);background:rgba(226,232,240,0.06)}
   .chart-toggle input{accent-color:var(--acl);cursor:pointer}
-  .chart-toggle.active{border-color:var(--acl);background:var(--acd)}
+  .chart-toggle.active{border-color:var(--acl);background:rgba(226,232,240,0.13)}
   .chart-metric-select{background:var(--ib);border:1px solid var(--ibr);border-radius:6px;padding:5px 10px;color:var(--t);font-size:11px;font-family:'IBM Plex Mono',monospace;cursor:pointer}
   /* Resumen — layout: 3 tablas | BE strip | gráficos */
   .resumen-curve-label{font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--td);margin-bottom:4px;text-align:center}
-  .resumen-top-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px;align-items:start}
-  .resumen-table-panel{background:var(--card);border:1px solid var(--cb);border-radius:var(--r);padding:10px 10px 8px}
+  .resumen-top-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;align-items:start}
+  .resumen-table-panel{background:var(--card);border:1px solid rgba(255,255,255,0.07);border-radius:var(--r);padding:10px 10px 8px}
   .resumen-table-panel .st{margin-bottom:6px;font-size:9px}
   .resumen-table-panel .lt td,.resumen-table-panel .lt th{padding:3px 5px;font-size:10px}
   .resumen-table-panel .lt .tk{font-size:10px}
@@ -224,9 +225,11 @@
   .resumen-be-chip-h .be-val{font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--am)}
   .resumen-be-chip-h .be-range{font-size:8px;color:var(--td)}
   .resumen-be-avg{font-size:9px;color:var(--td);margin-left:auto;white-space:nowrap}
-  .resumen-charts-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:6px;min-width:0;overflow:hidden}
+  .resumen-charts-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px;margin-top:6px;min-width:0;overflow:hidden}
   .resumen-chart-cell{background:var(--card);border:1px solid var(--cb);border-radius:var(--r);padding:8px 10px;min-width:0;overflow:hidden}
   .resumen-chart-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .resumen-cell-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+  .resumen-dur-input{width:52px;font-size:9px;padding:2px 5px;background:var(--ib);border:1px solid var(--ibr);border-radius:3px;color:var(--td);font-family:'IBM Plex Mono',monospace;text-align:right}
   @media(max-width:900px){.resumen-top-grid{grid-template-columns:1fr}.resumen-charts-row{grid-template-columns:1fr}}
   /* Bond Calculator Modal */
   .bc-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -261,7 +264,7 @@
   .fxc-kpi .bv{font-size:20px;font-weight:700;font-family:'IBM Plex Mono',monospace}
   .fxc-kpi .bl{font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-top:2px}
   .fxc-badge{font-size:9px;padding:2px 7px;border-radius:4px;font-weight:600;letter-spacing:0.05em;flex-shrink:0}
-  .fxc-badge-live{background:rgba(45,184,168,0.15);color:#2db8a8;border:1px solid rgba(45,184,168,0.3)}
+  .fxc-badge-live{background:rgba(226,232,240,0.10);color:#E2E8F0;border:1px solid rgba(226,232,240,0.25)}
   .fxc-badge-manual{background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)}
   .fxc-reset-btn{font-size:9px;padding:2px 8px;cursor:pointer;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);color:#fbbf24;border-radius:4px;flex-shrink:0}
   .fxc-reset-btn:hover{background:rgba(251,191,36,0.2)}
@@ -283,7 +286,7 @@
       </div>
       <div style="font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace;text-align:right">
         <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-bottom:1px">MEP</div>
-        <span id="hdrMepPrice" style="font-size:13px;font-weight:700;color:#4da6ff">—</span>
+        <span id="hdrMepPrice" style="font-size:13px;font-weight:700;color:var(--bl)">—</span>
       </div>
     </div>
     <div style="font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace;text-align:right">
@@ -456,33 +459,62 @@
   <div class="resumen-chart-controls">
     <span style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--td);font-weight:600">Ver</span>
     <select id="resumenDurChartSelector" onchange="switchResumenCharts(this.value)" style="font-size:11px;padding:3px 8px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;font-family:'IBM Plex Mono',monospace">
-      <option value="all">Los 4</option>
+      <option value="all">Todos</option>
       <option value="fx">Solo Tasa Fija</option>
       <option value="cer">Solo CER Real</option>
       <option value="combo">Solo Combinado</option>
       <option value="tamar">Solo TAMAR</option>
+      <option value="dl">Solo Dollar Linked</option>
+      <option value="rofex">Solo ROFEX</option>
       <option value="fx_cer">Tasa Fija + CER</option>
       <option value="fx_combo">Tasa Fija + Combinado</option>
       <option value="cer_combo">CER + Combinado</option>
+      <option value="dl_rofex">DL + ROFEX</option>
     </select>
     <span style="font-size:9px;color:var(--td)">— — log &nbsp; ━ NSS &nbsp; <span style="opacity:0.5">░ cierre ant.</span></span>
   </div>
   <div class="resumen-charts-row" id="resumenChartsGrid">
     <div id="resumenWrapFX" class="resumen-chart-cell">
-      <div class="resumen-curve-label" style="color:var(--fx)">LECAP/BONCAP — TNA</div>
+      <div class="resumen-cell-hdr">
+        <div class="resumen-curve-label" style="color:var(--fx)">LECAP/BONCAP — TNA</div>
+        <input type="number" id="maxDurFX" class="resumen-dur-input" placeholder="auto" title="Duración máxima (días)" oninput="renderResumenCurves()">
+      </div>
       <div class="chart-c" id="resumenChartFXContainer" style="height:200px"><canvas id="resumenChartFX"></canvas></div>
     </div>
     <div id="resumenWrapCER" class="resumen-chart-cell">
-      <div class="resumen-curve-label" style="color:var(--acl)">CER — TIR Real</div>
+      <div class="resumen-cell-hdr">
+        <div class="resumen-curve-label" style="color:var(--acl)">CER — TIR Real</div>
+        <input type="number" id="maxDurCER" class="resumen-dur-input" placeholder="auto" title="Duración máxima (días)" oninput="renderResumenCurves()">
+      </div>
       <div class="chart-c" id="resumenChartCERContainer" style="height:200px"><canvas id="resumenChartCER"></canvas></div>
     </div>
     <div id="resumenWrapCombo" class="resumen-chart-cell">
-      <div class="resumen-curve-label" style="color:var(--am)">Combinado</div>
+      <div class="resumen-cell-hdr">
+        <div class="resumen-curve-label" style="color:var(--am)">Combinado</div>
+        <input type="number" id="maxDurCombo" class="resumen-dur-input" placeholder="auto" title="Duración máxima (días)" oninput="renderResumenCurves()">
+      </div>
       <div class="chart-c" id="resumenChartComboContainer" style="height:200px"><canvas id="resumenChartCombo"></canvas></div>
     </div>
     <div id="resumenWrapTAMAR" class="resumen-chart-cell">
-      <div class="resumen-curve-label" style="color:var(--bl)">TAMAR — TNA efectiva</div>
+      <div class="resumen-cell-hdr">
+        <div class="resumen-curve-label" style="color:var(--bl)">TAMAR — TNA efectiva</div>
+        <input type="number" id="maxDurTAMAR" class="resumen-dur-input" placeholder="auto" title="Duración máxima (días)" oninput="renderResumenCurves()">
+      </div>
       <div class="chart-c" id="resumenChartTAMARContainer" style="height:200px"><canvas id="resumenChartTAMAR"></canvas></div>
+    </div>
+    <div id="resumenWrapDL" class="resumen-chart-cell">
+      <div class="resumen-cell-hdr">
+        <div class="resumen-curve-label" style="color:#22d3ee">Dollar Linked — TNA devaluatoria</div>
+        <input type="number" id="maxDurDL" class="resumen-dur-input" placeholder="auto" title="Duración máxima (días)" oninput="renderResumenCurves()">
+      </div>
+      <div class="chart-c" id="resumenChartDLContainer" style="height:200px"><canvas id="resumenChartDL"></canvas></div>
+    </div>
+    <div id="resumenWrapROFEX" class="resumen-chart-cell">
+      <div class="resumen-cell-hdr">
+        <div class="resumen-curve-label" style="color:var(--fut)">Futuros ROFEX — TNA implícita</div>
+        <input type="number" id="maxDurROFEX" class="resumen-dur-input" placeholder="auto" title="Duración máxima (días)" oninput="renderResumenCurves()">
+      </div>
+      <div class="chart-c" id="resumenChartROFEXContainer" style="height:200px"><canvas id="resumenChartROFEX"></canvas></div>
     </div>
   </div>
   <div id="resumenCurveNote" class="note" style="text-align:center;margin-top:5px">Calculá primero para ver curvas</div>
@@ -951,11 +983,11 @@
 
   <!-- Futures Table -->
   <div class="card">
-    <div class="st" style="color:#f97316">Futuros DLR ROFEX — TNA implícita (T+0)</div>
+    <div class="st" style="color:var(--fut)">Futuros DLR ROFEX — TNA implícita (T+0)</div>
     <table class="lt">
       <thead><tr>
         <th>Contrato</th><th class="num">Precio Futuro</th>
-        <th class="num" style="color:#f97316">TNA</th><th class="num">Días</th>
+        <th class="num" style="color:var(--fut)">TNA</th><th class="num">Días</th>
       </tr></thead>
       <tbody id="fxFutBody"><tr><td colspan="4" style="text-align:center;color:var(--tm);padding:10px">Esperando precios...</td></tr></tbody>
     </table>
@@ -970,7 +1002,7 @@
       </div>
     </div>
     <div class="card">
-      <div class="st" style="color:#f97316">Curva TNA — Futuros ROFEX</div>
+      <div class="st" style="color:var(--fut)">Curva TNA — Futuros ROFEX</div>
       <div class="chart-c" id="fxFutCurveContainer" style="height:240px">
         <canvas id="fxFutCurveChart"></canvas>
       </div>
@@ -1159,18 +1191,18 @@ const DL_BONDS=[
 
 // ═══ FUTUROS ROFEX DLR ═══════════
 const ROFEX_FUTURES=[
-  {id:"DLR/ABR26", ticker:"DLR/ABR26", name:"DLR Abr-26", exp:"2026-04-30", color:"#f97316"},
-  {id:"DLR/MAY26", ticker:"DLR/MAY26", name:"DLR May-26", exp:"2026-05-29", color:"#fb923c"},
-  {id:"DLR/JUN26", ticker:"DLR/JUN26", name:"DLR Jun-26", exp:"2026-06-30", color:"#fbbf24"},
-  {id:"DLR/JUL26", ticker:"DLR/JUL26", name:"DLR Jul-26", exp:"2026-07-31", color:"#facc15"},
-  {id:"DLR/AGO26", ticker:"DLR/AGO26", name:"DLR Ago-26", exp:"2026-08-31", color:"#a3e635"},
-  {id:"DLR/SEP26", ticker:"DLR/SEP26", name:"DLR Sep-26", exp:"2026-09-30", color:"#4ade80"},
-  {id:"DLR/OCT26", ticker:"DLR/OCT26", name:"DLR Oct-26", exp:"2026-10-30", color:"#34d399"},
-  {id:"DLR/NOV26", ticker:"DLR/NOV26", name:"DLR Nov-26", exp:"2026-11-30", color:"#2dd4bf"},
-  {id:"DLR/DIC26", ticker:"DLR/DIC26", name:"DLR Dic-26", exp:"2026-12-31", color:"#22d3ee"},
-  {id:"DLR/ENE27", ticker:"DLR/ENE27", name:"DLR Ene-27", exp:"2027-01-29", color:"#38bdf8"},
-  {id:"DLR/FEB27", ticker:"DLR/FEB27", name:"DLR Feb-27", exp:"2027-02-26", color:"#818cf8"},
-  {id:"DLR/MAR27", ticker:"DLR/MAR27", name:"DLR Mar-27", exp:"2027-03-31", color:"#a78bfa"},
+  {id:"DLR/ABR26", ticker:"DLR/ABR26", name:"DLR Abr-26", exp:"2026-04-30", color:"#FDE68A"},
+  {id:"DLR/MAY26", ticker:"DLR/MAY26", name:"DLR May-26", exp:"2026-05-29", color:"#FCD34D"},
+  {id:"DLR/JUN26", ticker:"DLR/JUN26", name:"DLR Jun-26", exp:"2026-06-30", color:"#FBBF24"},
+  {id:"DLR/JUL26", ticker:"DLR/JUL26", name:"DLR Jul-26", exp:"2026-07-31", color:"#F8AF12"},
+  {id:"DLR/AGO26", ticker:"DLR/AGO26", name:"DLR Ago-26", exp:"2026-08-31", color:"#F59E0B"},
+  {id:"DLR/SEP26", ticker:"DLR/SEP26", name:"DLR Sep-26", exp:"2026-09-30", color:"#E89008"},
+  {id:"DLR/OCT26", ticker:"DLR/OCT26", name:"DLR Oct-26", exp:"2026-10-30", color:"#D97706"},
+  {id:"DLR/NOV26", ticker:"DLR/NOV26", name:"DLR Nov-26", exp:"2026-11-30", color:"#C46C05"},
+  {id:"DLR/DIC26", ticker:"DLR/DIC26", name:"DLR Dic-26", exp:"2026-12-31", color:"#B45309"},
+  {id:"DLR/ENE27", ticker:"DLR/ENE27", name:"DLR Ene-27", exp:"2027-01-29", color:"#A34808"},
+  {id:"DLR/FEB27", ticker:"DLR/FEB27", name:"DLR Feb-27", exp:"2027-02-26", color:"#92400E"},
+  {id:"DLR/MAR27", ticker:"DLR/MAR27", name:"DLR Mar-27", exp:"2027-03-31", color:"#7C3009"},
 ];
 
 // ═══ FX EXTRA TICKERS (spot, MEP) ═
@@ -3030,29 +3062,27 @@ function applyDurChartLayout({mode,gridId,wrapFXId,wrapCERId,wrapComboId,chartFX
 }
 
 function switchResumenCharts(mode){
-  const show={fx:false,cer:false,combo:false,tamar:false};
-  if(mode==='all'){show.fx=show.cer=show.combo=show.tamar=true;}
+  const show={fx:false,cer:false,combo:false,tamar:false,dl:false,rofex:false};
+  if(mode==='all'){show.fx=show.cer=show.combo=show.tamar=show.dl=show.rofex=true;}
   else if(mode==='fx'){show.fx=true;}
   else if(mode==='cer'){show.cer=true;}
   else if(mode==='combo'){show.combo=true;}
   else if(mode==='tamar'){show.tamar=true;}
+  else if(mode==='dl'){show.dl=true;}
+  else if(mode==='rofex'){show.rofex=true;}
   else if(mode==='fx_cer'){show.fx=show.cer=true;}
   else if(mode==='fx_combo'){show.fx=show.combo=true;}
   else if(mode==='cer_combo'){show.cer=show.combo=true;}
+  else if(mode==='dl_rofex'){show.dl=show.rofex=true;}
   const grid=document.getElementById('resumenChartsGrid');
-  const wFX=document.getElementById('resumenWrapFX');
-  const wCER=document.getElementById('resumenWrapCER');
-  const wCombo=document.getElementById('resumenWrapCombo');
-  const wTAMAR=document.getElementById('resumenWrapTAMAR');
-  if(!grid) return;
-  wFX&&(wFX.style.display=show.fx?'':'none');
-  wCER&&(wCER.style.display=show.cer?'':'none');
-  wCombo&&(wCombo.style.display=show.combo?'':'none');
-  wTAMAR&&(wTAMAR.style.display=show.tamar?'':'none');
-  const count=[show.fx,show.cer,show.combo,show.tamar].filter(Boolean).length;
-  grid.style.gridTemplateColumns=count>=3?'repeat('+count+',1fr)':count===2?'1fr 1fr':'1fr';
-  const h=count===1?'400px':count===2?'280px':'200px';
-  ['resumenChartFXContainer','resumenChartCERContainer','resumenChartComboContainer','resumenChartTAMARContainer']
+  if(!grid)return;
+  const ids=['resumenWrapFX','resumenWrapCER','resumenWrapCombo','resumenWrapTAMAR','resumenWrapDL','resumenWrapROFEX'];
+  const keys=['fx','cer','combo','tamar','dl','rofex'];
+  ids.forEach((id,i)=>{const el=document.getElementById(id);if(el)el.style.display=show[keys[i]]?'':'none';});
+  const count=keys.filter(k=>show[k]).length;
+  grid.style.gridTemplateColumns=count>=3?'repeat(auto-fill,minmax(260px,1fr))':count===2?'1fr 1fr':'1fr';
+  const h=count>=4?'200px':count===3?'240px':count===2?'280px':'400px';
+  ['resumenChartFXContainer','resumenChartCERContainer','resumenChartComboContainer','resumenChartTAMARContainer','resumenChartDLContainer','resumenChartROFEXContainer']
     .forEach(id=>{const el=document.getElementById(id);if(el)el.style.height=h;});
   setTimeout(()=>renderResumenCurves(),30);
 }
@@ -3113,7 +3143,7 @@ function getPriceVariationMeta(ticker, manualInputId){
     last,
     varPct,
     text:varPct!=null?(varPct>=0?"+":"")+varPct.toFixed(2)+"%":"—",
-    color:varPct!=null?(varPct>=0?"var(--bl)":"var(--am)"):"var(--tm)"
+    color:varPct!=null?(varPct>=0?"var(--pos)":"var(--neg)"):"var(--tm)"
   };
 }
 
@@ -3216,27 +3246,34 @@ function renderResumenCurves(){
     return;
   }
   if(note) note.textContent='';
-  // Apply current selector visibility
   const mode=document.getElementById('resumenDurChartSelector')?.value||'all';
   switchResumenCharts(mode);
   const all=[...cd.fx,...cd.cerReal,...cd.combo].filter(p=>p.x>0&&isFinite(p.y));
   if(!all.length) return;
-  const maxXUse=getAutoDurMax(all);
-  drawOneChart('resumenChartFX', cd.fx, maxXUse, 'LECAP/BONCAP','#9b7af0',
+  const autoMax=getAutoDurMax(all);
+  function getMax(inputId,fallback){const v=parseFloat(document.getElementById(inputId)?.value);return(v&&v>0)?v:fallback;}
+  drawOneChart('resumenChartFX', cd.fx, getMax('maxDurFX',autoMax), 'LECAP/BONCAP','#9b7af0',
     lbl=>{const f=FIXED.find(x=>x.ticker===lbl);if(f)openBondCalculator('fixed',f.id);},
     _closeDurData.fx);
-  drawOneChart('resumenChartCER', cd.cerReal, maxXUse, 'CER Real','#2db8a8',
+  drawOneChart('resumenChartCER', cd.cerReal, getMax('maxDurCER',autoMax), 'CER Real','#2db8a8',
     lbl=>{const b=BONDS.find(x=>x.ticker===lbl);if(b)openBondCalculator('cer',b.id);},
     _closeDurData.cerReal);
-  drawOneChart('resumenChartCombo', cd.combo, maxXUse, 'Combinado','#f07040',
+  drawOneChart('resumenChartCombo', cd.combo, getMax('maxDurCombo',autoMax), 'Combinado','#f07040',
     lbl=>{const b=BONDS.find(x=>x.ticker===lbl);if(b){openBondCalculator('cer',b.id)}else{const f=FIXED.find(x=>x.ticker===lbl);if(f)openBondCalculator('fixed',f.id);}});
-  // TAMAR chart — duration vs TNA efectiva (TAMAR proyectada + margen)
   const ptsTAMAR=TAMAR_BONDS.filter(t=>t._ok&&t._dur!=null).map(t=>({
     x:t._dur, y:t._tnaNeta, label:t.ticker, color:t.color, id:t.id
   })).filter(p=>p.x>0&&isFinite(p.y));
   if(ptsTAMAR.length){
-    drawOneChart('resumenChartTAMAR', ptsTAMAR, maxXUse, 'TAMAR','#4da6ff',
+    drawOneChart('resumenChartTAMAR', ptsTAMAR, getMax('maxDurTAMAR',autoMax), 'TAMAR','#4da6ff',
       lbl=>{const t=TAMAR_BONDS.find(x=>x.ticker===lbl);if(t)openBondCalculator('tamar',t.id);});
+  }
+  if(_dlCurvePoints.length){
+    const dlAutoMax=getAutoDurMax(_dlCurvePoints);
+    drawFxCurveChart('resumenChartDL',_dlCurvePoints,getMax('maxDurDL',dlAutoMax),_dlCurvePrevPoints,'#22d3ee');
+  }
+  if(_futCurvePoints.length){
+    const futAutoMax=getAutoDurMax(_futCurvePoints);
+    drawFxCurveChart('resumenChartROFEX',_futCurvePoints,getMax('maxDurROFEX',futAutoMax),_futCurvePrevPoints,'#FBBF24');
   }
 }
 
@@ -4050,6 +4087,8 @@ setInterval(()=>{
 // ═══ LIVE PRICES (via Python server.py → Google Sheets) ═════════
 let _livePrices={};
 let _closeDurData={fx:[],cerReal:[]};
+let _dlCurvePoints=[];let _dlCurvePrevPoints=[];
+let _futCurvePoints=[];let _futCurvePrevPoints=[];
 let _priceTimer=null;
 let _priceConnected=false;
 let _autoCalcTimer=null;
@@ -6439,7 +6478,7 @@ function renderFX(){
     futRows+=`<tr class="fxc-row-clickable" onclick="openFxCalculator('fut','${f.id}')">
       <td class="tk" style="color:${f.color}">${f.ticker.replace("DLR/","")}</td>
       <td class="num">${px.toFixed(2)}</td>
-      <td class="num" style="color:#f97316;font-weight:600">${tna.toFixed(2)}%</td>
+      <td class="num" style="color:var(--fut);font-weight:600">${tna.toFixed(2)}%</td>
       <td class="num">${days}</td>
     </tr>`;
     futPoints.push({x:days,y:tna,label:f.ticker.replace("DLR/",""),color:f.color,id:f.id});
@@ -6478,6 +6517,7 @@ function renderFX(){
   // DL curve chart
   const dlPtsValid=dlPoints.filter(p=>isFinite(p.y)&&p.x>0);
   const allDLX=[...dlPtsValid,...dlPointsPrev].filter(p=>p.x>0);
+  _dlCurvePoints=[...dlPtsValid];_dlCurvePrevPoints=[...dlPointsPrev];
   if(dlPtsValid.length>=1||dlPointsPrev.length>=1){
     const maxX=allDLX.length?Math.max(...allDLX.map(p=>p.x))*1.1:365;
     drawFxCurveChart("fxDLCurveChart",dlPtsValid,maxX,dlPointsPrev,'#22d3ee');
@@ -6486,6 +6526,7 @@ function renderFX(){
   // Futures curve chart
   const futPtsValid=futPoints.filter(p=>isFinite(p.y)&&p.x>0);
   const allFutX=[...futPtsValid,...futPointsPrev].filter(p=>p.x>0);
+  _futCurvePoints=[...futPtsValid];_futCurvePrevPoints=[...futPointsPrev];
   if(futPtsValid.length>=1||futPointsPrev.length>=1){
     const maxX=allFutX.length?Math.max(...allFutX.map(p=>p.x))*1.1:400;
     drawFxCurveChart("fxFutCurveChart",futPtsValid,maxX,futPointsPrev,'#f97316');
@@ -6985,11 +7026,15 @@ function populateFxSynthSelects(){
   const sd=document.getElementById("settleDate").value;
   const settle=sd?new Date(sd+"T00:00:00"):ABD(today,1);
 
-  // DL select
   const dlSel=document.getElementById("fxSynthDL");
   const futSel=document.getElementById("fxSynthFut");
   const futSel2=document.getElementById("fxSynthFut2");
   if(!dlSel||!futSel) return;
+
+  // Preserve current selections before overwriting innerHTML
+  const prevDL=dlSel.value;
+  const prevFut=futSel.value;
+  const prevFut2=futSel2?futSel2.value:'';
 
   let dlHtml='';
   DL_BONDS.forEach(b=>{
@@ -7007,6 +7052,11 @@ function populateFxSynthSelects(){
   });
   futSel.innerHTML=futHtml||'<option>—</option>';
   if(futSel2) futSel2.innerHTML=futHtml||'<option>—</option>';
+
+  // Restore previous selections if still valid options
+  if(prevDL && dlSel.querySelector(`option[value="${prevDL}"]`)) dlSel.value=prevDL;
+  if(prevFut && futSel.querySelector(`option[value="${prevFut}"]`)) futSel.value=prevFut;
+  if(prevFut2 && futSel2 && futSel2.querySelector(`option[value="${prevFut2}"]`)) futSel2.value=prevFut2;
 
   // Auto-fill spot
   const spotInput=document.getElementById("fxSynthSpot");
@@ -7037,10 +7087,11 @@ function calcFxSynthetic(){
     const futPx=futLp.last||0;
     const futExp=bestFut?new Date(bestFut.exp+"T00:00:00"):null;
     const futDays=futExp?DB(settle,futExp):0;
-    const ret=(dlPx&&futPx&&futDays>0)?(futPx/dlPx-1):null;
+    const spot=getFxSpot()||0;
+    const ret=(spot&&futPx&&futDays>0)?(futPx/spot-1):null;
     const tna=ret!==null?ret*365/futDays*100:null;
     const tir=ret!==null?(Math.pow(1+ret,365/futDays)-1)*100:null;
-    tableRows.push({b,dlPx,futPx,futDays,ret,tna,tir,fut:bestFut,futExp});
+    tableRows.push({b,dlPx,futPx,spot,futDays,ret,tna,tir,fut:bestFut,futExp});
   });
 
   const na='<span style="color:var(--td)">N/A</span>';
@@ -7091,9 +7142,10 @@ function calcFxSyntheticSingle(){
   const futPx=futLp.last||0;
   const futDays=DB(settle,new Date(fut.exp+"T00:00:00"));
 
-  if(!dlPx||!futPx||futDays<=0){el.innerHTML='<div style="color:var(--td);font-size:11px">Sin precios live o futuro vencido</div>';return;}
+  const spot=getFxSpot()||0;
+  if(!spot||!futPx||futDays<=0){el.innerHTML='<div style="color:var(--td);font-size:11px">Sin precios live o futuro vencido</div>';return;}
 
-  const ret=futPx/dlPx-1;
+  const ret=futPx/spot-1;
   const tna=ret*365/futDays*100;
   const tir=(Math.pow(1+ret,365/futDays)-1)*100;
   const spread=tna-tasaPesos;
@@ -7101,8 +7153,9 @@ function calcFxSyntheticSingle(){
 
   let html=`<div class="st" style="color:var(--td);font-size:11px;margin:10px 0 6px">${dlBond.ticker} vs ${fut.ticker.replace("DLR/","")}</div>`;
   html+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:10px">`;
-  html+=`<div class="metric"><div class="ms" style="color:#22d3ee">${dlPx.toFixed(2)}</div><div class="ml">Precio DL — FX hoy implícito</div></div>`;
-  html+=`<div class="metric"><div class="ms" style="color:#f97316">${futPx.toFixed(2)}</div><div class="ml">Precio Futuro — FX al vto</div></div>`;
+  html+=`<div class="metric"><div class="ms" style="color:var(--td)">${dlPx?dlPx.toFixed(2):'—'}</div><div class="ml">Precio DL</div></div>`;
+  html+=`<div class="metric"><div class="ms" style="color:#22d3ee">${spot.toFixed(2)}</div><div class="ml">Spot — FX hoy</div></div>`;
+  html+=`<div class="metric"><div class="ms" style="color:var(--fut)">${futPx.toFixed(2)}</div><div class="ml">Futuro — FX al vto</div></div>`;
   html+=`<div class="metric"><div class="ms" style="color:${ret>0?'var(--ac)':'var(--w)'}">${(ret*100).toFixed(2)}%</div><div class="ml">Retorno directo (${futDays}d)</div></div>`;
   html+=`<div class="metric"><div class="mv" style="color:#22d3ee;font-size:16px"><b>${tna.toFixed(2)}%</b></div><div class="ml">TNA sintético</div></div>`;
   html+=`<div class="metric"><div class="ms" style="color:var(--td)">${tir.toFixed(2)}%</div><div class="ml">TIR (TEA)</div></div>`;
