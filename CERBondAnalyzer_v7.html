@@ -251,6 +251,27 @@
   .bc-flows th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--cb);color:var(--td);font-size:9px;text-transform:uppercase;letter-spacing:0.06em}
   .bc-flows td{padding:5px 8px;border-bottom:1px solid rgba(31,41,55,0.4)}
   .bc-flows tfoot td{font-weight:700;border-top:2px solid var(--cb);border-bottom:none;color:var(--acl)}
+  /* Bond calc tabs */
+  .bc-tabs{display:flex;gap:0;border-bottom:1px solid var(--cb);margin:0 -20px 14px;padding:0 20px}
+  .bc-tab{background:transparent;border:none;color:var(--td);font-family:'Inter',sans-serif;font-size:11px;font-weight:500;padding:10px 14px 9px;cursor:pointer;border-bottom:2px solid transparent;letter-spacing:0.04em;text-transform:uppercase;transition:color 0.15s,border-color 0.15s}
+  .bc-tab:hover{color:var(--t)}
+  .bc-tab.active{color:var(--t);border-bottom-color:var(--acl);font-weight:700}
+  .bc-pane{display:block}
+  /* Inflation path editor */
+  .infl-path{display:grid;grid-template-columns:1fr;gap:6px}
+  .infl-row{display:grid;grid-template-columns:80px 1fr 90px 30px;gap:8px;align-items:center;padding:6px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--cb);transition:border-color 0.15s}
+  .infl-row.locked{border-color:rgba(251,191,36,0.35)}
+  .infl-row .ilab{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--t);font-weight:600}
+  .infl-bar{height:8px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;position:relative}
+  .infl-bar-fill{height:100%;border-radius:4px;transition:width 0.2s,background 0.15s}
+  .infl-bar-be{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--am);opacity:0.7}
+  .infl-row input[type="number"]{background:var(--card);border:1px solid var(--cb);color:var(--t);padding:5px 7px;border-radius:4px;font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right;width:100%;box-sizing:border-box}
+  .infl-row input[type="number"]:focus{outline:none;border-color:var(--acl)}
+  .infl-lock{background:transparent;border:1px solid var(--cb);color:var(--td);cursor:pointer;border-radius:4px;padding:3px 0;font-size:12px;transition:all 0.15s}
+  .infl-lock.on{background:rgba(251,191,36,0.15);border-color:rgba(251,191,36,0.5);color:#fbbf24}
+  .infl-btn{background:var(--bg);border:1px solid var(--cb);color:var(--t);font-family:'Inter',sans-serif;font-size:10px;font-weight:500;padding:7px 11px;cursor:pointer;border-radius:5px;letter-spacing:0.02em;transition:all 0.15s}
+  .infl-btn:hover{border-color:var(--acl);color:var(--acl)}
+  .infl-btn.primary{background:var(--acd);border-color:var(--acl);color:var(--acl);font-weight:700}
   .live-tk-link{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
   .live-tk-link:hover{opacity:0.8}
   /* FX Calculator Modal */
@@ -2694,10 +2715,19 @@ function getUnknownMonthRange(cerBaseDate, cerRefDate){
   while(lkm<0){lkm+=12;lky--}
   const lastKnown={m:lkm,y:lky,label:MNAMES[lkm]+" "+String(lky).slice(2),key:lky+"-"+String(lkm+1).padStart(2,"0")};
 
-  // Last NEEDED: CPI that feeds the window containing the ref date
+  // Last NEEDED: CPI that feeds the window containing the ref date.
+  // If the ref date falls in the first half of the current CER window
+  // (weight < 0.5), the current window's CPI has negligible influence
+  // and we drop it — matching market convention where a bond maturing
+  // mid-month is effectively priced off the previous month's CPI.
   const refAnchor=getAnchor15(cerRefDate);
+  const nextRefAnchor=getNextAnchor15(refAnchor);
+  const nWin=DB(refAnchor,cerRefDate);
+  const Dwin=Math.max(1,DB(refAnchor,nextRefAnchor));
+  const weight=nWin/Dwin;
   let lnm=refAnchor.getMonth()-1, lny=refAnchor.getFullYear();
-  if(lnm<0){lnm=11;lny--}
+  if(weight<0.5){ lnm-=1; } // drop trailing month whose influence is < 50%
+  while(lnm<0){lnm+=12;lny--}
   const lastUnknown={m:lnm,y:lny,label:MNAMES[lnm]+" "+String(lny).slice(2),key:lny+"-"+String(lnm+1).padStart(2,"0")};
 
   let firstUnkM=lastKnown.m+1, firstUnkY=lastKnown.y;
@@ -3493,6 +3523,12 @@ function openBondCalculator(bondType, bondId){
         <button class="bc-close" id="bcClose">&times;</button>
       </div>
       <div class="bc-body">
+        ${bondType==='cer'?`
+        <div class="bc-tabs">
+          <button class="bc-tab active" id="bcTabCalc" onclick="_bcSwitchTab('calc')">Calculadora</button>
+          <button class="bc-tab" id="bcTabInfl" onclick="_bcSwitchTab('infl')">Inflación</button>
+        </div>`:''}
+        <div class="bc-pane" id="bc-pane-calc">
         <!-- Liquidacion toggle -->
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--cb)">
           <span style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--td);font-weight:600">Liquidacion</span>
@@ -3584,12 +3620,34 @@ function openBondCalculator(bondType, bondId){
           </div>
         </div>`:''}
         <div class="bc-flows" id="bck-flows"></div>
+        </div>
+        ${bondType==='cer'?`
+        <div class="bc-pane" id="bc-pane-infl" style="display:none">
+          <div id="bc-infl-content"></div>
+        </div>`:''}
       </div>
     </div>`;
 
   document.body.appendChild(overlay);
-  document.getElementById('bcClose').addEventListener('click', ()=>{ delete window._bcSetSettle; overlay.remove(); });
-  overlay.addEventListener('click', e=>{ if(e.target===overlay){ delete window._bcSetSettle; overlay.remove(); } });
+  document.getElementById('bcClose').addEventListener('click', ()=>{ delete window._bcSetSettle; delete window._bcSwitchTab; overlay.remove(); });
+  overlay.addEventListener('click', e=>{ if(e.target===overlay){ delete window._bcSetSettle; delete window._bcSwitchTab; overlay.remove(); } });
+
+  // Tab switcher (only active for CER)
+  window._bcSwitchTab=function(which){
+    const calc=document.getElementById('bc-pane-calc');
+    const infl=document.getElementById('bc-pane-infl');
+    const tCalc=document.getElementById('bcTabCalc');
+    const tInfl=document.getElementById('bcTabInfl');
+    if(!calc||!infl) return;
+    if(which==='infl'){
+      calc.style.display='none'; infl.style.display='block';
+      tCalc.classList.remove('active'); tInfl.classList.add('active');
+      if(typeof _bcRenderInflTab==='function') _bcRenderInflTab();
+    } else {
+      calc.style.display='block'; infl.style.display='none';
+      tInfl.classList.remove('active'); tCalc.classList.add('active');
+    }
+  };
 
   // TAMAR projection sensitivity
   if(bondType==='tamar'){
@@ -3666,6 +3724,312 @@ function openBondCalculator(bondType, bondId){
       };
       inflInput.addEventListener('input',recalcBE);
     }
+  }
+
+  // ── INFLACION TAB (CER only) ────────────────────────────────────
+  let _bcRenderInflTab=null;
+  if(bondType==='cer'){
+    // Per-bond editable path + lock state, persisted across tab switches
+    const inflPath={};   // key → number (TEM %)
+    const inflLocked={}; // key → bool (user-pinned)
+    let _inflAutoSolve=true; // auto-recompute BE of the unlocked months on every edit
+    let _inflMonthsCache=[]; // cached month list for closures
+
+    _bcRenderInflTab=function(){
+      const host=document.getElementById('bc-infl-content');
+      if(!host) return;
+      const bvL=parseFloat(document.getElementById("baseCER").value);
+      const bDateL=document.getElementById("baseCERDate").value;
+      const cerLiqVal=parseFloat(document.getElementById("cerLiq").value);
+      if(!bvL||!bDateL||!cerLiqVal){
+        host.innerHTML='<div style="padding:20px;color:var(--td);font-size:11px;text-align:center">Completá los datos CER base (valor, fecha, CER liquidación) primero.</div>';
+        return;
+      }
+      const cerBaseDate=new Date(bDateL+"T00:00:00");
+      const refDateMat=SBD(matD,10);
+      const range=getUnknownMonthRange(cerBaseDate, refDateMat);
+      const months=range.months||[];
+      const beData=(_implInflResults||[]).find(r=>r.ticker===b.ticker);
+      const targetTEA=beData?beData.compTEA:null;   // TEA % of matched FIXED bond
+      const bePi=beData?beData.implPi:null;          // flat BE TEM %
+      const compTicker=beData?beData.comp:'-';
+
+      if(months.length===0){
+        host.innerHTML=`<div style="padding:20px;color:var(--td);font-size:11px;text-align:center">
+          Este bono ya no tiene meses de inflación incógnita (vto: ${b.mat}).<br>
+          Último CPI conocido: <strong style="color:var(--t)">${range.lastKnown.label}</strong>
+        </div>`;
+        return;
+      }
+
+      // Seed path with BE flat if empty
+      months.forEach(m=>{
+        if(inflPath[m.k]==null){
+          inflPath[m.k]=bePi!=null?parseFloat(bePi.toFixed(3)):3.0;
+        }
+        if(inflLocked[m.k]==null) inflLocked[m.k]=false;
+      });
+      _inflMonthsCache=months.slice();
+
+      const beTxt=bePi!=null
+        ? `BE mercado: <strong style="color:var(--am)">${bePi.toFixed(2)}%</strong> TEM plana vs <strong style="color:var(--fx)">${compTicker}</strong> @ <strong>${targetTEA.toFixed(2)}%</strong> TEA`
+        : `<span style="color:var(--td)">Sin BE de mercado disponible — corré el cálculo principal primero.</span>`;
+
+      const nUnk=months.length;
+      const helpTxt=nUnk===1
+        ? `Editá el valor y mirá el TNA TF CER resultante. El único mes es tu punto de breakeven.`
+        : `Editá cualquier mes: se fija automáticamente y el resto se recalcula para <strong>mantener el BE</strong>. Tocá el candado para liberar un mes bloqueado.`;
+
+      host.innerHTML=`
+        <div style="margin-bottom:10px">
+          <div class="st" style="margin-bottom:6px">Sendero de inflación · ${b.ticker}</div>
+          <div style="font-size:10px;color:var(--td);line-height:1.6">
+            ${beTxt}<br>
+            ${nUnk} mes${nUnk>1?'es':''} incógnita: <strong style="color:var(--t)">${months[0].label}${nUnk>1?' → '+months[nUnk-1].label:''}</strong> · último CPI conocido: <strong style="color:var(--t)">${range.lastKnown.label}</strong>
+          </div>
+        </div>
+        <div class="bc-kpis" style="grid-template-columns:repeat(4,1fr)">
+          <div class="bc-kpi"><div class="bv" id="bcIflTnaTF" style="font-size:17px;color:var(--acl)">—</div><div class="bl">TNA TF CER</div></div>
+          <div class="bc-kpi"><div class="bv" id="bcIflTirReal" style="font-size:15px">—</div><div class="bl">TIR real TEA</div></div>
+          <div class="bc-kpi"><div class="bv" id="bcIflTirNom" style="font-size:15px;color:var(--fx)">—</div><div class="bl">TIR nom TEA</div></div>
+          <div class="bc-kpi"><div class="bv" id="bcIflImplRest" style="font-size:15px;color:var(--am)">—</div><div class="bl">TEM implícita resto</div></div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
+          <label style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--t);cursor:pointer;padding:6px 10px;background:var(--bg);border:1px solid var(--cb);border-radius:5px">
+            <input type="checkbox" id="bcIflAuto" ${_inflAutoSolve?'checked':''} style="accent-color:var(--acl)">
+            <span>Auto-resolver BE</span>
+          </label>
+          <button class="infl-btn" id="bcIflBtnFlat">Plano = BE</button>
+          <button class="infl-btn" id="bcIflBtnReset">Reset INDEC</button>
+          <button class="infl-btn" id="bcIflBtnClearLocks">Quitar locks</button>
+        </div>
+        <div style="font-size:9px;color:var(--tm);margin-bottom:8px;line-height:1.5">${helpTxt}</div>
+        <div class="infl-path" id="bcIflPath"></div>
+      `;
+
+      // Build rows
+      const pathHost=document.getElementById('bcIflPath');
+      let pathHTML='';
+      months.forEach((m,i)=>{
+        const v=inflPath[m.k];
+        const locked=inflLocked[m.k];
+        pathHTML+=`
+          <div class="infl-row ${locked?'locked':''}" id="bcIflRow_${m.k}">
+            <div class="ilab">${m.label}</div>
+            <div class="infl-bar"><div class="infl-bar-fill" id="bcIflBar_${m.k}" style="width:0%;background:${b.color}"></div><div class="infl-bar-be" id="bcIflBe_${m.k}"></div></div>
+            <input type="number" step="0.05" id="bcIflIn_${m.k}" value="${v.toFixed(3)}">
+            <button class="infl-lock ${locked?'on':''}" id="bcIflLk_${m.k}" title="Bloquear mes">${locked?'🔒':'🔓'}</button>
+          </div>`;
+      });
+      pathHost.innerHTML=pathHTML;
+
+      // Wire up row interactions
+      months.forEach(m=>{
+        const inp=document.getElementById('bcIflIn_'+m.k);
+        const lk=document.getElementById('bcIflLk_'+m.k);
+        inp.addEventListener('input',()=>{
+          const v=parseFloat(inp.value);
+          if(isNaN(v)) return;
+          inflPath[m.k]=v;
+          // When the user types, auto-pin this month and re-solve the rest
+          if(_inflAutoSolve && months.length>1){
+            inflLocked[m.k]=true;
+            const row=document.getElementById('bcIflRow_'+m.k);
+            const lkBtn=document.getElementById('bcIflLk_'+m.k);
+            if(row) row.classList.add('locked');
+            if(lkBtn){ lkBtn.classList.add('on'); lkBtn.textContent='🔒'; }
+            solveUnlockedToBE({silent:true});
+          }
+          recomputeInflTab();
+        });
+        lk.addEventListener('click',()=>{
+          inflLocked[m.k]=!inflLocked[m.k];
+          const row=document.getElementById('bcIflRow_'+m.k);
+          if(inflLocked[m.k]){ row.classList.add('locked'); lk.classList.add('on'); lk.textContent='🔒'; }
+          else {
+            row.classList.remove('locked'); lk.classList.remove('on'); lk.textContent='🔓';
+            if(_inflAutoSolve && months.length>1) solveUnlockedToBE({silent:true});
+          }
+          recomputeInflTab();
+        });
+      });
+
+      document.getElementById('bcIflAuto').addEventListener('change',(e)=>{
+        _inflAutoSolve=e.target.checked;
+        if(_inflAutoSolve && months.length>1) solveUnlockedToBE({silent:true});
+        recomputeInflTab();
+      });
+      document.getElementById('bcIflBtnFlat').addEventListener('click',()=>{
+        if(bePi==null) return;
+        months.forEach(m=>{
+          inflPath[m.k]=parseFloat(bePi.toFixed(3));
+          inflLocked[m.k]=false;
+          const inp=document.getElementById('bcIflIn_'+m.k);
+          const row=document.getElementById('bcIflRow_'+m.k);
+          const lkBtn=document.getElementById('bcIflLk_'+m.k);
+          if(inp) inp.value=inflPath[m.k].toFixed(3);
+          if(row) row.classList.remove('locked');
+          if(lkBtn){ lkBtn.classList.remove('on'); lkBtn.textContent='🔓'; }
+        });
+        recomputeInflTab();
+      });
+      document.getElementById('bcIflBtnReset').addEventListener('click',()=>{
+        months.forEach(m=>{
+          const raw=parseFloat(document.getElementById('i_'+m.k).value);
+          if(!isNaN(raw)){
+            inflPath[m.k]=raw;
+            const inp=document.getElementById('bcIflIn_'+m.k);
+            if(inp) inp.value=raw.toFixed(3);
+          }
+        });
+        if(_inflAutoSolve && months.length>1) solveUnlockedToBE({silent:true});
+        recomputeInflTab();
+      });
+      document.getElementById('bcIflBtnClearLocks').addEventListener('click',()=>{
+        months.forEach(m=>{
+          inflLocked[m.k]=false;
+          const row=document.getElementById('bcIflRow_'+m.k);
+          const lkBtn=document.getElementById('bcIflLk_'+m.k);
+          if(row) row.classList.remove('locked');
+          if(lkBtn){ lkBtn.classList.remove('on'); lkBtn.textContent='🔓'; }
+        });
+        if(_inflAutoSolve && months.length>1) solveUnlockedToBE({silent:true});
+        recomputeInflTab();
+      });
+
+      // Initial auto-solve so the view opens already at BE
+      if(_inflAutoSolve && months.length>1 && bePi!=null) solveUnlockedToBE({silent:true});
+      recomputeInflTab();
+    };
+
+    // Build a CER projector using the current path + existing grid for the rest
+    const buildTrialCER=(pathOverride)=>{
+      const bvL=parseFloat(document.getElementById("baseCER").value);
+      const bDateL=document.getElementById("baseCERDate").value;
+      const inflMap={};
+      IM.forEach(m=>{
+        inflMap[m.k]=parseFloat(document.getElementById("i_"+m.k).value)||0;
+      });
+      Object.keys(pathOverride).forEach(k=>{
+        if(pathOverride[k]!=null) inflMap[k]=pathOverride[k];
+      });
+      try{ return buildCER(bvL,bDateL,inflMap); }catch(e){ return null; }
+    };
+
+    // Evaluate the bond with current path → TIR real/nom, TNA TF
+    const evaluatePath=(path)=>{
+      const cerLiqVal=parseFloat(document.getElementById("cerLiq").value);
+      const trialCER=buildTrialCER(path);
+      if(!trialCER) return null;
+      const flows=getBondSchedule(b, settle, trialCER, cerLiqVal);
+      if(!flows.length) return null;
+      const price=parseFloat(document.getElementById('bci-price').value)||0;
+      if(price<=0) return null;
+      const yNom=xirrFromFlows(price,flows,'nominal');
+      const yReal=xirrFromFlows(price,flows,'real');
+      const d=DB(settle,matD);
+      const tirNom=yNom!=null?yNom*100:null;
+      const tirReal=yReal!=null?yReal*100:null;
+      const tnaTF=tirNom!=null&&d>0?((Math.pow(1+tirNom/100,d/365)-1)*(365/d))*100:null;
+      return {tirNom,tirReal,tnaTF,days:d};
+    };
+
+    const recomputeInflTab=()=>{
+      const beData=(_implInflResults||[]).find(r=>r.ticker===b.ticker);
+      const targetTEA=beData?beData.compTEA:null;
+      const bePi=beData?beData.implPi:null;
+      // Update bars
+      const vals=Object.values(inflPath).map(v=>Math.abs(v));
+      const maxAbs=Math.max(6, ...vals, bePi!=null?Math.abs(bePi):0);
+      Object.keys(inflPath).forEach(k=>{
+        const bar=document.getElementById('bcIflBar_'+k);
+        const be=document.getElementById('bcIflBe_'+k);
+        if(bar){
+          const pct=Math.max(0,Math.min(100,(Math.abs(inflPath[k])/maxAbs)*100));
+          bar.style.width=pct+'%';
+          bar.style.background=inflPath[k]>=0?b.color:'var(--neg)';
+        }
+        if(be&&bePi!=null){
+          const pctBE=Math.max(0,Math.min(100,(bePi/maxAbs)*100));
+          be.style.left=pctBE+'%';
+        }
+      });
+      const r=evaluatePath(inflPath);
+      const elR=document.getElementById('bcIflTirReal');
+      const elN=document.getElementById('bcIflTirNom');
+      const elT=document.getElementById('bcIflTnaTF');
+      const elImpl=document.getElementById('bcIflImplRest');
+      if(!r){
+        [elR,elN,elT,elImpl].forEach(el=>{if(el)el.textContent='—';});
+        return;
+      }
+      if(elR) elR.textContent=r.tirReal!=null?r.tirReal.toFixed(2)+'%':'—';
+      if(elN) elN.textContent=r.tirNom!=null?r.tirNom.toFixed(2)+'%':'—';
+      if(elT) elT.textContent=r.tnaTF!=null?r.tnaTF.toFixed(2)+'%':'—';
+      // TEM implícita del resto (no-bloqueados): promedio aritmético de los meses libres
+      const freeKeys=Object.keys(inflPath).filter(k=>!inflLocked[k]);
+      if(elImpl){
+        if(_inflMonthsCache.length===1){
+          elImpl.textContent=inflPath[_inflMonthsCache[0].k].toFixed(2)+'%';
+        } else if(freeKeys.length===0){
+          elImpl.textContent='— libres';
+        } else {
+          const avg=freeKeys.reduce((s,k)=>s+inflPath[k],0)/freeKeys.length;
+          elImpl.textContent=avg.toFixed(2)+'%';
+        }
+      }
+    };
+
+    // Bisect a uniform TEM for unlocked months so that TIR nominal == targetTEA
+    const solveUnlockedToBE=(opts)=>{
+      const silent=opts&&opts.silent;
+      const beData=(_implInflResults||[]).find(r=>r.ticker===b.ticker);
+      if(!beData||beData.compTEA==null){
+        if(!silent) alert('Sin BE de mercado para este bono.');
+        return;
+      }
+      const target=beData.compTEA/100;
+      const keys=Object.keys(inflPath).filter(k=>!inflLocked[k]);
+      if(keys.length===0){ return; }
+      const price=parseFloat(document.getElementById('bci-price').value)||0;
+      if(!price){ if(!silent) alert('Ingresá precio primero.'); return; }
+      const cerLiqVal=parseFloat(document.getElementById("cerLiq").value);
+      const bvL=parseFloat(document.getElementById("baseCER").value);
+      const bDateL=document.getElementById("baseCERDate").value;
+      if(!cerLiqVal||!bvL||!bDateL){ return; }
+
+      const trialXIRR=(pi)=>{
+        const inflMap={};
+        IM.forEach(m=>{ inflMap[m.k]=parseFloat(document.getElementById("i_"+m.k).value)||0; });
+        // Overlay locked months (as user set) and apply trial pi to unlocked
+        Object.keys(inflPath).forEach(k=>{
+          inflMap[k]=inflLocked[k]?inflPath[k]:pi;
+        });
+        let trialCER=null;
+        try{ trialCER=buildCER(bvL,bDateL,inflMap); }catch(e){ return null; }
+        if(!trialCER) return null;
+        const flows=getBondSchedule(b,settle,trialCER,cerLiqVal);
+        if(!flows.length) return null;
+        return xirrFromFlows(price,flows,'nominal');
+      };
+
+      let lo=-5, hi=30, found=null;
+      const xLo=trialXIRR(lo), xHi=trialXIRR(hi);
+      if(xLo==null||xHi==null){ return; }
+      for(let i=0;i<80;i++){
+        const mid=(lo+hi)/2;
+        const xm=trialXIRR(mid);
+        if(xm==null) break;
+        if(xm<target) lo=mid; else hi=mid;
+        if(Math.abs(hi-lo)<0.0001){ found=(lo+hi)/2; break; }
+      }
+      if(found==null) found=(lo+hi)/2;
+      keys.forEach(k=>{
+        inflPath[k]=parseFloat(found.toFixed(4));
+        const inp=document.getElementById('bcIflIn_'+k);
+        if(inp && document.activeElement!==inp) inp.value=inflPath[k].toFixed(3);
+      });
+    };
   }
 
   function recalc(){
