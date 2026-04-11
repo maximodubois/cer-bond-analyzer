@@ -3557,6 +3557,12 @@ function openBondCalculator(bondType, bondId){
             <label>Precio ${bondType==='cer'?'(% VT)':'($)'}</label>
             <input type="number" id="bci-price" step="0.01" value="${defaultPx}" placeholder="Precio"
               style="font-size:15px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;gap:8px">
+              <label style="display:flex;align-items:center;gap:5px;font-size:9px;color:var(--td)">
+                <input type="checkbox" id="bci-price-auto-live" ${lp.last?'checked':''}> Auto LAST live
+              </label>
+              <span id="bcPriceLiveBadge" style="font-size:9px;color:var(--tm)">${lp.last?('LIVE LAST '+lp.last.toFixed(2)):'LIVE sin dato'}</span>
+            </div>
           </div>
           <div class="ig">
             <label>VNO (cantidad de titulos)</label>
@@ -3645,8 +3651,9 @@ function openBondCalculator(bondType, bondId){
     </div>`;
 
   document.body.appendChild(overlay);
-  document.getElementById('bcClose').addEventListener('click', ()=>{ delete window._bcSetSettle; delete window._bcSwitchTab; overlay.remove(); });
-  overlay.addEventListener('click', e=>{ if(e.target===overlay){ delete window._bcSetSettle; delete window._bcSwitchTab; overlay.remove(); } });
+  _bondCalcCtx={ticker:b.ticker,bondType,bondId:b.id};
+  document.getElementById('bcClose').addEventListener('click', ()=>{ delete window._bcSetSettle; delete window._bcSwitchTab; _bondCalcCtx=null; overlay.remove(); });
+  overlay.addEventListener('click', e=>{ if(e.target===overlay){ delete window._bcSetSettle; delete window._bcSwitchTab; _bondCalcCtx=null; overlay.remove(); } });
 
   // Tab switcher (only active for CER)
   window._bcSwitchTab=function(which){
@@ -3837,6 +3844,23 @@ function openBondCalculator(bondType, bondId){
           1) Tocá el 🔓 para bloquear los meses que querés fijar. 2) <strong>Calcular BE</strong> resuelve una TEM uniforme para los no-bloqueados que hace la TIR nominal = TEA del bono fija comparable. 3) <strong>Calcular TNA TF CER</strong> evalúa el bono con el sendero que ves en pantalla.
         </div>
         <div class="infl-path" id="bcIflPath"></div>
+        <div style="margin-top:12px;border-top:1px solid var(--cb);padding-top:10px">
+          <div class="st" style="margin-bottom:6px">Módulo A→B (equivalencia vs tasa fija comparable)</div>
+          <div style="font-size:10px;color:var(--td);line-height:1.6;margin-bottom:8px">
+            Dado <strong>precio X</strong> e inflación <strong>A%</strong> para <strong>${months[0].label}</strong>, resolvemos <strong>B%</strong> uniforme para los meses siguientes para igualar la TNA/TEA nominal del comparable en tasa fija.
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">
+            <div class="ig"><label>Precio X</label><input type="number" id="bcEqPriceX" step="0.01" value="${(parseFloat(document.getElementById('bci-price')?.value)||defaultPx||0)}"></div>
+            <div class="ig"><label>A% (${months[0].label})</label><input type="number" id="bcEqInflA" step="0.05" value="${(inflPath[months[0].k]||0).toFixed(3)}"></div>
+            <div class="ig"><label>B% (resto)</label><input type="number" id="bcEqInflB" step="0.0001" readonly style="opacity:0.85"></div>
+            <button class="infl-btn primary" id="bcEqSolveBtn">Resolver B</button>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+            <button class="infl-btn" id="bcEqUseLive">Tomar precio live</button>
+            <button class="infl-btn" id="bcEqUseCalcPx">Usar precio calculadora</button>
+          </div>
+          <div id="bcEqResult" style="font-size:10px;color:var(--td);line-height:1.6;margin-top:8px;min-height:20px">Esperando inputs…</div>
+        </div>
         </div>
       `;
 
@@ -3991,6 +4015,58 @@ function openBondCalculator(bondType, bondId){
           if(lkBtn){ lkBtn.classList.remove('on'); lkBtn.textContent='🔓'; }
         });
       });
+
+      const eqPriceEl=document.getElementById('bcEqPriceX');
+      const eqAEl=document.getElementById('bcEqInflA');
+      const eqBEl=document.getElementById('bcEqInflB');
+      const eqResEl=document.getElementById('bcEqResult');
+      const eqBtn=document.getElementById('bcEqSolveBtn');
+      const eqUseLive=document.getElementById('bcEqUseLive');
+      const eqUseCalc=document.getElementById('bcEqUseCalcPx');
+
+      const renderEqMsg=(msg,color='var(--td)')=>{ if(eqResEl){eqResEl.style.color=color;eqResEl.innerHTML=msg;} };
+      if(eqUseLive){
+        eqUseLive.addEventListener('click',()=>{
+          const lp=_livePrices[b.ticker]||{};
+          const px=lp.last||lp.bid||lp.ask||0;
+          if(!(px>0)){ renderEqMsg('No hay precio live disponible para este ticker.','var(--tm)'); return; }
+          if(eqPriceEl) eqPriceEl.value=px.toFixed(2);
+          renderEqMsg(`Precio live cargado: <strong style="color:var(--acl)">${px.toFixed(2)}</strong>`,'var(--td)');
+        });
+      }
+      if(eqUseCalc){
+        eqUseCalc.addEventListener('click',()=>{
+          const px=parseFloat(document.getElementById('bci-price').value)||0;
+          if(!(px>0)){ renderEqMsg('No hay precio en la calculadora.','var(--tm)'); return; }
+          if(eqPriceEl) eqPriceEl.value=px.toFixed(2);
+          renderEqMsg(`Precio calculadora copiado: <strong style="color:var(--acl)">${px.toFixed(2)}</strong>`,'var(--td)');
+        });
+      }
+      if(eqBtn){
+        eqBtn.addEventListener('click',()=>{
+          const px=parseFloat(eqPriceEl?.value);
+          const a=parseFloat(eqAEl?.value);
+          if(!(px>0)){ renderEqMsg('Ingresá Precio X válido.','var(--neg)'); return; }
+          if(isNaN(a)){ renderEqMsg('Ingresá A% válido.','var(--neg)'); return; }
+          const solved=solveBFromPriceAndA(px,a);
+          if(!solved.ok){ renderEqMsg(solved.msg,'var(--neg)'); return; }
+          if(eqBEl) eqBEl.value=solved.b.toFixed(4);
+          const r=solved.eval||{};
+          const diff=(r.tirNom!=null&&solved.targetTEA!=null)?(r.tirNom-solved.targetTEA):null;
+          renderEqMsg(`B resuelta: <strong style="color:var(--acl)">${solved.b.toFixed(4)}%</strong> ${solved.single?'(único mes)':'(meses restantes)'} · Comparable <strong style="color:var(--fx)">${solved.comp}</strong> @ <strong>${solved.targetTEA.toFixed(2)}%</strong> TEA · TNA TF CER: <strong style="color:var(--am)">${r.tnaTF!=null?r.tnaTF.toFixed(2)+'%':'—'}</strong>${diff!=null?` · gap TEA ${diff>=0?'+':''}${diff.toFixed(4)}%`:''}`,'var(--td)');
+          if(months.length){
+            inflPath[months[0].k]=a;
+            for(let i=1;i<months.length;i++) inflPath[months[i].k]=solved.b;
+            months.forEach((m,idx)=>{
+              const inp=document.getElementById('bcIflIn_'+m.k);
+              if(inp) inp.value=(idx===0?a:solved.b).toFixed(3);
+              const sl=document.getElementById('bcIflSl_'+m.k);
+              if(sl) sl.value=(idx===0?a:solved.b).toFixed(3);
+            });
+            redrawBars();
+          }
+        });
+      }
     };
 
     // Build a CER projector using the current path + existing grid for the rest
@@ -4009,13 +4085,13 @@ function openBondCalculator(bondType, bondId){
     };
 
     // Evaluate the bond with current path → TIR real/nom, TNA TF
-    const evaluatePath=(path)=>{
+    const evaluatePath=(path,priceOverride=null)=>{
       const cerLiqVal=parseFloat(document.getElementById("cerLiq").value);
       const trialCER=buildTrialCER(path);
       if(!trialCER) return null;
       const flows=getBondSchedule(b, settle, trialCER, cerLiqVal);
       if(!flows.length) return null;
-      const price=parseFloat(document.getElementById('bci-price').value)||0;
+      const price=(priceOverride!=null?priceOverride:parseFloat(document.getElementById('bci-price').value))||0;
       if(price<=0) return null;
       const yNom=xirrFromFlows(price,flows,'nominal');
       const yReal=xirrFromFlows(price,flows,'real');
@@ -4098,6 +4174,44 @@ function openBondCalculator(bondType, bondId){
       if(found==null) found=(lo+hi)/2;
       keys.forEach(k=>{ inflPath[k]=parseFloat(found.toFixed(4)); });
       return true;
+    };
+
+    const solveBFromPriceAndA=(priceX,inflA)=>{
+      const beData=(_implInflResults||[]).find(r=>r.ticker===b.ticker);
+      if(!beData||beData.compTEA==null) return {ok:false,msg:'Sin comparable de tasa fija para este bono.'};
+      if(!(_inflMonthsCache&&_inflMonthsCache.length)) return {ok:false,msg:'Sin meses incógnita para resolver.'};
+      const months=_inflMonthsCache;
+      const first=months[0];
+      const rest=months.slice(1);
+      const target=beData.compTEA/100;
+      const trial=(bVal)=>{
+        const path={};
+        path[first.k]=inflA;
+        rest.forEach(m=>{ path[m.k]=bVal; });
+        return evaluatePath(path,priceX);
+      };
+      if(rest.length===0){
+        const r=trial(inflA);
+        if(!r||r.tirNom==null) return {ok:false,msg:'No se pudo evaluar con ese precio.'};
+        return {ok:true,b:inflA,eval:r,single:true,targetTEA:beData.compTEA,comp:beData.comp};
+      }
+      let lo=-10,hi=30,found=null;
+      const rLo=trial(lo),rHi=trial(hi);
+      if(!rLo||!rHi||rLo.tirNom==null||rHi.tirNom==null){
+        return {ok:false,msg:'No se pudo evaluar XIRR con los extremos. Revisá precio/CER.'};
+      }
+      for(let i=0;i<80;i++){
+        const mid=(lo+hi)/2;
+        const rm=trial(mid);
+        if(!rm||rm.tirNom==null) return {ok:false,msg:'XIRR no converge durante la resolución.'};
+        const ym=rm.tirNom/100;
+        if(ym<target) lo=mid; else hi=mid;
+        if(Math.abs(hi-lo)<0.0001){ found=(lo+hi)/2; break; }
+      }
+      if(found==null) found=(lo+hi)/2;
+      const rFinal=trial(found);
+      if(!rFinal) return {ok:false,msg:'No se pudo evaluar solución final.'};
+      return {ok:true,b:found,eval:rFinal,single:false,targetTEA:beData.compTEA,comp:beData.comp};
     };
   }
 
@@ -4354,6 +4468,20 @@ function openBondCalculator(bondType, bondId){
     }
   }
 
+  const autoLiveEl=document.getElementById('bci-price-auto-live');
+  if(autoLiveEl){
+    autoLiveEl.addEventListener('change',()=>{ if(autoLiveEl.checked) syncBondCalcModal(); });
+    const pxInput=document.getElementById('bci-price');
+    if(pxInput){
+      pxInput.addEventListener('input',()=>{
+        if(autoLiveEl.checked && document.activeElement===pxInput){
+          autoLiveEl.checked=false;
+        }
+      });
+    }
+    syncBondCalcModal();
+  }
+
   document.getElementById('bci-price').addEventListener('input', recalc);
   document.getElementById('bci-vno').addEventListener('input', recalc);
   document.getElementById('bci-target-tir').addEventListener('input', recalc);
@@ -4527,6 +4655,7 @@ let _priceConnected=false;
 let _autoCalcTimer=null;
 let _fxSpotOverride=null; // null = live; number = manual override for all FX curves
 let _fxCalcCtx=null;      // context of currently open FX calculator modal
+let _bondCalcCtx=null;    // context of currently open bond calculator modal
 let _fxCalcUpdating=false;
 
 function getAllTickers(){
@@ -4577,6 +4706,7 @@ async function fetchPricesFromServer(){
     if(_hs){ const sv=getFxSpot(); _hs.textContent=sv?sv.toFixed(2):"—"; }
     if(_hm){ const mv=getFxMep(); _hm.textContent=mv?mv.toFixed(2):"—"; }
     syncFxCalcModal();
+    syncBondCalcModal();
   }catch(e){
     const ts=new Date().toLocaleTimeString("es-AR");
     log.innerHTML=`<span class="api-err">✗ ${e.message} · ${ts}</span> — Verificá que <code style="color:var(--ac)">python server.py</code> esté corriendo`;
@@ -7181,6 +7311,34 @@ function openFxCalculator(type, id){
 }
 
 // Called after each server price fetch to keep open modal in sync
+function syncBondCalcModal(){
+  const modal=document.getElementById("bondCalcModal");
+  if(!modal||!_bondCalcCtx) return;
+  const priceEl=document.getElementById('bci-price');
+  const autoEl=document.getElementById('bci-price-auto-live');
+  const badgeEl=document.getElementById('bcPriceLiveBadge');
+  if(!priceEl) return;
+
+  const lp=_livePrices[_bondCalcCtx.ticker]||{};
+  const livePx=lp.last||lp.bid||lp.ask||0;
+  if(badgeEl){
+    if(livePx>0){
+      badgeEl.textContent=`LIVE LAST ${livePx.toFixed(2)}`;
+      badgeEl.style.color='var(--acl)';
+    }else{
+      badgeEl.textContent='LIVE sin dato';
+      badgeEl.style.color='var(--tm)';
+    }
+  }
+  if(!autoEl||!autoEl.checked) return;
+  if(!(livePx>0)) return;
+  const cur=parseFloat(priceEl.value);
+  if(isNaN(cur)||Math.abs(cur-livePx)>0.0001){
+    priceEl.value=livePx.toFixed(2);
+    priceEl.dispatchEvent(new Event('input'));
+  }
+}
+
 function syncFxCalcModal(){
   if(!_fxCalcCtx) return;
   const modal=document.getElementById('fxCalcModal');
