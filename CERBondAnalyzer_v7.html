@@ -272,6 +272,22 @@
   .infl-btn{background:var(--bg);border:1px solid var(--cb);color:var(--t);font-family:'Inter',sans-serif;font-size:10px;font-weight:500;padding:7px 11px;cursor:pointer;border-radius:5px;letter-spacing:0.02em;transition:all 0.15s}
   .infl-btn:hover{border-color:var(--acl);color:var(--acl)}
   .infl-btn.primary{background:var(--acd);border-color:var(--acl);color:var(--acl);font-weight:700}
+  .infl-variant-switch{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:8px 0 10px}
+  .infl-vbtn{background:var(--bg);border:1px solid var(--cb);color:var(--td);font-size:9px;padding:6px 8px;border-radius:6px;cursor:pointer;text-align:left;line-height:1.25}
+  .infl-vbtn strong{display:block;color:var(--t);font-size:10px;margin-bottom:2px}
+  .infl-vbtn.active{border-color:var(--acl);background:rgba(56,189,248,0.12);color:var(--acl)}
+  .infl-layout.infl-v2 .infl-path{grid-template-columns:1fr 1fr;gap:8px}
+  .infl-layout.infl-v2 .infl-row{grid-template-columns:1fr 78px 30px;padding:8px}
+  .infl-layout.infl-v2 .infl-bar{display:none}
+  .infl-layout.infl-v3 .infl-row{grid-template-columns:68px 1fr 78px 30px}
+  .infl-layout.infl-v3 .infl-slider{width:100%}
+  .infl-layout.infl-v4 .infl-path{gap:4px}
+  .infl-layout.infl-v4 .infl-row{grid-template-columns:72px 82px 1fr 30px;background:transparent;border:1px dashed rgba(148,163,184,0.35)}
+  .infl-layout.infl-v4 .infl-bar{height:6px}
+  @media(max-width:700px){
+    .infl-variant-switch{grid-template-columns:1fr 1fr}
+    .infl-layout.infl-v2 .infl-path{grid-template-columns:1fr}
+  }
   .live-tk-link{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
   .live-tk-link:hover{opacity:0.8}
   /* FX Calculator Modal */
@@ -3733,6 +3749,21 @@ function openBondCalculator(bondType, bondId){
     const inflPath={};   // key → number (TEM %)
     const inflLocked={}; // key → bool (user-pinned)
     let _inflMonthsCache=[]; // cached month list for closures
+    let inflUiVersion=1; // 1..4 visual alternatives
+
+    const getInflSourceValue=(k)=>{
+      const direct=document.getElementById('i_'+k);
+      if(direct){
+        const v=parseFloat(direct.value);
+        if(!isNaN(v)) return v;
+      }
+      const alt=document.querySelector(`[data-infl-month="${k}"]`);
+      if(alt){
+        const v=parseFloat(alt.value||alt.textContent||'');
+        if(!isNaN(v)) return v;
+      }
+      return null;
+    };
 
     _bcRenderInflTab=function(){
       const host=document.getElementById('bc-infl-content');
@@ -3777,12 +3808,19 @@ function openBondCalculator(bondType, bondId){
       const nUnk=months.length;
 
       host.innerHTML=`
+        <div class="infl-layout infl-v${inflUiVersion}" id="bcIflLayout">
         <div style="margin-bottom:10px">
           <div class="st" style="margin-bottom:6px">Sendero de inflación · ${b.ticker}</div>
           <div style="font-size:10px;color:var(--td);line-height:1.6">
             ${beTxt}<br>
             ${nUnk} mes${nUnk>1?'es':''} incógnita: <strong style="color:var(--t)">${months[0].label}${nUnk>1?' → '+months[nUnk-1].label:''}</strong> · último CPI conocido: <strong style="color:var(--t)">${range.lastKnown.label}</strong>
           </div>
+        </div>
+        <div class="infl-variant-switch" id="bcIflVariantSwitch">
+          <button class="infl-vbtn ${inflUiVersion===1?'active':''}" data-v="1"><strong>Versión 1</strong>Desk clásica</button>
+          <button class="infl-vbtn ${inflUiVersion===2?'active':''}" data-v="2"><strong>Versión 2</strong>Matriz rápida</button>
+          <button class="infl-vbtn ${inflUiVersion===3?'active':''}" data-v="3"><strong>Versión 3</strong>Con sliders</button>
+          <button class="infl-vbtn ${inflUiVersion===4?'active':''}" data-v="4"><strong>Versión 4</strong>Modo quirúrgico</button>
         </div>
         <div class="bc-kpis" style="grid-template-columns:repeat(3,1fr)">
           <div class="bc-kpi"><div class="bv" id="bcIflTnaTF" style="font-size:18px;color:var(--acl)">—</div><div class="bl">TNA TF CER</div></div>
@@ -3799,40 +3837,88 @@ function openBondCalculator(bondType, bondId){
           1) Tocá el 🔓 para bloquear los meses que querés fijar. 2) <strong>Calcular BE</strong> resuelve una TEM uniforme para los no-bloqueados que hace la TIR nominal = TEA del bono fija comparable. 3) <strong>Calcular TNA TF CER</strong> evalúa el bono con el sendero que ves en pantalla.
         </div>
         <div class="infl-path" id="bcIflPath"></div>
+        </div>
       `;
 
-      // Build rows
-      const pathHost=document.getElementById('bcIflPath');
-      let pathHTML='';
-      months.forEach((m,i)=>{
-        const v=inflPath[m.k];
-        const locked=inflLocked[m.k];
-        pathHTML+=`
-          <div class="infl-row ${locked?'locked':''}" id="bcIflRow_${m.k}">
+      const renderRows=()=>{
+        const pathHost=document.getElementById('bcIflPath');
+        if(!pathHost) return;
+        let pathHTML='';
+        months.forEach(m=>{
+          const v=inflPath[m.k];
+          const locked=inflLocked[m.k];
+          if(inflUiVersion===2){
+            pathHTML+=`<div class="infl-row ${locked?'locked':''}" id="bcIflRow_${m.k}">
+              <div class="ilab">${m.label}</div>
+              <input type="number" step="0.05" id="bcIflIn_${m.k}" value="${v.toFixed(3)}">
+              <button class="infl-lock ${locked?'on':''}" id="bcIflLk_${m.k}" title="Bloquear mes">${locked?'🔒':'🔓'}</button>
+            </div>`;
+            return;
+          }
+          if(inflUiVersion===3){
+            pathHTML+=`<div class="infl-row ${locked?'locked':''}" id="bcIflRow_${m.k}">
+              <div class="ilab">${m.label}</div>
+              <input class="infl-slider" type="range" min="-5" max="20" step="0.05" id="bcIflSl_${m.k}" value="${v.toFixed(3)}">
+              <input type="number" step="0.05" id="bcIflIn_${m.k}" value="${v.toFixed(3)}">
+              <button class="infl-lock ${locked?'on':''}" id="bcIflLk_${m.k}" title="Bloquear mes">${locked?'🔒':'🔓'}</button>
+            </div>`;
+            return;
+          }
+          pathHTML+=`<div class="infl-row ${locked?'locked':''}" id="bcIflRow_${m.k}">
             <div class="ilab">${m.label}</div>
             <div class="infl-bar"><div class="infl-bar-fill" id="bcIflBar_${m.k}" style="width:0%;background:${b.color}"></div><div class="infl-bar-be" id="bcIflBe_${m.k}"></div></div>
             <input type="number" step="0.05" id="bcIflIn_${m.k}" value="${v.toFixed(3)}">
             <button class="infl-lock ${locked?'on':''}" id="bcIflLk_${m.k}" title="Bloquear mes">${locked?'🔒':'🔓'}</button>
           </div>`;
-      });
-      pathHost.innerHTML=pathHTML;
+        });
+        pathHost.innerHTML=pathHTML;
+        wireRows();
+        redrawBars();
+      };
 
       // Wire up row inputs (only store value; no auto-compute)
-      months.forEach(m=>{
-        const inp=document.getElementById('bcIflIn_'+m.k);
-        const lk=document.getElementById('bcIflLk_'+m.k);
-        inp.addEventListener('input',()=>{
-          const v=parseFloat(inp.value);
-          if(!isNaN(v)) inflPath[m.k]=v;
-          redrawBars();
+      const wireRows=()=>{
+        months.forEach(m=>{
+          const inp=document.getElementById('bcIflIn_'+m.k);
+          const lk=document.getElementById('bcIflLk_'+m.k);
+          const sl=document.getElementById('bcIflSl_'+m.k);
+          if(inp) inp.addEventListener('input',()=>{
+            const v=parseFloat(inp.value);
+            if(!isNaN(v)){
+              inflPath[m.k]=v;
+              if(sl) sl.value=v;
+            }
+            redrawBars();
+          });
+          if(sl) sl.addEventListener('input',()=>{
+            const v=parseFloat(sl.value);
+            if(!isNaN(v)){
+              inflPath[m.k]=v;
+              if(inp) inp.value=v.toFixed(3);
+            }
+            redrawBars();
+          });
+          if(lk) lk.addEventListener('click',()=>{
+            inflLocked[m.k]=!inflLocked[m.k];
+            const row=document.getElementById('bcIflRow_'+m.k);
+            if(inflLocked[m.k]){ row.classList.add('locked'); lk.classList.add('on'); lk.textContent='🔒'; }
+            else { row.classList.remove('locked'); lk.classList.remove('on'); lk.textContent='🔓'; }
+          });
         });
-        lk.addEventListener('click',()=>{
-          inflLocked[m.k]=!inflLocked[m.k];
-          const row=document.getElementById('bcIflRow_'+m.k);
-          if(inflLocked[m.k]){ row.classList.add('locked'); lk.classList.add('on'); lk.textContent='🔒'; }
-          else { row.classList.remove('locked'); lk.classList.remove('on'); lk.textContent='🔓'; }
+      };
+
+      document.querySelectorAll('#bcIflVariantSwitch .infl-vbtn').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          inflUiVersion=parseInt(btn.dataset.v,10)||1;
+          const layout=document.getElementById('bcIflLayout');
+          if(layout) layout.className=`infl-layout infl-v${inflUiVersion}`;
+          document.querySelectorAll('#bcIflVariantSwitch .infl-vbtn').forEach(bx=>bx.classList.remove('active'));
+          btn.classList.add('active');
+          renderRows();
         });
       });
+
+      renderRows();
 
       // Button: calculate TNA TF CER from the on-screen path
       document.getElementById('bcIflBtnCalc').addEventListener('click',()=>{
@@ -3879,19 +3965,20 @@ function openBondCalculator(bondType, bondId){
 
       // Button: reset to INDEC grid (main calc tab values)
       document.getElementById('bcIflBtnReset').addEventListener('click',()=>{
-        let any=false;
+        let any=0, miss=0;
         months.forEach(m=>{
-          const srcEl=document.getElementById('i_'+m.k);
-          if(!srcEl) return;
-          const raw=parseFloat(srcEl.value);
-          if(!isNaN(raw)){
+          const raw=getInflSourceValue(m.k);
+          if(raw!=null){
             inflPath[m.k]=raw;
             const inp=document.getElementById('bcIflIn_'+m.k);
             if(inp) inp.value=raw.toFixed(3);
-            any=true;
-          }
+            const sl=document.getElementById('bcIflSl_'+m.k);
+            if(sl) sl.value=raw.toFixed(3);
+            any++;
+          } else miss++;
         });
-        if(!any){ alert('No encontré valores en la grilla INDEC. Completá los TEM en la pestaña CALCULADORAS.'); return; }
+        if(!any){ alert('No encontré valores en la grilla INDEC. Completá los TEM en la pestaña CALCULADORA primero.'); return; }
+        if(miss>0){ alert(`Reset parcial: ${any} meses actualizados y ${miss} sin dato INDEC.`); }
         redrawBars();
       });
 
@@ -3904,8 +3991,6 @@ function openBondCalculator(bondType, bondId){
           if(lkBtn){ lkBtn.classList.remove('on'); lkBtn.textContent='🔓'; }
         });
       });
-
-      redrawBars();
     };
 
     // Build a CER projector using the current path + existing grid for the rest
@@ -3914,7 +3999,8 @@ function openBondCalculator(bondType, bondId){
       const bDateL=document.getElementById("baseCERDate").value;
       const inflMap={};
       IM.forEach(m=>{
-        inflMap[m.k]=parseFloat(document.getElementById("i_"+m.k).value)||0;
+        const src=getInflSourceValue(m.k);
+        inflMap[m.k]=src!=null?src:0;
       });
       Object.keys(pathOverride).forEach(k=>{
         if(pathOverride[k]!=null) inflMap[k]=pathOverride[k];
@@ -3984,7 +4070,10 @@ function openBondCalculator(bondType, bondId){
 
       const trialXIRR=(pi)=>{
         const inflMap={};
-        IM.forEach(m=>{ inflMap[m.k]=parseFloat(document.getElementById("i_"+m.k).value)||0; });
+        IM.forEach(m=>{
+          const src=getInflSourceValue(m.k);
+          inflMap[m.k]=src!=null?src:0;
+        });
         Object.keys(inflPath).forEach(k=>{
           inflMap[k]=inflLocked[k]?inflPath[k]:pi;
         });
