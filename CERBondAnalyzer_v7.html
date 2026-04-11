@@ -3732,7 +3732,6 @@ function openBondCalculator(bondType, bondId){
     // Per-bond editable path + lock state, persisted across tab switches
     const inflPath={};   // key → number (TEM %)
     const inflLocked={}; // key → bool (user-pinned)
-    let _inflAutoSolve=true; // auto-recompute BE of the unlocked months on every edit
     let _inflMonthsCache=[]; // cached month list for closures
 
     _bcRenderInflTab=function(){
@@ -3776,9 +3775,6 @@ function openBondCalculator(bondType, bondId){
         : `<span style="color:var(--td)">Sin BE de mercado disponible — corré el cálculo principal primero.</span>`;
 
       const nUnk=months.length;
-      const helpTxt=nUnk===1
-        ? `Editá el valor y mirá el TNA TF CER resultante. El único mes es tu punto de breakeven.`
-        : `Editá cualquier mes: se fija automáticamente y el resto se recalcula para <strong>mantener el BE</strong>. Tocá el candado para liberar un mes bloqueado.`;
 
       host.innerHTML=`
         <div style="margin-bottom:10px">
@@ -3788,22 +3784,20 @@ function openBondCalculator(bondType, bondId){
             ${nUnk} mes${nUnk>1?'es':''} incógnita: <strong style="color:var(--t)">${months[0].label}${nUnk>1?' → '+months[nUnk-1].label:''}</strong> · último CPI conocido: <strong style="color:var(--t)">${range.lastKnown.label}</strong>
           </div>
         </div>
-        <div class="bc-kpis" style="grid-template-columns:repeat(4,1fr)">
-          <div class="bc-kpi"><div class="bv" id="bcIflTnaTF" style="font-size:17px;color:var(--acl)">—</div><div class="bl">TNA TF CER</div></div>
+        <div class="bc-kpis" style="grid-template-columns:repeat(3,1fr)">
+          <div class="bc-kpi"><div class="bv" id="bcIflTnaTF" style="font-size:18px;color:var(--acl)">—</div><div class="bl">TNA TF CER</div></div>
           <div class="bc-kpi"><div class="bv" id="bcIflTirReal" style="font-size:15px">—</div><div class="bl">TIR real TEA</div></div>
           <div class="bc-kpi"><div class="bv" id="bcIflTirNom" style="font-size:15px;color:var(--fx)">—</div><div class="bl">TIR nom TEA</div></div>
-          <div class="bc-kpi"><div class="bv" id="bcIflImplRest" style="font-size:15px;color:var(--am)">—</div><div class="bl">TEM implícita resto</div></div>
         </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
-          <label style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--t);cursor:pointer;padding:6px 10px;background:var(--bg);border:1px solid var(--cb);border-radius:5px">
-            <input type="checkbox" id="bcIflAuto" ${_inflAutoSolve?'checked':''} style="accent-color:var(--acl)">
-            <span>Auto-resolver BE</span>
-          </label>
-          <button class="infl-btn" id="bcIflBtnFlat">Plano = BE</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+          <button class="infl-btn primary" id="bcIflBtnCalc">Calcular TNA TF CER</button>
+          <button class="infl-btn primary" id="bcIflBtnBE">Calcular BE (no-bloqueados)</button>
           <button class="infl-btn" id="bcIflBtnReset">Reset INDEC</button>
           <button class="infl-btn" id="bcIflBtnClearLocks">Quitar locks</button>
         </div>
-        <div style="font-size:9px;color:var(--tm);margin-bottom:8px;line-height:1.5">${helpTxt}</div>
+        <div style="font-size:9px;color:var(--tm);margin-bottom:8px;line-height:1.5">
+          1) Tocá el 🔓 para bloquear los meses que querés fijar. 2) <strong>Calcular BE</strong> resuelve una TEM uniforme para los no-bloqueados que hace la TIR nominal = TEA del bono fija comparable. 3) <strong>Calcular TNA TF CER</strong> evalúa el bono con el sendero que ves en pantalla.
+        </div>
         <div class="infl-path" id="bcIflPath"></div>
       `;
 
@@ -3823,68 +3817,84 @@ function openBondCalculator(bondType, bondId){
       });
       pathHost.innerHTML=pathHTML;
 
-      // Wire up row interactions
+      // Wire up row inputs (only store value; no auto-compute)
       months.forEach(m=>{
         const inp=document.getElementById('bcIflIn_'+m.k);
         const lk=document.getElementById('bcIflLk_'+m.k);
         inp.addEventListener('input',()=>{
           const v=parseFloat(inp.value);
-          if(isNaN(v)) return;
-          inflPath[m.k]=v;
-          // When the user types, auto-pin this month and re-solve the rest
-          if(_inflAutoSolve && months.length>1){
-            inflLocked[m.k]=true;
-            const row=document.getElementById('bcIflRow_'+m.k);
-            const lkBtn=document.getElementById('bcIflLk_'+m.k);
-            if(row) row.classList.add('locked');
-            if(lkBtn){ lkBtn.classList.add('on'); lkBtn.textContent='🔒'; }
-            solveUnlockedToBE({silent:true});
-          }
-          recomputeInflTab();
+          if(!isNaN(v)) inflPath[m.k]=v;
+          redrawBars();
         });
         lk.addEventListener('click',()=>{
           inflLocked[m.k]=!inflLocked[m.k];
           const row=document.getElementById('bcIflRow_'+m.k);
           if(inflLocked[m.k]){ row.classList.add('locked'); lk.classList.add('on'); lk.textContent='🔒'; }
-          else {
-            row.classList.remove('locked'); lk.classList.remove('on'); lk.textContent='🔓';
-            if(_inflAutoSolve && months.length>1) solveUnlockedToBE({silent:true});
-          }
-          recomputeInflTab();
+          else { row.classList.remove('locked'); lk.classList.remove('on'); lk.textContent='🔓'; }
         });
       });
 
-      document.getElementById('bcIflAuto').addEventListener('change',(e)=>{
-        _inflAutoSolve=e.target.checked;
-        if(_inflAutoSolve && months.length>1) solveUnlockedToBE({silent:true});
-        recomputeInflTab();
-      });
-      document.getElementById('bcIflBtnFlat').addEventListener('click',()=>{
-        if(bePi==null) return;
+      // Button: calculate TNA TF CER from the on-screen path
+      document.getElementById('bcIflBtnCalc').addEventListener('click',()=>{
+        // Pull current input values into inflPath
         months.forEach(m=>{
-          inflPath[m.k]=parseFloat(bePi.toFixed(3));
-          inflLocked[m.k]=false;
           const inp=document.getElementById('bcIflIn_'+m.k);
-          const row=document.getElementById('bcIflRow_'+m.k);
-          const lkBtn=document.getElementById('bcIflLk_'+m.k);
-          if(inp) inp.value=inflPath[m.k].toFixed(3);
-          if(row) row.classList.remove('locked');
-          if(lkBtn){ lkBtn.classList.remove('on'); lkBtn.textContent='🔓'; }
+          const v=parseFloat(inp.value);
+          if(!isNaN(v)) inflPath[m.k]=v;
         });
-        recomputeInflTab();
+        const r=evaluatePath(inflPath);
+        const elR=document.getElementById('bcIflTirReal');
+        const elN=document.getElementById('bcIflTirNom');
+        const elT=document.getElementById('bcIflTnaTF');
+        if(!r){
+          [elR,elN,elT].forEach(el=>{if(el)el.textContent='—';});
+          alert('No se pudo calcular. Revisá precio, CER base y datos del bono.');
+          return;
+        }
+        if(elR) elR.textContent=r.tirReal!=null?r.tirReal.toFixed(2)+'%':'—';
+        if(elN) elN.textContent=r.tirNom!=null?r.tirNom.toFixed(2)+'%':'—';
+        if(elT) elT.textContent=r.tnaTF!=null?r.tnaTF.toFixed(2)+'%':'—';
+        redrawBars();
       });
-      document.getElementById('bcIflBtnReset').addEventListener('click',()=>{
+
+      // Button: solve BE for unlocked months
+      document.getElementById('bcIflBtnBE').addEventListener('click',()=>{
+        // Pull current on-screen values into inflPath before solving
         months.forEach(m=>{
-          const raw=parseFloat(document.getElementById('i_'+m.k).value);
+          const inp=document.getElementById('bcIflIn_'+m.k);
+          const v=parseFloat(inp.value);
+          if(!isNaN(v)) inflPath[m.k]=v;
+        });
+        const ok=solveUnlockedToBE();
+        if(!ok) return;
+        // Write solved values back into the inputs
+        months.forEach(m=>{
+          if(!inflLocked[m.k]){
+            const inp=document.getElementById('bcIflIn_'+m.k);
+            if(inp) inp.value=inflPath[m.k].toFixed(3);
+          }
+        });
+        redrawBars();
+      });
+
+      // Button: reset to INDEC grid (main calc tab values)
+      document.getElementById('bcIflBtnReset').addEventListener('click',()=>{
+        let any=false;
+        months.forEach(m=>{
+          const srcEl=document.getElementById('i_'+m.k);
+          if(!srcEl) return;
+          const raw=parseFloat(srcEl.value);
           if(!isNaN(raw)){
             inflPath[m.k]=raw;
             const inp=document.getElementById('bcIflIn_'+m.k);
             if(inp) inp.value=raw.toFixed(3);
+            any=true;
           }
         });
-        if(_inflAutoSolve && months.length>1) solveUnlockedToBE({silent:true});
-        recomputeInflTab();
+        if(!any){ alert('No encontré valores en la grilla INDEC. Completá los TEM en la pestaña CALCULADORAS.'); return; }
+        redrawBars();
       });
+
       document.getElementById('bcIflBtnClearLocks').addEventListener('click',()=>{
         months.forEach(m=>{
           inflLocked[m.k]=false;
@@ -3893,13 +3903,9 @@ function openBondCalculator(bondType, bondId){
           if(row) row.classList.remove('locked');
           if(lkBtn){ lkBtn.classList.remove('on'); lkBtn.textContent='🔓'; }
         });
-        if(_inflAutoSolve && months.length>1) solveUnlockedToBE({silent:true});
-        recomputeInflTab();
       });
 
-      // Initial auto-solve so the view opens already at BE
-      if(_inflAutoSolve && months.length>1 && bePi!=null) solveUnlockedToBE({silent:true});
-      recomputeInflTab();
+      redrawBars();
     };
 
     // Build a CER projector using the current path + existing grid for the rest
@@ -3934,11 +3940,10 @@ function openBondCalculator(bondType, bondId){
       return {tirNom,tirReal,tnaTF,days:d};
     };
 
-    const recomputeInflTab=()=>{
+    // Redraw the visual bars — does NOT evaluate the bond
+    const redrawBars=()=>{
       const beData=(_implInflResults||[]).find(r=>r.ticker===b.ticker);
-      const targetTEA=beData?beData.compTEA:null;
       const bePi=beData?beData.implPi:null;
-      // Update bars
       const vals=Object.values(inflPath).map(v=>Math.abs(v));
       const maxAbs=Math.max(6, ...vals, bePi!=null?Math.abs(bePi):0);
       Object.keys(inflPath).forEach(k=>{
@@ -3954,54 +3959,32 @@ function openBondCalculator(bondType, bondId){
           be.style.left=pctBE+'%';
         }
       });
-      const r=evaluatePath(inflPath);
-      const elR=document.getElementById('bcIflTirReal');
-      const elN=document.getElementById('bcIflTirNom');
-      const elT=document.getElementById('bcIflTnaTF');
-      const elImpl=document.getElementById('bcIflImplRest');
-      if(!r){
-        [elR,elN,elT,elImpl].forEach(el=>{if(el)el.textContent='—';});
-        return;
-      }
-      if(elR) elR.textContent=r.tirReal!=null?r.tirReal.toFixed(2)+'%':'—';
-      if(elN) elN.textContent=r.tirNom!=null?r.tirNom.toFixed(2)+'%':'—';
-      if(elT) elT.textContent=r.tnaTF!=null?r.tnaTF.toFixed(2)+'%':'—';
-      // TEM implícita del resto (no-bloqueados): promedio aritmético de los meses libres
-      const freeKeys=Object.keys(inflPath).filter(k=>!inflLocked[k]);
-      if(elImpl){
-        if(_inflMonthsCache.length===1){
-          elImpl.textContent=inflPath[_inflMonthsCache[0].k].toFixed(2)+'%';
-        } else if(freeKeys.length===0){
-          elImpl.textContent='— libres';
-        } else {
-          const avg=freeKeys.reduce((s,k)=>s+inflPath[k],0)/freeKeys.length;
-          elImpl.textContent=avg.toFixed(2)+'%';
-        }
-      }
     };
 
     // Bisect a uniform TEM for unlocked months so that TIR nominal == targetTEA
-    const solveUnlockedToBE=(opts)=>{
-      const silent=opts&&opts.silent;
+    // Returns true on success, false on failure. Updates inflPath in place.
+    const solveUnlockedToBE=()=>{
       const beData=(_implInflResults||[]).find(r=>r.ticker===b.ticker);
       if(!beData||beData.compTEA==null){
-        if(!silent) alert('Sin BE de mercado para este bono.');
-        return;
+        alert('Sin BE de mercado para este bono. Corré el cálculo principal primero.');
+        return false;
       }
       const target=beData.compTEA/100;
       const keys=Object.keys(inflPath).filter(k=>!inflLocked[k]);
-      if(keys.length===0){ return; }
+      if(keys.length===0){
+        alert('Todos los meses están bloqueados. Destrabá al menos uno para resolver.');
+        return false;
+      }
       const price=parseFloat(document.getElementById('bci-price').value)||0;
-      if(!price){ if(!silent) alert('Ingresá precio primero.'); return; }
+      if(!price){ alert('Ingresá precio en la pestaña Calculadora primero.'); return false; }
       const cerLiqVal=parseFloat(document.getElementById("cerLiq").value);
       const bvL=parseFloat(document.getElementById("baseCER").value);
       const bDateL=document.getElementById("baseCERDate").value;
-      if(!cerLiqVal||!bvL||!bDateL){ return; }
+      if(!cerLiqVal||!bvL||!bDateL){ alert('Completá CER base y fecha primero.'); return false; }
 
       const trialXIRR=(pi)=>{
         const inflMap={};
         IM.forEach(m=>{ inflMap[m.k]=parseFloat(document.getElementById("i_"+m.k).value)||0; });
-        // Overlay locked months (as user set) and apply trial pi to unlocked
         Object.keys(inflPath).forEach(k=>{
           inflMap[k]=inflLocked[k]?inflPath[k]:pi;
         });
@@ -4013,9 +3996,9 @@ function openBondCalculator(bondType, bondId){
         return xirrFromFlows(price,flows,'nominal');
       };
 
-      let lo=-5, hi=30, found=null;
+      let lo=-10, hi=30, found=null;
       const xLo=trialXIRR(lo), xHi=trialXIRR(hi);
-      if(xLo==null||xHi==null){ return; }
+      if(xLo==null||xHi==null){ alert('No se pudo evaluar el XIRR. Revisá precio y datos.'); return false; }
       for(let i=0;i<80;i++){
         const mid=(lo+hi)/2;
         const xm=trialXIRR(mid);
@@ -4024,11 +4007,8 @@ function openBondCalculator(bondType, bondId){
         if(Math.abs(hi-lo)<0.0001){ found=(lo+hi)/2; break; }
       }
       if(found==null) found=(lo+hi)/2;
-      keys.forEach(k=>{
-        inflPath[k]=parseFloat(found.toFixed(4));
-        const inp=document.getElementById('bcIflIn_'+k);
-        if(inp && document.activeElement!==inp) inp.value=inflPath[k].toFixed(3);
-      });
+      keys.forEach(k=>{ inflPath[k]=parseFloat(found.toFixed(4)); });
+      return true;
     };
   }
 
