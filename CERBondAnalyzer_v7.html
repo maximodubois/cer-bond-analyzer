@@ -718,27 +718,14 @@
 <!-- TAB: QUANT+ -->
 <div id="tab-quantplus" style="display:none">
 
-<!-- SCENARIO / STRESS TABLE -->
-<div class="card" style="margin-top:10px">
-  <div class="st">Scenario / Stress Table — P&L por instrumento</div>
-  <div class="note" style="margin-bottom:10px">Shock paralelo a la curva (±bps TNA) y shock a inflación mensual (±bps TEM). P&L usa duración + convexidad: ΔP ≈ −Dur×Δy + ½×Cvx×(Δy)². Seleccioná un instrumento o dejá "Portfolio" para ver el agregado de posiciones.</div>
-  <div style="display:grid;grid-template-columns:auto auto auto 1fr;gap:10px;align-items:end;margin-bottom:10px">
-    <div class="ig"><label>Instrumento</label><select id="stressAsset" style="width:120px"><option value="__portfolio__">Portfolio</option></select></div>
-    <div class="ig"><label>Nominales</label><input type="number" id="stressNom" value="1000000" style="width:120px"></div>
-    <div class="ig"><label>Rango bps</label><select id="stressRange" style="width:80px" onchange="buildStressTable()"><option value="50">±50</option><option value="100" selected>±100</option><option value="200">±200</option></select></div>
-    <button class="btn-api" onclick="buildStressTable()">Calcular Stress</button>
-  </div>
-  <div id="stressResult" style="overflow-x:auto"></div>
-</div>
-
 <!-- BUTTERFLY / RV TRADE BUILDER -->
-<div class="card">
+<div class="card" style="margin-top:10px">
   <div class="st">Butterfly & Relative Value Trade Builder</div>
-  <div class="note" style="margin-bottom:10px">Armá trades de 2 o 3 patas DV01-neutral. El builder calcula ratios de hedge, carry neto del package, y breakeven en bps. Elegí los instrumentos y la dirección.</div>
+  <div class="note" style="margin-bottom:10px">Armá trades de 2 o 3 patas DV01-neutral. El builder calcula ratios de hedge, carry neto del package y breakeven en bps. La selección queda persistida y no se resetea con las actualizaciones live.</div>
   <div style="display:grid;grid-template-columns:auto auto auto 1fr;gap:8px;align-items:end;margin-bottom:10px">
     <div class="ig"><label>Tipo</label><select id="bfType" onchange="toggleBfLegs()"><option value="2leg">2-Leg RV</option><option value="3leg">Butterfly</option></select></div>
     <div class="ig"><label>Nominal pata larga</label><input type="number" id="bfNom" value="100000000" step="1000000" style="width:130px"></div>
-    <div></div>
+    <div id="bfPersistHint" style="font-size:9px;color:var(--td);align-self:center">Selección persistente</div>
     <button class="btn-api" onclick="calcButterfly()">Calcular</button>
   </div>
   <div id="bfLegs">
@@ -751,10 +738,12 @@
 
 <!-- TOTAL RETURN PROJECTOR -->
 <div class="card">
-  <div class="st">Total Return Projector — 30d / 60d / 90d</div>
-  <div class="note" style="margin-bottom:10px">Para cada instrumento: carry accrued + rolldown gain + CER appreciation (usando la grilla de inflación), neto de spread cost. Se rankea por total return proyectado. Responde: ¿qué conviene holdear?</div>
-  <div style="display:grid;grid-template-columns:auto auto 1fr;gap:10px;align-items:end;margin-bottom:10px">
-    <div class="ig"><label>Horizonte</label><select id="trHorizon" onchange="calcTotalReturn()"><option value="30">30 dias</option><option value="60" selected>60 dias</option><option value="90">90 dias</option></select></div>
+  <div class="st">Total Return Projector — Neto de Fondeo</div>
+  <div class="note" style="margin-bottom:10px">Descompone carry + rolldown + apreciación CER y le resta costo de spread y fondeo explícito. Si un instrumento vence antes del horizonte, queda afuera del ranking para no mezclar horizontes distintos.</div>
+  <div style="display:grid;grid-template-columns:auto auto auto 1fr;gap:10px;align-items:end;margin-bottom:10px">
+    <div class="ig"><label>Horizonte</label><select id="trHorizon" onchange="calcTotalReturn()"><option value="30">30 dias</option><option value="60" selected>60 dias</option><option value="90">90 dias</option><option value="120">120 dias</option><option value="180">180 dias</option><option value="max_common">Max comun</option></select></div>
+    <div class="ig"><label>Fondeo TNA %</label><input type="number" id="trFundingTNA" step="0.01" style="width:110px" oninput="calcTotalReturn()"></div>
+    <div id="trFundingInfo" style="font-size:9px;color:var(--td);align-self:center">—</div>
     <button class="btn-api" onclick="calcTotalReturn()">Proyectar</button>
   </div>
   <div id="trResult" style="overflow-x:auto"></div>
@@ -767,22 +756,10 @@
   <div id="zspreadResult" style="overflow-x:auto"></div>
 </div>
 
-<!-- PORTFOLIO RISK SUMMARY -->
-<div class="card">
-  <div class="st">Portfolio Risk Summary</div>
-  <div class="note" style="margin-bottom:10px">Métricas agregadas de la cartera (desde pestaña Posiciones). DV01 net/gross, duration ponderada, carry diario, y VaR paramétrico asumiendo vol diaria configurable.</div>
-  <div style="display:grid;grid-template-columns:auto auto 1fr;gap:10px;align-items:end;margin-bottom:10px">
-    <div class="ig"><label>Vol diaria curva (bps)</label><input type="number" id="portVol" value="15" step="1" style="width:80px"></div>
-    <button class="btn-api" onclick="calcPortfolioRisk()">Calcular</button>
-  </div>
-  <div class="portfolio-kpi" id="portKPI"></div>
-  <div id="portDetail" style="margin-top:10px"></div>
-</div>
-
 <!-- RV HEATMAP -->
 <div class="card">
   <div class="st">Relative Value Heatmap — Composite Rich/Cheap Score</div>
-  <div class="note" style="margin-bottom:10px">Score compuesto: 40% residual vs curva + 25% carry rank + 20% rolldown rank + 15% liquidez (1/spread). Verde = barato, rojo = caro. Cada score normalizado 0-100 dentro de su universo (CER o FX por separado).</div>
+  <div class="note" style="margin-bottom:10px">Score compuesto para lectura rápida de desk: 40% residual vs curva + 25% carry + 20% rolldown + 15% liquidez. Separamos señal, driver dominante y universo para que no quede como un heatmap decorativo.</div>
   <div id="rvHeatmap"></div>
 </div>
 
@@ -796,7 +773,7 @@
 
 <div class="card">
   <div class="st">Forward Inflation Matrix — Shock por Mes</div>
-  <div class="note" style="margin-bottom:10px">Elegís un mes a shockear y una grilla de inflaciones posibles. La matriz te muestra cuánto debería dar cada mes siguiente para que el breakeven acumulado hacia cada horizonte siga siendo el implicito del mercado. Ejemplo: si el primer mes todavía desconocido da 3.0%, cuánto debería dar el siguiente para sostener el breakeven del horizonte posterior.</div>
+  <div class="note" style="margin-bottom:10px">Escenario condicional: fijás un mes de inflación y el cuadro te devuelve el sendero requerido para los meses siguientes si querés sostener la curva implícita del mercado. También se muestra el desvío versus la curva BE base para que sea más legible.</div>
   <div style="display:grid;grid-template-columns:auto auto auto auto auto 1fr;gap:10px;align-items:end;margin-bottom:10px">
     <div class="ig"><label>Mes shock</label><select id="fwdInflShockMonth" onchange="buildForwardInflationMatrix()"></select></div>
     <div class="ig"><label>Desde %</label><input type="number" id="fwdInflShockStart" value="2.8" step="0.1" oninput="buildForwardInflationMatrix()"></div>
@@ -5657,13 +5634,10 @@ function buildAllForwardMatrices(){
 // ═══ V7 QUANT+ FUNCTIONS ═════════════════════════════════════════
 
 function refreshQuantPlus(){
-  populateStressSelect();
   populateBfSelects();
-  buildStressTable();
   calcButterfly();
   calcTotalReturn();
   calcZSpread();
-  calcPortfolioRisk();
   buildRVHeatmap();
   drawFwdInflTS();
   buildForwardInflationMatrix();
@@ -5713,17 +5687,39 @@ function getAllCalculatedItems(){
   return items.sort((a,b)=>a.days-b.days);
 }
 
-function populateStressSelect(){
-  const sel=document.getElementById("stressAsset");
-  if(!sel)return;
-  const items=getAllCalculatedItems();
-  let opts='<option value="__portfolio__">Portfolio (posiciones)</option>';
-  items.forEach(it=>opts+=`<option value="${it.id}">${it.ticker} (${it.type})</option>`);
-  sel.innerHTML=opts;
+const BF_STATE_KEY="cer_bf_state_v1";
+function readBfState(){
+  try{return JSON.parse(localStorage.getItem(BF_STATE_KEY)||"{}")||{}}catch(_e){return {}}
 }
-
+function saveBfState(){
+  const state={
+    type:document.getElementById("bfType")?.value||"2leg",
+    nom:document.getElementById("bfNom")?.value||"",
+    leg1:document.getElementById("bfLeg1")?.value||"",
+    leg2:document.getElementById("bfLeg2")?.value||"",
+    leg3:document.getElementById("bfLeg3")?.value||""
+  };
+  try{localStorage.setItem(BF_STATE_KEY,JSON.stringify(state))}catch(_e){}
+}
+function wireBfPersistence(){
+  ["bfType","bfNom","bfLeg1","bfLeg2","bfLeg3"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el||el.dataset.persistWired==="1") return;
+    const evt=el.tagName==="SELECT"?"change":"input";
+    el.addEventListener(evt,saveBfState);
+    el.dataset.persistWired="1";
+  });
+}
 function populateBfSelects(){
   const items=getAllCalculatedItems();
+  const saved=readBfState();
+  const current={
+    type:document.getElementById("bfType")?.value||saved.type||"2leg",
+    nom:document.getElementById("bfNom")?.value||saved.nom||"100000000",
+    leg1:document.getElementById("bfLeg1")?.value||saved.leg1||"",
+    leg2:document.getElementById("bfLeg2")?.value||saved.leg2||"",
+    leg3:document.getElementById("bfLeg3")?.value||saved.leg3||""
+  };
   ["bfLeg1","bfLeg2","bfLeg3"].forEach(id=>{
     const sel=document.getElementById(id);
     if(!sel)return;
@@ -5731,11 +5727,24 @@ function populateBfSelects(){
     items.forEach(it=>opts+=`<option value="${it.id}">${it.ticker}</option>`);
     sel.innerHTML=opts;
   });
-  // Default: short end long, long end short for RV
+  const typeEl=document.getElementById("bfType");
+  const nomEl=document.getElementById("bfNom");
+  if(typeEl) typeEl.value=current.type;
+  if(nomEl&&current.nom) nomEl.value=current.nom;
   if(items.length>=2){
-    document.getElementById("bfLeg1").value=items[items.length-1].id;
-    document.getElementById("bfLeg2").value=items[0].id;
+    const defaultLeg1=items[items.length-1].id;
+    const defaultLeg2=items[0].id;
+    const defaultLeg3=items[Math.floor(items.length/2)].id;
+    const leg1El=document.getElementById("bfLeg1");
+    const leg2El=document.getElementById("bfLeg2");
+    const leg3El=document.getElementById("bfLeg3");
+    if(leg1El) leg1El.value=items.some(it=>it.id===current.leg1)?current.leg1:defaultLeg1;
+    if(leg2El) leg2El.value=items.some(it=>it.id===current.leg2)?current.leg2:defaultLeg2;
+    if(leg3El) leg3El.value=items.some(it=>it.id===current.leg3)?current.leg3:defaultLeg3;
   }
+  toggleBfLegs();
+  wireBfPersistence();
+  saveBfState();
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -5848,6 +5857,7 @@ function buildStressTable(){
 function toggleBfLegs(){
   const type=document.getElementById("bfType").value;
   document.getElementById("bfLeg3Row").style.display=type==="3leg"?"":"none";
+  saveBfState();
 }
 
 function calcButterfly(){
@@ -5928,17 +5938,47 @@ function calcButterfly(){
 // ══════════════════════════════════════════════════════════════════
 // 3. TOTAL RETURN PROJECTOR
 // ══════════════════════════════════════════════════════════════════
+function getTRFundingDefaultTNA(){
+  const tamar=getTamarProjectionDefaultTNA();
+  return isFinite(tamar)&&tamar>0?tamar:0;
+}
+function ensureTRFundingInput(){
+  const input=document.getElementById("trFundingTNA");
+  const info=document.getElementById("trFundingInfo");
+  if(!input) return getTRFundingDefaultTNA();
+  const def=getTRFundingDefaultTNA();
+  if(!input.dataset.userEdited&&(!input.value||!isFinite(parseFloat(input.value)))){
+    input.value=def?def.toFixed(2):"0.00";
+  }
+  if(input.dataset.wired!=="1"){
+    input.addEventListener("input",()=>{ input.dataset.userEdited="1"; });
+    input.dataset.wired="1";
+  }
+  if(info){
+    info.textContent=def?`Default desk: TAMAR proj ${def.toFixed(2)}% TNA`:`Ingresá TNA de fondeo`;
+  }
+  const val=parseFloat(input.value);
+  return isFinite(val)?val:def;
+}
 function calcTotalReturn(){
   const el=document.getElementById("trResult");
   if(!el)return;
   const items=getAllCalculatedItems();
   if(!items.length){el.innerHTML='<div class="note">Calculá primero.</div>';return}
 
-  const horizon=parseInt(document.getElementById("trHorizon").value)||60;
+  const horizonSel=document.getElementById("trHorizon")?.value||"60";
+  const maxCommon=items.length?Math.max(1,Math.min(...items.map(it=>it.days))):0;
+  const horizon=horizonSel==="max_common"?maxCommon:(parseInt(horizonSel,10)||60);
+  const fundingTNA=ensureTRFundingInput();
   const inflMap={};
   IM.forEach(m=>{inflMap[m.k]=parseFloat(document.getElementById("i_"+m.k).value)||0});
+  const eligible=items.filter(it=>it.days>=horizon);
+  if(!eligible.length){
+    el.innerHTML='<div class="note">No hay instrumentos con suficiente vida remanente para ese horizonte.</div>';
+    return;
+  }
 
-  const results=items.map(it=>{
+  const results=eligible.map(it=>{
     // Carry = TNA/100 * px * horizon/365
     const carry=it.tna!=null?it.tna/100*it.px*horizon/365:0;
 
@@ -5967,20 +6007,27 @@ function calcTotalReturn(){
 
     // Spread cost (round trip = full spread)
     const spreadCost=it.spreadHalf!=null?(it.spreadHalf*2/10000*it.px):0;
+    const fundingCost=fundingTNA>0?fundingTNA/100*it.px*horizon/365:0;
 
-    const totalReturn=carry+rolldownPx+cerAppreciation-spreadCost;
+    const totalReturn=carry+rolldownPx+cerAppreciation-fundingCost-spreadCost;
     const totalReturnPct=it.px>0?(totalReturn/it.px*100):0;
 
-    return {...it,carry,rolldownPx,cerAppreciation,spreadCost,totalReturn,totalReturnPct,horizon};
+    return {...it,carry,rolldownPx,cerAppreciation,spreadCost,fundingCost,totalReturn,totalReturnPct,horizon};
   });
 
   results.sort((a,b)=>b.totalReturnPct-a.totalReturnPct);
   const maxTR=Math.max(...results.map(r=>Math.abs(r.totalReturnPct)),1);
 
-  let html=`<div style="font-size:9px;color:var(--td);margin-bottom:6px">Horizonte: ${horizon}d | Ranking por Total Return %</div>`;
+  let html=`<div style="display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:8px;margin-bottom:10px">`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Horizonte usado</div><div style="font-size:20px;font-weight:700;color:var(--acl)">${horizon}d</div></div>`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Fondeo</div><div style="font-size:20px;font-weight:700;color:var(--fx)">${fundingTNA.toFixed(2)}%</div><div style="font-size:8px;color:var(--tm)">TNA explícita</div></div>`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Instrumentos elegibles</div><div style="font-size:20px;font-weight:700;color:var(--t)">${results.length}</div><div style="font-size:8px;color:var(--tm)">viven ≥ horizonte</div></div>`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Top idea</div><div style="font-size:20px;font-weight:700;color:${results[0].color}">${results[0].ticker}</div><div style="font-size:8px;color:var(--tm)">${results[0].totalReturnPct.toFixed(2)}% neto</div></div>`;
+  html+=`</div>`;
+  html+=`<div style="font-size:9px;color:var(--td);margin-bottom:6px">Ranking por total return neto de fondeo y costo de spread. Si elegís <b>Max común</b>, toma automáticamente el mayor plazo comparable entre todos los instrumentos vivos.</div>`;
   html+='<table class="lt"><thead><tr>';
   html+='<th>Ticker</th><th>Tipo</th><th class="num">Px</th><th class="num">Carry</th>';
-  html+='<th class="num">Rolldown</th><th class="num">CER Appr</th><th class="num" style="color:var(--w)">Spread Cost</th>';
+  html+='<th class="num">Rolldown</th><th class="num">CER Appr</th><th class="num" style="color:var(--fx)">Fondeo</th><th class="num" style="color:var(--w)">Spread Cost</th>';
   html+='<th class="num" style="color:var(--ac)">Total Return</th><th class="num" style="color:var(--ac)">TR %</th>';
   html+='<th style="min-width:120px">Bar</th>';
   html+='</tr></thead><tbody>';
@@ -5995,6 +6042,7 @@ function calcTotalReturn(){
     html+=`<td class="num">${r.carry.toFixed(3)}</td>`;
     html+=`<td class="num">${r.rolldownPx.toFixed(3)}</td>`;
     html+=`<td class="num">${r.cerAppreciation.toFixed(3)}</td>`;
+    html+=`<td class="num" style="color:var(--fx)">${r.fundingCost.toFixed(3)}</td>`;
     html+=`<td class="num" style="color:var(--w)">${r.spreadCost.toFixed(3)}</td>`;
     html+=`<td class="num" style="color:${r.totalReturn>=0?'var(--ac)':'var(--w)'};font-weight:700">${r.totalReturn.toFixed(3)}</td>`;
     html+=`<td class="num" style="color:${r.totalReturnPct>=0?'var(--ac)':'var(--w)'};font-weight:700">${r.totalReturnPct>=0?"+":""}${r.totalReturnPct.toFixed(3)}%</td>`;
@@ -6185,7 +6233,7 @@ function calcPortfolioRisk(){
 // ══════════════════════════════════════════════════════════════════
 // 6. RV HEATMAP
 // ══════════════════════════════════════════════════════════════════
-function buildRVHeatmap(){
+function buildRVHeatmap_legacy(){
   const el=document.getElementById("rvHeatmap");
   if(!el)return;
   const items=getAllCalculatedItems();
@@ -6285,6 +6333,110 @@ function buildRVHeatmap(){
 // ══════════════════════════════════════════════════════════════════
 // 7. FORWARD INFLATION TERM STRUCTURE
 // ══════════════════════════════════════════════════════════════════
+function buildRVHeatmap(){
+  const el=document.getElementById("rvHeatmap");
+  if(!el)return;
+  const items=getAllCalculatedItems();
+  if(!items.length){el.innerHTML='<div class="note">Calcula primero.</div>';return}
+
+  function fmtSigned(v,digits=1,suffix=""){
+    if(v==null||!isFinite(v)) return "n/d";
+    return `${v>=0?"+":""}${v.toFixed(digits)}${suffix}`;
+  }
+  function rankNorm(arr,key,higherBetter=true){
+    const vals=arr.map(a=>a[key]).filter(v=>v!=null&&isFinite(v));
+    if(!vals.length) return arr.map(()=>50);
+    const mn=Math.min(...vals), mx=Math.max(...vals);
+    const range=mx-mn||1;
+    return arr.map(a=>{
+      const v=a[key];
+      if(v==null||!isFinite(v)) return 50;
+      const norm=(v-mn)/range*100;
+      return higherBetter?norm:100-norm;
+    });
+  }
+  function scoreUniverse(universe,label){
+    if(!universe.length) return [];
+    if(universe.length===1){
+      const it=universe[0];
+      return [{...it,universe:label,score:50,residualScore:50,carryScore:50,rolldownScore:50,liqScore:50,side:"Neutro",driverLabel:"Sin comparables",driverDetail:"Universo con un solo bono"}];
+    }
+    const residualScores=rankNorm(universe,"residual",true);
+    const carryScores=rankNorm(universe,"carry30",true);
+    const rolldownScores=rankNorm(universe,"rolldown",true);
+    const liqScores=universe.map(it=>{
+      if(!it.spreadHalf||it.spreadHalf<=0) return 50;
+      return Math.max(0,100-it.spreadHalf*2);
+    });
+    return universe.map((it,i)=>{
+      const score=residualScores[i]*0.40+carryScores[i]*0.25+rolldownScores[i]*0.20+liqScores[i]*0.15;
+      const side=score>=62?"Barato":score<=38?"Caro":"Neutro";
+      const drivers=[
+        {label:"Residual",score:residualScores[i],detail:`${fmtSigned(it.residual,0," bps")} vs curva`},
+        {label:"Carry30",score:carryScores[i],detail:`${fmtSigned(it.carry30,3," pt")}`},
+        {label:"Rolldown",score:rolldownScores[i],detail:`${fmtSigned(it.rolldown,1," bps")}`},
+        {label:"Liquidez",score:liqScores[i],detail:it.spreadHalf!=null?`${it.spreadHalf.toFixed(1)} bps half spread`:"sin spread"}
+      ];
+      const rankedDrivers=drivers.slice().sort((a,b)=>score>=50?b.score-a.score:a.score-b.score);
+      return {...it,universe:label,score,residualScore:residualScores[i],carryScore:carryScores[i],rolldownScore:rolldownScores[i],liqScore:liqScores[i],side,driverLabel:rankedDrivers[0].label,driverDetail:rankedDrivers[0].detail};
+    });
+  }
+  function scoreTone(score){
+    if(score>=62) return {bg:"rgba(34,197,94,0.10)",fg:"var(--ac)"};
+    if(score<=38) return {bg:"rgba(240,112,64,0.10)",fg:"var(--w)"};
+    return {bg:"rgba(148,163,184,0.10)",fg:"var(--td)"};
+  }
+  function board(title,list,tone){
+    const body=list.length?list.map((it,idx)=>`
+      <div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-top:${idx?'1px solid var(--cb)':'0'}">
+        <div>
+          <div style="font-weight:700;color:${it.color}">${it.ticker}</div>
+          <div style="font-size:8px;color:var(--td)">${it.driverLabel}: ${it.driverDetail}</div>
+        </div>
+        <div style="font-family:'IBM Plex Mono',monospace;color:${tone};font-weight:700">${it.score.toFixed(0)}</div>
+      </div>`).join(""):'<div style="font-size:9px;color:var(--tm)">Sin universo suficiente.</div>';
+    return `<div class="beb"><div class="il" style="color:${tone}">${title}</div>${body}</div>`;
+  }
+
+  const cerItems=scoreUniverse(items.filter(i=>i.isCER),"CER");
+  const fxItems=scoreUniverse(items.filter(i=>!i.isCER),"Tasa fija");
+  const allScored=[...cerItems,...fxItems].sort((a,b)=>b.score-a.score);
+  const cerCheap=cerItems.slice().sort((a,b)=>b.score-a.score).slice(0,3);
+  const cerRich=cerItems.slice().sort((a,b)=>a.score-b.score).slice(0,3);
+  const fxCheap=fxItems.slice().sort((a,b)=>b.score-a.score).slice(0,3);
+  const fxRich=fxItems.slice().sort((a,b)=>a.score-b.score).slice(0,3);
+
+  let html='<div style="margin-bottom:8px;font-size:9px;color:var(--td)">Score compuesto (0-100): 40% residual + 25% carry + 20% rolldown + 15% liquidez. El ranking se arma dentro de cada universo para no mezclar CER con tasa fija.</div>';
+  html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:10px">';
+  html+=board("CER mas baratos",cerCheap,"var(--ac)");
+  html+=board("CER mas caros",cerRich,"var(--w)");
+  html+=board("TF mas baratas",fxCheap,"var(--acl)");
+  html+=board("TF mas caras",fxRich,"var(--am)");
+  html+='</div>';
+  html+='<div style="overflow-x:auto">';
+  html+='<table class="lt"><thead><tr>';
+  html+='<th>Rank</th><th>Ticker</th><th>U</th><th class="num">Score</th><th>Sesgo</th><th class="num">Residual</th><th class="num">Carry30</th><th class="num">Rolldown</th><th class="num">Spread</th><th class="num">Dur</th><th>Driver</th>';
+  html+='</tr></thead><tbody>';
+  allScored.forEach((it,idx)=>{
+    const tone=scoreTone(it.score);
+    html+=`<tr style="border-left:3px solid ${it.color}">`;
+    html+=`<td class="num">${idx+1}</td>`;
+    html+=`<td class="tk" style="color:${it.color}">${it.ticker}</td>`;
+    html+=`<td>${it.universe}</td>`;
+    html+=`<td class="num"><span style="display:inline-block;min-width:38px;padding:2px 6px;border-radius:999px;background:${tone.bg};color:${tone.fg};font-family:'IBM Plex Mono',monospace;font-weight:700">${it.score.toFixed(0)}</span></td>`;
+    html+=`<td style="color:${tone.fg};font-weight:700">${it.side}</td>`;
+    html+=`<td class="num">${fmtSigned(it.residual,0," bps")}</td>`;
+    html+=`<td class="num">${fmtSigned(it.carry30,3)}</td>`;
+    html+=`<td class="num">${fmtSigned(it.rolldown,1," bps")}</td>`;
+    html+=`<td class="num">${it.spreadHalf!=null?it.spreadHalf.toFixed(1)+" bps hs":"n/d"}</td>`;
+    html+=`<td class="num">${it.dur.toFixed(3)}</td>`;
+    html+=`<td style="min-width:170px"><span style="font-weight:700">${it.driverLabel}</span><span style="color:var(--td)"> - ${it.driverDetail}</span></td>`;
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+  el.innerHTML=html;
+}
+
 let _fwdInflTSChartObj=null;
 function drawFwdInflTS(){
   const cv=document.getElementById("fwdInflTSChart");
@@ -6298,9 +6450,7 @@ function drawFwdInflTS(){
   const monthlyCurve=buildMonthlyBEForwardCurve();
   if(!results.length||!monthlyCurve.length)return;
 
-  const monthMap=new Map();
-  results.forEach(r=>r.months.forEach(m=>{if(!monthMap.has(m.key))monthMap.set(m.key,m)}));
-  const months=[...monthMap.values()].sort((a,b)=>a.key.localeCompare(b.key));
+  const months=monthlyCurve.map(r=>r.month).filter(Boolean);
   if(!months.length)return;
 
   const monthIdx=new Map(months.map((m,i)=>[m.key,i]));
@@ -6408,10 +6558,18 @@ function buildMonthlyBEForwardCurve(){
     cumPrev=cumNow;
     prevN=n;
   });
-  return series;
+  const lastKnownKey=getLastKnownInflKey(document.getElementById("baseCERDate")?.value||"");
+  const seen=new Set();
+  return series.filter(row=>{
+    const key=row?.month?.key;
+    if(!key||seen.has(key)) return false;
+    if(lastKnownKey&&key<=lastKnownKey) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
-function buildForwardInflationMatrix(){
+function buildForwardInflationMatrix_legacy(){
   const el=document.getElementById("fwdInflMonthMatrix");
   if(!el) return;
   const baseSeries=buildMonthlyBEForwardCurve();
@@ -6488,6 +6646,134 @@ function buildForwardInflationMatrix(){
 // ══════════════════════════════════════════════════════════════════
 // 8. SYNTHETIC FX ARBITRAGE (ROFEX)
 // ══════════════════════════════════════════════════════════════════
+function buildForwardInflationMatrix(){
+  const el=document.getElementById("fwdInflMonthMatrix");
+  if(!el) return;
+  const baseSeries=buildMonthlyBEForwardCurve();
+  if(!baseSeries.length){
+    el.innerHTML='<div class="note">Calcula primero breakevens CER vs LECAP para construir la matriz.</div>';
+    return;
+  }
+
+  const shockSel=document.getElementById("fwdInflShockMonth");
+  const optionsHtml=baseSeries.map(m=>`<option value="${m.month.key}">${m.month.label}</option>`).join("");
+  if(shockSel&&shockSel.innerHTML!==optionsHtml) shockSel.innerHTML=optionsHtml;
+
+  const defaultShockKey=baseSeries[0].month.key;
+  const shockKey=(shockSel&&baseSeries.some(m=>m.month.key===shockSel.value))?shockSel.value:defaultShockKey;
+  if(shockSel) shockSel.value=shockKey;
+  const shockIdx=baseSeries.findIndex(m=>m.month.key===shockKey);
+  if(shockIdx<0){
+    el.innerHTML='<div class="note">No pude identificar el mes shock.</div>';
+    return;
+  }
+
+  const start=parseFloat(document.getElementById("fwdInflShockStart").value);
+  const end=parseFloat(document.getElementById("fwdInflShockEnd").value);
+  const step=parseFloat(document.getElementById("fwdInflShockStep").value);
+  if(!isFinite(start)||!isFinite(end)||!isFinite(step)||step<=0){
+    el.innerHTML='<div class="note">Completa una grilla valida de escenarios.</div>';
+    return;
+  }
+
+  const lo=Math.min(start,end), hi=Math.max(start,end);
+  const scenarios=[];
+  for(let v=lo;v<=hi+1e-9;v+=step) scenarios.push(Math.round(v*1000)/1000);
+  if(!scenarios.length){
+    el.innerHTML='<div class="note">La grilla de escenarios quedo vacia.</div>';
+    return;
+  }
+
+  const shockBase=baseSeries[shockIdx];
+  const remaining=baseSeries.slice(shockIdx+1);
+  const baseFactors=baseSeries.map(m=>1+m.tem/100);
+  const baseAvgRest=remaining.length?remaining.reduce((s,m)=>s+m.tem,0)/remaining.length:null;
+
+  function bandCls(value,base){
+    if(value>base+0.15) return "fwd-hi";
+    if(value<base-0.15) return "fwd-lo";
+    return "fwd-mid";
+  }
+  function deltaColor(delta){
+    if(delta>0.15) return "var(--w)";
+    if(delta<-0.15) return "var(--ac)";
+    return "var(--tm)";
+  }
+  function avg(list){
+    return list.length?list.reduce((s,v)=>s+v,0)/list.length:null;
+  }
+  function solveScenario(shockTem){
+    const rowFactors=baseFactors.slice();
+    rowFactors[shockIdx]=1+shockTem/100;
+    const solved=[];
+    for(let j=shockIdx+1;j<baseSeries.length;j++){
+      let targetCum=1, solvedPrev=1;
+      for(let k=shockIdx;k<=j;k++) targetCum*=baseFactors[k];
+      for(let k=shockIdx;k<j;k++) solvedPrev*=rowFactors[k];
+      const reqFactor=targetCum/solvedPrev;
+      if(reqFactor<=0||!isFinite(reqFactor)) return null;
+      rowFactors[j]=reqFactor;
+      solved.push((reqFactor-1)*100);
+    }
+    return {shockTem,solved,avgRest:avg(solved)};
+  }
+  function valueCell(value,base,label,subLabel){
+    const delta=value-base;
+    return `<td class="${bandCls(value,base)}" title="${label}">
+      <div style="font-weight:700">${value.toFixed(2)}%</div>
+      <div style="font-size:7px;color:${deltaColor(delta)}">${subLabel||`${delta>=0?"+":""}${delta.toFixed(2)} vs BE`}</div>
+    </td>`;
+  }
+  function renderScenarioRow(label,scenario,isProjection=false){
+    if(!scenario) return "";
+    const deltaShock=scenario.shockTem-shockBase.tem;
+    let row=`<tr${isProjection?' style="border-top:1px solid var(--cb)"':''}><th>${label}</th>`;
+    row+=`<td class="${bandCls(scenario.shockTem,shockBase.tem)}"><div style="font-weight:700">${deltaShock>=0?"+":""}${deltaShock.toFixed(2)}</div><div style="font-size:7px;color:${deltaColor(deltaShock)}">shock</div></td>`;
+    scenario.solved.forEach((reqTem,idx)=>{
+      const month=remaining[idx];
+      row+=valueCell(reqTem,month.tem,month.month.label);
+    });
+    if(remaining.length) row+=valueCell(scenario.avgRest,baseAvgRest,"Promedio restante","prom");
+    row+='</tr>';
+    return row;
+  }
+
+  const userShock=getInflInputValue(shockBase.month.key);
+  const userScenario=userShock!=null?solveScenario(userShock):null;
+
+  let html=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:10px">`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Mes shock</div><div style="font-size:18px;font-weight:700;color:var(--am)">${shockBase.month.label}</div><div style="font-size:8px;color:var(--tm)">BE base ${shockBase.tem.toFixed(2)}%</div></div>`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Meses a resolver</div><div style="font-size:18px;font-weight:700;color:var(--t)">${remaining.length}</div><div style="font-size:8px;color:var(--tm)">${remaining.length?remaining[0].month.label+" -> "+remaining[remaining.length-1].month.label:"sin cola restante"}</div></div>`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Rango</div><div style="font-size:18px;font-weight:700;color:var(--fx)">${lo.toFixed(2)}% a ${hi.toFixed(2)}%</div><div style="font-size:8px;color:var(--tm)">paso ${step.toFixed(2)}%</div></div>`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Tu proyeccion</div><div style="font-size:18px;font-weight:700;color:${userShock!=null?'var(--acl)':'var(--tm)'}">${userShock!=null?userShock.toFixed(2)+"%":"-"}</div><div style="font-size:8px;color:var(--tm)">${userShock!=null?'tomada de tu grilla actual':'sin proyeccion manual para ese mes'}</div></div>`;
+  html+='</div>';
+
+  if(!remaining.length){
+    html+=`<div class="note">Elegiste el ultimo mes desconocido. Ya no hay meses posteriores para redistribuir el breakeven: aca solo importa cuanto queres fijar <b>${shockBase.month.label}</b> versus su BE base de <b>${shockBase.tem.toFixed(2)}%</b>.</div>`;
+    el.innerHTML=html;
+    return;
+  }
+
+  html+='<div style="overflow-x:auto">';
+  html+='<table class="fwd-matrix"><thead><tr><th>Escenario</th><th>Delta</th>';
+  remaining.forEach(m=>html+=`<th>${m.month.label}</th>`);
+  html+='<th>Prom resto</th></tr></thead><tbody>';
+
+  html+='<tr><th>Curva BE</th><td class="fwd-mid"><div style="font-weight:700">0.00</div><div style="font-size:7px;color:var(--tm)">shock</div></td>';
+  remaining.forEach(m=>html+=valueCell(m.tem,m.tem,m.month.label,"base"));
+  html+=valueCell(baseAvgRest,baseAvgRest,"Promedio restante","base");
+  html+='</tr>';
+
+  if(userScenario) html+=renderScenarioRow("Tu proy.",userScenario,true);
+  scenarios.forEach(scn=>{
+    html+=renderScenarioRow(`${shockBase.month.label} = ${scn.toFixed(2)}%`,solveScenario(scn));
+  });
+
+  html+='</tbody></table></div>';
+  html+=`<div class="note" style="margin-top:8px">Lectura: fijas el <b>mes shock</b> y cada fila muestra que inflacion deberia convalidar el resto de la curva para que el breakeven acumulado siga siendo el mismo. El numero grande es la <b>TEM requerida</b>; el chico, el <b>desvio vs la curva BE base</b>. Solo aparecen meses todavia no publicados por INDEC.</div>`;
+  el.innerHTML=html;
+}
+
 function calcSyntheticArbitrage(){
   const spot=parseFloat(document.getElementById("arbSpot").value);
   const futuro=parseFloat(document.getElementById("arbFuturo").value);
