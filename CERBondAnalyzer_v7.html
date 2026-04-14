@@ -1482,7 +1482,15 @@ async function fetchLatestCER(){
     detalle.sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
     // Store ALL historical values in cache
     detalle.forEach(d=>{ if(d.fecha&&d.valor) _bcraHistorico.set(d.fecha, d.valor); });
-    const latest=detalle[0];
+    // Cap at the last day of the next CER window after today.
+    // When INDEC publishes IPC of month M (around mid M+1), BCRA publishes CER
+    // through the end of the [15/M+1 – 14/M+2] window = 14/M+2.
+    // Any data beyond that would require the next unknown IPC — exclude it.
+    const todayAnchor=getAnchor15(hoy);
+    const nextAnchor=getNextAnchor15(todayAnchor);
+    const nextNextAnchor=getNextAnchor15(nextAnchor);
+    const capStr=DS(new Date(nextNextAnchor.getTime()-864e5)); // day before next-next anchor
+    const latest=detalle.find(d=>d.fecha<=capStr)||detalle[detalle.length-1];
     document.getElementById("baseCER").value=latest.valor;
     document.getElementById("baseCERDate").value=latest.fecha;
     status.textContent="conectado ✓";status.className="api-ok";
