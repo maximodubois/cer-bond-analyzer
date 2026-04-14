@@ -363,8 +363,8 @@
 <div class="card">
   <div class="st">CER Base — <span id="apiStatus" style="color:var(--tm);font-weight:400;text-transform:none">sin conectar</span></div>
   <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-bottom:8px;align-items:end">
-    <div class="ig"><label>Valor CER</label><input type="number" id="baseCER" step="0.0001" value="770.8982"></div>
-    <div class="ig"><label>Fecha CER</label><input type="date" id="baseCERDate" value="2026-05-15"></div>
+    <div class="ig"><label>Valor CER</label><input type="number" id="baseCER" step="0.0001" value="770.0396"></div>
+    <div class="ig"><label>Fecha CER</label><input type="date" id="baseCERDate" value="2026-05-14"></div>
     <button class="btn-api" onclick="fetchLatestCER()">Obtener CER BCRA</button>
   </div>
   <div id="cerApiLog" class="note"></div>
@@ -1574,8 +1574,6 @@ function getLastKnownInflKey(baseDateStr){
   if(!baseDateStr) return null;
   const baseDate=new Date(baseDateStr+"T00:00:00");
   if(isNaN(baseDate.getTime())) return null;
-  // inflKeyForAnchor(anchor) returns the IPC month that the CER window starting
-  // at 'anchor' uses — that IPC is already public, so it's the last known month.
   return inflKeyForAnchor(getAnchor15(baseDate));
 }
 function getUnknownInflationMonths(baseDateStr){
@@ -1601,6 +1599,17 @@ function getProjectedInflationAverage(baseDateStr){
     .filter(v=>v!=null);
   if(!vals.length) return null;
   return vals.reduce((a,b)=>a+b,0)/vals.length;
+}
+function buildInflMapFromInputs(defaultValue=0, extraKeys=[]){
+  const inflMap={};
+  IM.forEach(m=>{
+    const v=getInflInputValue(m.k);
+    inflMap[m.k]=v!=null?v:defaultValue;
+  });
+  extraKeys.forEach(k=>{
+    if(k&&!Object.prototype.hasOwnProperty.call(inflMap,k)) inflMap[k]=defaultValue;
+  });
+  return inflMap;
 }
 function buildBondCards(){
   document.getElementById("bondsRow").innerHTML='<div class="section-band">Bonos CER</div>'+BONDS.map(b=>`
@@ -2766,22 +2775,46 @@ const MNAMES=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov",
 let _implInflResults=[];
 let _implInflFullyKnown=[];
 
+function parseInflMonthKey(key){
+  const m=String(key||"").match(/^(\d{4})-(\d{2})$/);
+  if(!m) return null;
+  const y=Number(m[1]), mo=Number(m[2])-1;
+  if(!Number.isFinite(y)||!Number.isFinite(mo)||mo<0||mo>11) return null;
+  return {y,m:mo};
+}
+function formatInflMonthKey(y,m){
+  return y+"-"+String(m+1).padStart(2,"0");
+}
+function buildInflMonthSpan(firstKey,lastKey,maxMonths=120){
+  const start=parseInflMonthKey(firstKey);
+  const end=parseInflMonthKey(lastKey);
+  if(!start||!end) return [];
+  const months=[];
+  let cy=start.y, cm=start.m;
+  for(let i=0;i<maxMonths;i++){
+    months.push({m:cm,y:cy,label:MNAMES[cm]+" "+String(cy).slice(2),key:formatInflMonthKey(cy,cm)});
+    if(cy===end.y&&cm===end.m) return months;
+    cm++;
+    if(cm>11){cm=0;cy++}
+  }
+  return [];
+}
+
 // Implied inflation month logic:
-// CER at date D sits in a window that uses CPI = inflKeyForAnchor(getAnchor15(D))
-// = anchor(D).month - 1 (0-indexed). This is the CPI NEEDED.
-// But for the BASE date, the CER value already HAS that CPI baked in via BCRA data.
-// The CPI that's "consumed" (already embedded) = anchor(base).month - 2.
+// CER at date D sits in a window that uses CPI = inflKeyForAnchor(getAnchor15(D)).
+// For projections / breakevens we exclude every IPC month that is already PUBLIC,
+// even if that CPI is only partially interpolated into the current CER window.
 //
-// Example: base=Apr 15 → anchor=Apr → consumed=Feb → lastKnown=Feb
-//          target=Apr 30 → anchor=Apr → needed=Mar → 1 unknown (Mar)
-//          target=Jul 17 → anchor=Jul → needed=Jun → 4 unknown (Mar,Apr,May,Jun)
+// Example: base=May 14 → anchor=Apr 15 → current window already uses Mar CPI,
+// so lastKnown=Mar and only Apr+ stays as unknown.
 
 function getUnknownMonthRange(cerBaseDate, cerRefDate){
-  // Last KNOWN: CPI already embedded in the CER base value
-  const baseAnchor=getAnchor15(cerBaseDate);
-  let lkm=baseAnchor.getMonth()-2, lky=baseAnchor.getFullYear();
-  while(lkm<0){lkm+=12;lky--}
-  const lastKnown={m:lkm,y:lky,label:MNAMES[lkm]+" "+String(lky).slice(2),key:lky+"-"+String(lkm+1).padStart(2,"0")};
+  // Last KNOWN = latest IPC month already public and therefore already determined
+  // by the current CER base window.
+  const lastKnownKey=inflKeyForAnchor(getAnchor15(cerBaseDate));
+  const lastKnownParsed=parseInflMonthKey(lastKnownKey);
+  if(!lastKnownParsed) return {lastKnown:null,lastUnknown:null,months:[],fullyKnown:true,rangeError:true};
+  const lastKnown={m:lastKnownParsed.m,y:lastKnownParsed.y,label:MNAMES[lastKnownParsed.m]+" "+String(lastKnownParsed.y).slice(2),key:lastKnownKey};
 
   // Last NEEDED: CPI that feeds the window containing the ref date.
   // If the ref date falls in the first half of the current CER window
@@ -2807,12 +2840,10 @@ function getUnknownMonthRange(cerBaseDate, cerRefDate){
     return {lastKnown, lastUnknown, months:[], fullyKnown:true};
   }
 
-  const months=[];
-  let cm=firstUnkM, cy=firstUnkY;
-  for(let i=0;i<24;i++){
-    months.push({m:cm,y:cy,label:MNAMES[cm]+" "+String(cy).slice(2),key:cy+"-"+String(cm+1).padStart(2,"0")});
-    if(cm===lastUnknown.m&&cy===lastUnknown.y) break;
-    cm++;if(cm>11){cm=0;cy++}
+  const firstUnkKey=formatInflMonthKey(firstUnkY, firstUnkM);
+  const months=buildInflMonthSpan(firstUnkKey,lastUnknown.key,120);
+  if(!months.length){
+    return {lastKnown, lastUnknown, months:[], fullyKnown:false, rangeError:true};
   }
   return {lastKnown, lastUnknown, months, fullyKnown:false};
 }
@@ -2830,15 +2861,9 @@ function calcImpliedInflation(settle, cerLiqInput, getCER){
   const fullyKnownBonds=[];
 
   // Helper: build a CER projector where all UNKNOWN months use uniform π
-  function buildCERWithPi(pi){
-    const inflMap={};
-    // Fill ALL months from Jan 2026 to Dec 2027 with trial π
-    // This ensures CER projection works for any bond maturity
-    for(let y=2025;y<=2027;y++){
-      for(let m=1;m<=12;m++){
-        inflMap[y+"-"+String(m).padStart(2,"0")]=pi;
-      }
-    }
+  function buildCERWithPi(pi, monthKeys=[]){
+    const inflMap=buildInflMapFromInputs(pi, monthKeys);
+    monthKeys.forEach(k=>{ inflMap[k]=pi; });
     return buildCER(cerAtBase, baseDateStr, inflMap);
   }
 
@@ -2885,7 +2910,7 @@ function calcImpliedInflation(settle, cerLiqInput, getCER){
     let implPi=null;
     for(let iter=0;iter<60;iter++){
       const mid=(lo+hi)/2;
-      const trialCER=buildCERWithPi(mid);
+      const trialCER=buildCERWithPi(mid, range.months.map(m=>m.key));
       const xirr=bondXIRR(b, price, cerEm, trialCER);
       if(xirr===null) break;
       if(xirr < targetTEA){ lo=mid; }
@@ -3822,12 +3847,10 @@ function openBondCalculator(bondType, bondId){
         const bvL=parseFloat(document.getElementById("baseCER").value);
         const bDateL=document.getElementById("baseCERDate").value;
         if(!bvL||!bDateL||!cerLiqVal2){resultEl.textContent='Completá los datos CER base primero';return;}
-        const inflMap2={};
-        for(let y=2025;y<=2027;y++){
-          for(let m=1;m<=12;m++){
-            inflMap2[y+'-'+String(m).padStart(2,'0')]=inflTEM;
-          }
-        }
+        const refDateMat2=SBD(matD,10);
+        const range2=getUnknownMonthRange(new Date(bDateL+"T00:00:00"), refDateMat2);
+        const inflMap2=buildInflMapFromInputs(inflTEM, (range2.months||[]).map(m=>m.key));
+        (range2.months||[]).forEach(m=>{ inflMap2[m.key]=inflTEM; });
         let trialCER=null;
         try{trialCER=buildCER(bvL,bDateL,inflMap2);}catch(e){}
         if(!trialCER){resultEl.textContent='Error construyendo CER';return;}
@@ -5936,8 +5959,9 @@ function calcTotalReturn(){
     let cerAppreciation=0;
     if(it.isCER){
       const monthsCovered=horizon/30;
-      const avgInfl=Object.values(inflMap).reduce((s,v)=>s+v,0)/Math.max(Object.values(inflMap).length,1);
-      const cerGrowth=Math.pow(1+avgInfl/100,monthsCovered)-1;
+      const avgInfl=getProjectedInflationAverage(document.getElementById("baseCERDate")?.value);
+      const avgInflUse=avgInfl!=null?avgInfl:0;
+      const cerGrowth=Math.pow(1+avgInflUse/100,monthsCovered)-1;
       cerAppreciation=it.px*cerGrowth*it.dur; // rough: CER growth feeds through duration
     }
 
