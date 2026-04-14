@@ -488,11 +488,12 @@
       <table class="lt">
         <thead><tr>
           <th>Tenor</th>
+          <th>Fecha</th>
           <th class="num" style="color:var(--bl)">BID</th>
           <th class="num" style="color:var(--gn)">LAST</th>
           <th class="num" style="color:var(--am)">OFFER</th>
         </tr></thead>
-        <tbody id="resumenCaucionesBody"><tr><td colspan="4" style="text-align:center;color:var(--tm);padding:10px">Sin datos — conectá precios</td></tr></tbody>
+        <tbody id="resumenCaucionesBody"><tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin datos — conectá precios</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -3288,8 +3289,10 @@ function renderResumen(){
 }
 
 function _getCaucionLast1D(){
-  const cal=_getCaucionTenorMap(new Date())[1];
-  return (_livePrices[`CAUCION-${cal}D`]||{}).last||0;
+  const today=new Date(); today.setHours(0,0,0,0);
+  const baseCal=_calDaysToNextBusinessDays(today,1);
+  const found=_findCaucionTicker(today,baseCal);
+  return (found.lp.last)||0;
 }
 
 function _syncCaucionRateToInputs(){
@@ -3314,15 +3317,18 @@ function renderCaucionesResumen(){
   const body=document.getElementById("resumenCaucionesBody");
   if(!body) return;
   const today=new Date(); today.setHours(0,0,0,0);
-  const tenors=_getCaucionTenorMap(today);
-  const labels={1:"1 día hábil",3:"3 días hábiles",7:"7 días hábiles",15:"15 días hábiles",30:"30 días hábiles"};
+  const tenors=_getCaucionTenors(today);
   let rows="";
-  [1,3,7,15,30].forEach(t=>{
-    const cal=tenors[t];
-    const lp=_livePrices[`CAUCION-${cal}D`]||{};
+  tenors.forEach(t=>{
+    const found=_findCaucionTicker(today,t.baseCal);
+    const lp=found.lp||{};
     const bid=lp.bid||0, last=lp.last||0, ask=lp.ask||0;
+    const dateStr=found.settleDate.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit"});
+    const isFallback=found.cal!==t.baseCal;
+    const daysLabel=`${found.cal}D`;
     rows+=`<tr>
-      <td class="tk" style="color:var(--fut)">${labels[t]}</td>
+      <td class="tk" style="color:var(--fut)">${t.label} <span style="color:${isFallback?"var(--am)":"var(--tm)"};font-size:9px;font-weight:400">${daysLabel}</span></td>
+      <td style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace">${dateStr}</td>
       <td class="num" style="color:var(--bl)">${bid?bid.toFixed(2)+"%":"—"}</td>
       <td class="num" style="color:var(--gn);font-weight:${last?"700":"400"}">${last?last.toFixed(2)+"%":"—"}</td>
       <td class="num" style="color:var(--am)">${ask?ask.toFixed(2)+"%":"—"}</td>
@@ -4677,14 +4683,14 @@ setInterval(()=>{
 // ── Feriados Argentina 2025-2027 ────────────────────────────────
 const _AR_HOLIDAYS=new Set([
   "2025-01-01","2025-03-03","2025-03-04","2025-03-24","2025-04-02",
-  "2025-04-18","2025-05-01","2025-05-25","2025-06-16","2025-06-20",
+  "2025-04-18","2025-05-01","2025-05-25","2025-06-20",
   "2025-07-09","2025-08-18","2025-10-13","2025-11-24","2025-12-08","2025-12-25",
-  "2026-01-01","2026-02-16","2026-02-17","2026-03-23","2026-03-24",
-  "2026-04-02","2026-04-03","2026-04-14","2026-05-01","2026-05-25",
-  "2026-06-15","2026-06-17","2026-06-20","2026-07-09","2026-08-17",
-  "2026-10-10","2026-11-23","2026-12-08","2026-12-25",
+  "2026-01-01","2026-02-16","2026-02-17","2026-03-24",
+  "2026-04-02","2026-04-03","2026-05-01","2026-05-25",
+  "2026-06-15","2026-07-09","2026-08-17","2026-10-12",
+  "2026-12-08","2026-12-25",
   "2027-01-01","2027-02-08","2027-02-09","2027-03-24","2027-04-01",
-  "2027-04-02","2027-04-30","2027-05-25","2027-06-21","2027-07-09",
+  "2027-04-02","2027-05-25","2027-06-21","2027-07-09",
   "2027-08-16","2027-10-11","2027-11-22","2027-12-08","2027-12-25"
 ]);
 function _isBusinessDay(d){
@@ -4694,17 +4700,35 @@ function _isBusinessDay(d){
   return !_AR_HOLIDAYS.has(s);
 }
 function _calDaysToNextBusinessDays(today, nBizDays){
-  // returns calendar days distance to the date that is nBizDays business days from today
   let d=new Date(today); let count=0;
   while(count<nBizDays){ d.setDate(d.getDate()+1); if(_isBusinessDay(d)) count++; }
   return Math.round((d-today)/86400000);
 }
-function _getCaucionTenorMap(today){
-  // returns {1:calDays, 3:calDays, 7:calDays, 15:calDays, 30:calDays}
+// Finds the best ticker starting at targetCal calendar days.
+// If no data at that exact tenor, tries targetCal+1, +2 ... up to +10.
+// Returns {cal, lp, settleDate}. lp may be empty object if nothing found.
+function _findCaucionTicker(today, targetCal){
+  for(let i=0;i<=10;i++){
+    const cal=targetCal+i;
+    const lp=_livePrices[`CAUCION-${cal}D`];
+    if(lp && (lp.bid||lp.last||lp.ask)){
+      const s=new Date(today); s.setDate(s.getDate()+cal);
+      return {cal, lp, settleDate:s};
+    }
+  }
+  const s=new Date(today); s.setDate(s.getDate()+targetCal);
+  return {cal:targetCal, lp:{}, settleDate:s};
+}
+// Returns array of tenor specs: first is "1 día hábil", rest are calendar days
+function _getCaucionTenors(today){
   const t=new Date(today); t.setHours(0,0,0,0);
-  return {1:_calDaysToNextBusinessDays(t,1),3:_calDaysToNextBusinessDays(t,3),
-          7:_calDaysToNextBusinessDays(t,7),15:_calDaysToNextBusinessDays(t,15),
-          30:_calDaysToNextBusinessDays(t,30)};
+  return [
+    {label:"1 día hábil", baseCal:_calDaysToNextBusinessDays(t,1), biz:true},
+    {label:"3 días",      baseCal:3,  biz:false},
+    {label:"7 días",      baseCal:7,  biz:false},
+    {label:"15 días",     baseCal:15, biz:false},
+    {label:"30 días",     baseCal:30, biz:false}
+  ];
 }
 
 let _livePrices={};
@@ -4766,16 +4790,19 @@ async function fetchPricesFromServer(){
     const _hm=document.getElementById("hdrMepPrice");
     if(_hs){ const sv=getFxSpot(); _hs.textContent=sv?sv.toFixed(2):"—"; }
     if(_hm){ const mv=getFxMep(); _hm.textContent=mv?mv.toFixed(2):"—"; }
-    // Header caución chip — 1 día hábil
+    // Header caución chip — 1 día hábil (con fallback)
     const _hc=document.getElementById("hdrCaucionTNA");
     const _hcd=document.getElementById("hdrCaucionDays");
     if(_hc){
-      const tenors=_getCaucionTenorMap(new Date());
-      const cal1=tenors[1];
-      const lp1=_livePrices[`CAUCION-${cal1}D`]||{};
-      const tna1=lp1.last||0;
+      const today=new Date(); today.setHours(0,0,0,0);
+      const baseCal=_calDaysToNextBusinessDays(today,1);
+      const found=_findCaucionTicker(today,baseCal);
+      const tna1=(found.lp.last)||0;
       _hc.textContent=tna1?tna1.toFixed(2)+"%":"—";
-      if(_hcd) _hcd.textContent=cal1!==1?`(${cal1}cal)`:"";
+      if(_hcd){
+        const dateStr=found.settleDate.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit"});
+        _hcd.textContent=`(${dateStr})`;
+      }
     }
     renderCaucionesResumen();
     _syncCaucionRateToInputs();
