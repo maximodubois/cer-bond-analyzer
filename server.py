@@ -11,6 +11,7 @@ Deploy:  Railway / Render (auto-detecta PORT env var)
 import os
 import sys
 import json
+import re
 # Fix Unicode output on Windows (cp1252 can't handle emoji)
 if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
@@ -158,12 +159,20 @@ def fetch_prices():
             is_24hs = "24hs" in lower_inst or "24 hs" in lower_inst
             is_ci = (not is_24hs) and (" ci " in (" " + lower_inst + " ") or "- ci -" in lower_inst or "- ci" == lower_inst[-4:] or " ci-" in lower_inst)
             is_dlr = "dlr" in lower_inst
+            # Cauciones XMEV: "MERV - XMEV - PESOS - {N}D"
+            is_caucion = ("xmev" in lower_inst and "pesos" in lower_inst
+                          and bool(re.search(r'\b\d+d$', lower_inst.strip())))
             # Naked tickers (no " - " separator) — DL bonds, futures, etc.
             is_naked = " - " not in inst
-            if not (is_24hs or is_ci or is_dlr or is_naked):
+            if not (is_24hs or is_ci or is_dlr or is_caucion or is_naked):
                 continue
             parts = [p.strip() for p in inst.split(" - ")]
-            ticker = parts[2] if len(parts) >= 3 else parts[0] if parts else ""
+            if is_caucion:
+                # Extract day number → ticker = "CAUCION-{N}D"
+                m = re.search(r'(\d+)[dD]$', inst.strip())
+                ticker = f"CAUCION-{m.group(1)}D" if m else ""
+            else:
+                ticker = parts[2] if len(parts) >= 3 else parts[0] if parts else ""
             if not ticker:
                 continue
             # CI instruments: suffix ticker to differentiate from 24hs

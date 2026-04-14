@@ -9,36 +9,38 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
   :root{
-    --bg:#0C0D12;--card:#131720;--cb:#1E2535;--cbf:#28334A;
+    --bg:#09090F;--card:#111520;--cb:#1A2234;--cbf:#243050;
     --ac:#94A3B8;--acd:#E2E8F015;--acl:#E2E8F0;--acll:#F8FAFC;
     --w:#F87171;--wd:#F8717120;--bl:#94A3B8;--bld:#94A3B820;
     --am:#F87171;--amd:#F8717120;--fx:#A78BFA;--fxd:#A78BFA20;
     --t:#F1F5F9;--td:#4A5568;--tm:#2D3A4A;
-    --ib:#0A0C14;--ibr:#1E2435;
+    --ib:#07080D;--ibr:#192030;
     --pos:#4ADE80;--neg:#F87171;--grn:#E6F2DE;
     --fut:#FBBF24;--futd:#FBBF2420;
-    --r:10px;--rs:5px;
-    --sh:0 2px 16px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.04);
-    --sh-lg:0 8px 40px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.05)
+    --gn:#00E5A0;--gnd:rgba(0,229,160,0.12);--gn2:rgba(0,229,160,0.06);
+    --r:10px;--rs:6px;
+    --sh:0 2px 20px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.05);
+    --sh-lg:0 8px 48px rgba(0,0,0,0.75),0 0 0 1px rgba(255,255,255,0.06)
   }
   *{margin:0;padding:0;box-sizing:border-box}
   ::-webkit-scrollbar{width:4px;height:4px}
   ::-webkit-scrollbar-track{background:var(--bg)}
-  ::-webkit-scrollbar-thumb{background:var(--cb);border-radius:2px}
+  ::-webkit-scrollbar-thumb{background:rgba(0,229,160,0.18);border-radius:2px}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(0,229,160,0.32)}
   body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--t);min-height:100vh;padding:18px 22px;font-size:13px;line-height:1.5}
   .hdr{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;margin-bottom:0;border-bottom:1px solid var(--cb)}
-  .hdr h1{font-size:17px;font-weight:700;color:var(--acl);letter-spacing:-0.03em;font-family:'Inter',sans-serif}
-  .hdr .sub{font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;margin-top:2px}
-  .card{background:var(--card);border:1px solid rgba(255,255,255,0.07);border-radius:var(--r);padding:16px 18px;margin-bottom:10px;box-shadow:var(--sh);transition:border-color 0.2s}
-  .card:hover{border-color:rgba(255,255,255,0.13)}
-  .st{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-bottom:14px;display:flex;align-items:center;gap:8px;padding-left:9px;border-left:2px solid rgba(255,255,255,0.11)}
+  .hdr h1{font-size:17px;font-weight:700;letter-spacing:-0.03em;font-family:'Inter',sans-serif;background:linear-gradient(90deg,#F1F5F9 20%,#00E5A0 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .hdr .sub{font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;margin-top:2px;letter-spacing:0.04em}
+  .card{background:var(--card);border:1px solid rgba(255,255,255,0.07);border-top:1px solid rgba(0,229,160,0.10);border-radius:var(--r);padding:16px 18px;margin-bottom:10px;box-shadow:var(--sh);transition:border-color 0.2s,box-shadow 0.2s}
+  .card:hover{border-color:rgba(0,229,160,0.14);border-top-color:rgba(0,229,160,0.22);box-shadow:0 4px 24px rgba(0,0,0,0.6),0 0 0 1px rgba(0,229,160,0.07)}
+  .st{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-bottom:14px;display:flex;align-items:center;gap:8px;padding-left:9px;border-left:2px solid rgba(0,229,160,0.35)}
   .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
   .g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
   .ig{display:flex;flex-direction:column;gap:4px}
   label{font-size:10px;font-weight:500;color:var(--td);text-transform:uppercase;letter-spacing:0.07em}
   input[type="number"],input[type="date"],input[type="text"],input[type="password"],select{background:var(--ib);border:1px solid var(--ibr);border-radius:var(--rs);padding:7px 10px;color:var(--t);font-size:12px;font-family:'IBM Plex Mono',monospace;outline:none;width:100%;transition:border-color 0.15s,box-shadow 0.15s}
-  input:focus,select:focus{border-color:var(--acl);box-shadow:0 0 0 2px var(--acd)}
+  input:focus,select:focus{border-color:var(--gn);box-shadow:0 0 0 2px var(--gnd)}
   .ii{text-align:right;padding:5px;font-size:11px}
   .ic{position:relative}.ic .p{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:9px;color:var(--tm);pointer-events:none}
   .il{font-size:8px;text-align:center;color:var(--td);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:1px}
@@ -50,19 +52,19 @@
   .ml{font-size:8px;font-weight:500;color:var(--td);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px}
   .cd{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:9px;color:var(--td)}
   .cd .v{color:var(--t);font-family:'IBM Plex Mono',monospace}
-  .btn{background:var(--acl);color:#fff;border:none;border-radius:var(--rs);padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer;width:100%;margin-top:10px;transition:all 0.15s;letter-spacing:-0.01em}
-  .btn:hover{background:var(--acll);transform:translateY(-1px);box-shadow:0 4px 12px var(--acd)}
-  .btn-api{background:transparent;color:var(--acl);border:1px solid var(--cb);border-radius:6px;padding:5px 12px;font-size:10px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;transition:all 0.15s}
-  .btn-api:hover{background:var(--acd);border-color:var(--acl);color:var(--acll)}
+  .btn{background:var(--gn);color:#09090F;border:none;border-radius:var(--rs);padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;width:100%;margin-top:10px;transition:all 0.15s;letter-spacing:-0.01em}
+  .btn:hover{background:#00F0A8;transform:translateY(-1px);box-shadow:0 4px 18px rgba(0,229,160,0.30)}
+  .btn-api{background:transparent;color:var(--ac);border:1px solid var(--cb);border-radius:6px;padding:5px 12px;font-size:10px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;transition:all 0.15s}
+  .btn-api:hover{background:var(--gnd);border-color:var(--gn);color:var(--gn)}
   .btn-api:disabled{opacity:0.35;cursor:not-allowed}
   .btn-api.btn-sm{font-size:9px;padding:3px 9px}
-  .api-ok{color:var(--acl)!important}
+  .api-ok{color:var(--gn)!important}
   .api-err{color:var(--w)!important}
   .api-load{color:var(--am)!important}
-  .live-badge{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--acl);margin-right:4px;animation:pulse 1.5s infinite}
+  .live-badge{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gn);margin-right:4px;animation:pulse 1.5s infinite}
   .live-badge.off{background:var(--w);animation:none}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
-  .px-live{background:rgba(226,232,240,0.08);border:1px solid rgba(226,232,240,0.35);border-radius:var(--rs);padding:7px 10px;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:var(--acl);min-width:100px;text-align:right;min-height:36px;display:flex;align-items:center;justify-content:flex-end}
+  .px-live{background:rgba(0,229,160,0.06);border:1px solid rgba(0,229,160,0.25);border-radius:var(--rs);padding:7px 10px;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:var(--gn);min-width:100px;text-align:right;min-height:36px;display:flex;align-items:center;justify-content:flex-end}
   .px-live.stale{color:var(--tm);border-color:var(--ibr);background:var(--ib)}
   .px-manual{border:1px solid var(--am)!important;font-size:15px!important;padding:7px 10px!important;font-weight:600!important}
   .px-manual:not(:placeholder-shown){background:rgba(240,112,64,0.05)!important;border-color:var(--am)!important}
@@ -81,15 +83,15 @@
   .method strong{color:var(--tm)}
   .bonds-grid,.fixed-grid{display:flex;flex-direction:column;gap:6px}
   .list-row{background:var(--card);border:1px solid rgba(255,255,255,0.07);border-radius:var(--r);padding:10px 14px;margin-bottom:0;transition:border-color 0.15s,box-shadow 0.15s;box-shadow:var(--sh)}
-  .list-row:hover{border-color:var(--acl);box-shadow:0 4px 20px rgba(226,232,240,0.10)}
+  .list-row:hover{border-color:rgba(0,229,160,0.30);box-shadow:0 4px 20px rgba(0,229,160,0.07)}
   .list-row + .list-row{margin-top:0}
   .list-head{display:grid;grid-template-columns:200px 400px 1fr;gap:12px;align-items:center}
   .list-title{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .list-meta{font-size:9px;color:var(--td);line-height:1.5}
   .list-inputs{display:grid;grid-template-columns:minmax(130px,1.3fr) auto;gap:8px;align-items:end}
   .list-metrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--cb)}
-  .metric{background:var(--bg);border-radius:10px;padding:10px 12px;min-height:54px;transition:background 0.15s}
-  .metric:hover{background:#0e1222}
+  .metric{background:var(--bg);border-radius:10px;padding:10px 12px;min-height:54px;transition:background 0.15s,border-color 0.15s;border:1px solid transparent}
+  .metric:hover{background:#0d1020;border-color:rgba(0,229,160,0.12)}
   .metric .mv{font-size:16px}
   .metric .ms{font-size:11px}
   .list-detail{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin-top:8px;font-size:9px;color:var(--td)}
@@ -158,15 +160,15 @@
   .gi{display:grid;grid-template-columns:repeat(auto-fill,minmax(65px,1fr));gap:5px}
   .row-actions{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
   /* Tab bar */
-  .tab-btn{background:transparent;border:none;color:var(--td);font-family:'Inter',sans-serif;font-size:12px;font-weight:400;padding:12px 16px 10px;cursor:pointer;border-bottom:2px solid transparent;border-radius:0;transition:color 0.15s,border-color 0.15s;letter-spacing:0;white-space:nowrap;margin:0}
-  .tab-btn:hover{color:var(--t)}
-  .tab-btn.active{color:var(--t);border-bottom-color:var(--acl);font-weight:600}
+  .tab-btn{background:transparent;border:none;color:var(--td);font-family:'Inter',sans-serif;font-size:12px;font-weight:400;padding:12px 16px 10px;cursor:pointer;border-bottom:2px solid transparent;border-radius:0;transition:color 0.15s,border-color 0.15s,background 0.15s;letter-spacing:0;white-space:nowrap;margin:0}
+  .tab-btn:hover{color:var(--t);background:rgba(255,255,255,0.03)}
+  .tab-btn.active{color:var(--gn);border-bottom-color:var(--gn);font-weight:600}
   /* Tables — minimal dark */
   .lt{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px}
   .lt th{text-align:left;font-size:10px;font-weight:600;color:var(--td);text-transform:uppercase;letter-spacing:0.07em;padding:9px 10px;border-bottom:1px solid var(--cbf);white-space:nowrap;cursor:pointer;user-select:none;transition:color 0.15s;position:relative}
-  .lt th:hover{color:var(--acl)}
-  .lt th.sorted-asc::after{content:" ▲";font-size:7px;color:var(--acl)}
-  .lt th.sorted-desc::after{content:" ▼";font-size:7px;color:var(--acl)}
+  .lt th:hover{color:var(--gn)}
+  .lt th.sorted-asc::after{content:" ▲";font-size:7px;color:var(--gn)}
+  .lt th.sorted-desc::after{content:" ▼";font-size:7px;color:var(--gn)}
   .lt td{padding:7px 10px;border-bottom:1px solid rgba(30,36,53,0.8);white-space:nowrap;transition:background 0.1s}
   .lt tr:hover td{background:rgba(226,232,240,0.04)}
   .lt tr.clickable-row{cursor:pointer}
@@ -201,15 +203,16 @@
   .tr-bar{height:16px;border-radius:3px;min-width:2px;transition:width 0.3s}
   .tr-row{display:grid;grid-template-columns:80px 1fr 80px;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid rgba(24,34,46,0.6)}
   .portfolio-kpi{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
-  .kpi{background:var(--bg);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--cb)}
+  .kpi{background:var(--bg);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--cb);transition:border-color 0.15s}
+  .kpi:hover{border-color:rgba(0,229,160,0.20)}
   .kpi .mv{font-size:18px}
   .kpi .ml{margin-top:4px}
   /* Chart toggle controls */
   .chart-toggles{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center}
   .chart-toggle{display:flex;align-items:center;gap:4px;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--td);cursor:pointer;padding:3px 8px;border-radius:4px;border:1px solid var(--cb);transition:all 0.15s;user-select:none}
-  .chart-toggle:hover{border-color:var(--acl);background:rgba(226,232,240,0.06)}
-  .chart-toggle input{accent-color:var(--acl);cursor:pointer}
-  .chart-toggle.active{border-color:var(--acl);background:rgba(226,232,240,0.13)}
+  .chart-toggle:hover{border-color:var(--gn);background:var(--gn2)}
+  .chart-toggle input{accent-color:var(--gn);cursor:pointer}
+  .chart-toggle.active{border-color:var(--gn);background:var(--gnd)}
   .chart-metric-select{background:var(--ib);border:1px solid var(--ibr);border-radius:6px;padding:5px 10px;color:var(--t);font-size:11px;font-family:'IBM Plex Mono',monospace;cursor:pointer}
   /* Resumen — layout: 3 tablas | BE strip | gráficos */
   .resumen-curve-label{font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--td);margin-bottom:4px;text-align:center}
@@ -242,7 +245,7 @@
   .bc-body{padding:16px 20px}
   .bc-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:14px}
   .bc-kpi{background:var(--bg);border-radius:8px;padding:10px 12px}
-  .bc-kpi .bv{font-size:17px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--acl)}
+  .bc-kpi .bv{font-size:17px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--gn)}
   .bc-kpi .bl{font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-top:2px}
   .bc-inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
   .bc-target{background:var(--bg);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
@@ -255,7 +258,7 @@
   .bc-tabs{display:flex;gap:0;border-bottom:1px solid var(--cb);margin:0 -20px 14px;padding:0 20px}
   .bc-tab{background:transparent;border:none;color:var(--td);font-family:'Inter',sans-serif;font-size:11px;font-weight:500;padding:10px 14px 9px;cursor:pointer;border-bottom:2px solid transparent;letter-spacing:0.04em;text-transform:uppercase;transition:color 0.15s,border-color 0.15s}
   .bc-tab:hover{color:var(--t)}
-  .bc-tab.active{color:var(--t);border-bottom-color:var(--acl);font-weight:700}
+  .bc-tab.active{color:var(--gn);border-bottom-color:var(--gn);font-weight:700}
   .bc-pane{display:block}
   /* Inflation path editor */
   .infl-path{display:grid;grid-template-columns:1fr;gap:6px}
@@ -270,8 +273,8 @@
   .infl-lock{background:transparent;border:1px solid var(--cb);color:var(--td);cursor:pointer;border-radius:4px;padding:3px 0;font-size:12px;transition:all 0.15s}
   .infl-lock.on{background:rgba(251,191,36,0.15);border-color:rgba(251,191,36,0.5);color:#fbbf24}
   .infl-btn{background:var(--bg);border:1px solid var(--cb);color:var(--t);font-family:'Inter',sans-serif;font-size:10px;font-weight:500;padding:7px 11px;cursor:pointer;border-radius:5px;letter-spacing:0.02em;transition:all 0.15s}
-  .infl-btn:hover{border-color:var(--acl);color:var(--acl)}
-  .infl-btn.primary{background:var(--acd);border-color:var(--acl);color:var(--acl);font-weight:700}
+  .infl-btn:hover{border-color:var(--gn);color:var(--gn)}
+  .infl-btn.primary{background:var(--gnd);border-color:var(--gn);color:var(--gn);font-weight:700}
   .infl-layout .infl-path{grid-template-columns:1fr 1fr;gap:8px}
   .infl-layout .infl-row{grid-template-columns:1fr 78px 30px;padding:8px}
   .infl-layout .infl-bar{display:none}
@@ -314,6 +317,10 @@
       <div style="font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace;text-align:right">
         <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-bottom:1px">MEP</div>
         <span id="hdrMepPrice" style="font-size:13px;font-weight:700;color:var(--bl)">—</span>
+      </div>
+      <div style="font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace;text-align:right;border-left:1px solid var(--cb);padding-left:12px">
+        <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-bottom:1px">CAUCIÓN 1D <span id="hdrCaucionDays" style="color:var(--tm)"></span></div>
+        <span id="hdrCaucionTNA" style="font-size:13px;font-weight:700;color:var(--fut)">—</span>
       </div>
     </div>
     <div style="font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace;text-align:right">
@@ -473,6 +480,19 @@
           <th class="num">Días</th>
         </tr></thead>
         <tbody id="resumenDLBody"><tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin datos</td></tr></tbody>
+      </table>
+    </div>
+    <!-- CAUCIONES -->
+    <div class="resumen-table-panel">
+      <div class="st" style="color:var(--fut)">Cauciones XMEV <span style="color:var(--td);font-weight:400;text-transform:none;letter-spacing:0;font-size:9px">pesos · TNA %</span></div>
+      <table class="lt">
+        <thead><tr>
+          <th>Tenor</th>
+          <th class="num" style="color:var(--bl)">BID</th>
+          <th class="num" style="color:var(--gn)">LAST</th>
+          <th class="num" style="color:var(--am)">OFFER</th>
+        </tr></thead>
+        <tbody id="resumenCaucionesBody"><tr><td colspan="4" style="text-align:center;color:var(--tm);padding:10px">Sin datos — conectá precios</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -794,7 +814,7 @@
     <div class="ig"><label>Spot A3500 ($/USD)</label><input type="number" id="arbSpot" step="0.01" placeholder="1200.00" value="1200"></div>
     <div class="ig"><label>Futuro ROFEX</label><input type="number" id="arbFuturo" step="0.01" placeholder="1350.00" value="1350"></div>
     <div class="ig"><label>Días al vto</label><input type="number" id="arbDias" step="1" placeholder="90" value="90"></div>
-    <div class="ig"><label>Tasa pesos TNA %</label><input type="number" id="arbTasaPesos" step="0.1" placeholder="38" value="38"></div>
+    <div class="ig"><label>Tasa pesos TNA % <span id="arbTasaPesosLive" style="color:var(--gn);font-size:8px;text-transform:none;letter-spacing:0"></span></label><input type="number" id="arbTasaPesos" step="0.1" placeholder="38" value="38"></div>
     <button class="btn-api" onclick="calcSyntheticArbitrage()">Calcular</button>
   </div>
   <div id="arbResult" style="margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.8">—</div>
@@ -1072,7 +1092,7 @@
         <div class="ig"><label>Futuro ROFEX</label>
           <select id="fxSynthFut" style="font-size:11px" onchange="calcFxSynthetic()"></select>
         </div>
-        <div class="ig"><label>Tasa Pesos TNA % (caución/LECAP)</label>
+        <div class="ig"><label>Tasa Pesos TNA % <span id="fxSynthTasaPesosLive" style="color:var(--gn);font-size:8px;text-transform:none;letter-spacing:0"></span></label>
           <input type="number" id="fxSynthTasaPesos" step="0.1" placeholder="ej: 30" value="30" style="font-size:11px" onchange="calcFxSynthetic()">
         </div>
         <button class="btn-api" onclick="calcFxSynthetic()">Calcular</button>
@@ -1087,7 +1107,7 @@
         <div class="ig"><label>Futuro ROFEX</label>
           <select id="fxSynthFut2" style="font-size:11px" onchange="calcFxSynthSpotFut()"></select>
         </div>
-        <div class="ig"><label>Tasa Pesos TNA % (colocar/tomar)</label>
+        <div class="ig"><label>Tasa Pesos TNA % <span id="fxSynthTasaPesos2Live" style="color:var(--gn);font-size:8px;text-transform:none;letter-spacing:0"></span></label>
           <input type="number" id="fxSynthTasaPesos2" step="0.1" placeholder="ej: 30" value="30" style="font-size:11px" onchange="calcFxSynthSpotFut()">
         </div>
         <div class="ig"><label>DLR SPOT (auto)</label>
@@ -1616,11 +1636,6 @@ function buildFixedCards(){
 function normTxt(s){
   return (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 }
-function getTamarMonthStart(){
-  if(TM.length) return new Date(TM[0].k+"-01T00:00:00");
-  const now=new Date();
-  return new Date(now.getFullYear(),now.getMonth(),1);
-}
 function buildTamarGrid(){
   const grid=document.getElementById("tamarGrid");
   if(!grid) return;
@@ -1836,10 +1851,7 @@ function onTamarMonthInput(monthKey){
 }
 function buildTamarAvg5Info(series){
   if(!series.length) return null;
-  const cutoff=getTamarMonthStart();
-  const eligible=series.filter(x=>new Date(x.fecha+"T00:00:00")<=cutoff);
-  const base=eligible.length>=5?eligible:series;
-  const obs=base.slice(-5);
+  const obs=series.slice(-5);
   if(!obs.length) return null;
   return {avg:obs.reduce((s,x)=>s+x.valor,0)/obs.length,obs};
 }
@@ -1898,7 +1910,7 @@ async function fetchLatestTAMAR(){
       const lastObs=series.length?series[series.length-1]:null;
       log.innerHTML=
         `<span class="api-ok">OK ${meta.descripcion||'TAMAR BCRA'} | ${series.length} obs</span><br>`+
-        `<span style="color:var(--td)">Prom. últimas 5 para el mes proyectado: <strong>${avgTxt}</strong> (${obsTxt})</span>`+
+        `<span style="color:var(--td)">Prom. últimas 5 observaciones BCRA disponibles: <strong>${avgTxt}</strong> (${obsTxt})</span>`+
         (lastObs?`<br><span style="color:var(--tm)">Último dato descargado: ${lastObs.fecha} = ${lastObs.valor.toFixed(4)}%</span>`:"");
     }
     scheduleAutoCalc();
@@ -3272,6 +3284,51 @@ function renderResumen(){
   }
   renderResumenCurves();
   renderResumenBreakevenVertical();
+  renderCaucionesResumen();
+}
+
+function _getCaucionLast1D(){
+  const cal=_getCaucionTenorMap(new Date())[1];
+  return (_livePrices[`CAUCION-${cal}D`]||{}).last||0;
+}
+
+function _syncCaucionRateToInputs(){
+  const rate=_getCaucionLast1D();
+  if(!rate) return;
+  const r=rate.toFixed(2);
+  const liveLabel=`● caución ${r}%`;
+  [["arbTasaPesos","arbTasaPesosLive"],
+   ["fxSynthTasaPesos","fxSynthTasaPesosLive"],
+   ["fxSynthTasaPesos2","fxSynthTasaPesos2Live"]].forEach(([inId,lblId])=>{
+    const el=document.getElementById(inId);
+    if(el) el.value=r;
+    const lbl=document.getElementById(lblId);
+    if(lbl) lbl.textContent=liveLabel;
+  });
+  // Re-trigger dependent calculations if already rendered
+  if(typeof calcFxSynthetic==="function") calcFxSynthetic();
+  if(typeof calcFxSynthSpotFut==="function") calcFxSynthSpotFut();
+}
+
+function renderCaucionesResumen(){
+  const body=document.getElementById("resumenCaucionesBody");
+  if(!body) return;
+  const today=new Date(); today.setHours(0,0,0,0);
+  const tenors=_getCaucionTenorMap(today);
+  const labels={1:"1 día hábil",3:"3 días hábiles",7:"7 días hábiles",15:"15 días hábiles",30:"30 días hábiles"};
+  let rows="";
+  [1,3,7,15,30].forEach(t=>{
+    const cal=tenors[t];
+    const lp=_livePrices[`CAUCION-${cal}D`]||{};
+    const bid=lp.bid||0, last=lp.last||0, ask=lp.ask||0;
+    rows+=`<tr>
+      <td class="tk" style="color:var(--fut)">${labels[t]}</td>
+      <td class="num" style="color:var(--bl)">${bid?bid.toFixed(2)+"%":"—"}</td>
+      <td class="num" style="color:var(--gn);font-weight:${last?"700":"400"}">${last?last.toFixed(2)+"%":"—"}</td>
+      <td class="num" style="color:var(--am)">${ask?ask.toFixed(2)+"%":"—"}</td>
+    </tr>`;
+  });
+  body.innerHTML=rows;
 }
 
 function renderResumenCurves(){
@@ -3603,7 +3660,7 @@ function openBondCalculator(bondType, bondId){
           </div>
           <div style="border-top:1px solid var(--cb);padding-top:10px">
             <div class="st" style="margin-bottom:4px">Proyección TAMAR</div>
-            <div style="font-size:10px;color:var(--td);margin-bottom:8px">Vacío = usar la grilla mensual. Default actual del VF: <strong style="color:var(--bl)">${defaultTamarProjLabel}</strong> (promedio de las últimas 5 observaciones BCRA del mes proyectado).</div>
+            <div style="font-size:10px;color:var(--td);margin-bottom:8px">Vacío = usar la grilla mensual. Default actual del VF: <strong style="color:var(--bl)">${defaultTamarProjLabel}</strong> (promedio de las últimas 5 observaciones BCRA disponibles).</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end">
               <div class="ig">
                 <label>Override TAMAR plana TNA %</label>
@@ -4617,6 +4674,39 @@ setInterval(()=>{
 },1000);
 
 // ═══ LIVE PRICES (via Python server.py → Google Sheets) ═════════
+// ── Feriados Argentina 2025-2027 ────────────────────────────────
+const _AR_HOLIDAYS=new Set([
+  "2025-01-01","2025-03-03","2025-03-04","2025-03-24","2025-04-02",
+  "2025-04-18","2025-05-01","2025-05-25","2025-06-16","2025-06-20",
+  "2025-07-09","2025-08-18","2025-10-13","2025-11-24","2025-12-08","2025-12-25",
+  "2026-01-01","2026-02-16","2026-02-17","2026-03-23","2026-03-24",
+  "2026-04-02","2026-04-03","2026-04-14","2026-05-01","2026-05-25",
+  "2026-06-15","2026-06-17","2026-06-20","2026-07-09","2026-08-17",
+  "2026-10-10","2026-11-23","2026-12-08","2026-12-25",
+  "2027-01-01","2027-02-08","2027-02-09","2027-03-24","2027-04-01",
+  "2027-04-02","2027-04-30","2027-05-25","2027-06-21","2027-07-09",
+  "2027-08-16","2027-10-11","2027-11-22","2027-12-08","2027-12-25"
+]);
+function _isBusinessDay(d){
+  const dow=d.getDay();
+  if(dow===0||dow===6) return false;
+  const s=d.toISOString().split("T")[0];
+  return !_AR_HOLIDAYS.has(s);
+}
+function _calDaysToNextBusinessDays(today, nBizDays){
+  // returns calendar days distance to the date that is nBizDays business days from today
+  let d=new Date(today); let count=0;
+  while(count<nBizDays){ d.setDate(d.getDate()+1); if(_isBusinessDay(d)) count++; }
+  return Math.round((d-today)/86400000);
+}
+function _getCaucionTenorMap(today){
+  // returns {1:calDays, 3:calDays, 7:calDays, 15:calDays, 30:calDays}
+  const t=new Date(today); t.setHours(0,0,0,0);
+  return {1:_calDaysToNextBusinessDays(t,1),3:_calDaysToNextBusinessDays(t,3),
+          7:_calDaysToNextBusinessDays(t,7),15:_calDaysToNextBusinessDays(t,15),
+          30:_calDaysToNextBusinessDays(t,30)};
+}
+
 let _livePrices={};
 let _closeDurData={fx:[],cerReal:[]};
 let _dlCurvePoints=[];let _dlCurvePrevPoints=[];
@@ -4654,13 +4744,13 @@ async function fetchPricesFromServer(){
     const allTickers=getAllTickers();
     let updated=0;
     (data.data||[]).forEach(p=>{
-      if(!allTickers.includes(p.ticker)) return;
+      if(!allTickers.includes(p.ticker) && !p.ticker.startsWith("CAUCION-")) return;
       _livePrices[p.ticker]={
         bid:p.bid||0, ask:p.ask||0, last:p.last||0,
         mid:p.mid||0, bidSize:p.bidSize||0, askSize:p.askSize||0,
         close:p.close||0, volume:p.volume||0, ts:Date.now()
       };
-      updateLivePrice(p.ticker);
+      if(!p.ticker.startsWith("CAUCION-")) updateLivePrice(p.ticker);
       updated++;
     });
     if(!_priceConnected){
@@ -4676,6 +4766,19 @@ async function fetchPricesFromServer(){
     const _hm=document.getElementById("hdrMepPrice");
     if(_hs){ const sv=getFxSpot(); _hs.textContent=sv?sv.toFixed(2):"—"; }
     if(_hm){ const mv=getFxMep(); _hm.textContent=mv?mv.toFixed(2):"—"; }
+    // Header caución chip — 1 día hábil
+    const _hc=document.getElementById("hdrCaucionTNA");
+    const _hcd=document.getElementById("hdrCaucionDays");
+    if(_hc){
+      const tenors=_getCaucionTenorMap(new Date());
+      const cal1=tenors[1];
+      const lp1=_livePrices[`CAUCION-${cal1}D`]||{};
+      const tna1=lp1.last||0;
+      _hc.textContent=tna1?tna1.toFixed(2)+"%":"—";
+      if(_hcd) _hcd.textContent=cal1!==1?`(${cal1}cal)`:"";
+    }
+    renderCaucionesResumen();
+    _syncCaucionRateToInputs();
     syncFxCalcModal();
     syncBondCalcModal();
   }catch(e){
