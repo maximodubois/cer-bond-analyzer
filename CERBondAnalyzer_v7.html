@@ -9,39 +9,42 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
   :root{
-    --bg:#07090e;--card:#0d1219;--cb:#18222e;--cbf:#1f2d3d;
-    --ac:#1D6D65;--acd:#1D6D6520;--acl:#2db8a8;--acll:#3dd5c3;
-    --w:#f07040;--wd:#f0704020;--bl:#4da6ff;--bld:#4da6ff20;
-    --am:#f07040;--amd:#f0704020;--fx:#9b7af0;--fxd:#9b7af020;
-    --t:#dde4ee;--td:#5a6a80;--tm:#3a4a5c;
-    --ib:#090d14;--ibr:#1c2838;
-    --pos:#2db8a8;--neg:#f07040;--grn:#E6F2DE;
-    --r:14px;--rs:8px;
-    --sh:0 2px 12px rgba(0,0,0,0.4),0 0 0 1px rgba(255,255,255,0.03);
-    --sh-lg:0 8px 32px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.04)
+    --bg:#09090F;--card:#111520;--cb:#1A2234;--cbf:#243050;
+    --ac:#94A3B8;--acd:#E2E8F015;--acl:#E2E8F0;--acll:#F8FAFC;
+    --w:#F87171;--wd:#F8717120;--bl:#94A3B8;--bld:#94A3B820;
+    --am:#F87171;--amd:#F8717120;--fx:#A78BFA;--fxd:#A78BFA20;
+    --t:#F1F5F9;--td:#4A5568;--tm:#2D3A4A;
+    --ib:#07080D;--ibr:#192030;
+    --pos:#4ADE80;--neg:#F87171;--grn:#E6F2DE;
+    --fut:#FBBF24;--futd:#FBBF2420;
+    --gn:#00E5A0;--gnd:rgba(0,229,160,0.12);--gn2:rgba(0,229,160,0.06);
+    --r:10px;--rs:6px;
+    --sh:0 2px 20px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.05);
+    --sh-lg:0 8px 48px rgba(0,0,0,0.75),0 0 0 1px rgba(255,255,255,0.06)
   }
   *{margin:0;padding:0;box-sizing:border-box}
   ::-webkit-scrollbar{width:4px;height:4px}
   ::-webkit-scrollbar-track{background:var(--bg)}
-  ::-webkit-scrollbar-thumb{background:var(--cb);border-radius:2px}
+  ::-webkit-scrollbar-thumb{background:rgba(0,229,160,0.18);border-radius:2px}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(0,229,160,0.32)}
   body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--t);min-height:100vh;padding:18px 22px;font-size:13px;line-height:1.5}
   .hdr{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;margin-bottom:0;border-bottom:1px solid var(--cb)}
-  .hdr h1{font-size:17px;font-weight:700;color:var(--acl);letter-spacing:-0.03em;font-family:'Inter',sans-serif}
-  .hdr .sub{font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;margin-top:2px}
-  .card{background:var(--card);border:1px solid var(--cb);border-radius:var(--r);padding:16px 18px;margin-bottom:10px;box-shadow:var(--sh);transition:border-color 0.2s}
-  .card:hover{border-color:var(--cbf)}
-  .st{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--td);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .hdr h1{font-size:17px;font-weight:700;letter-spacing:-0.03em;font-family:'Inter',sans-serif;background:linear-gradient(90deg,#F1F5F9 20%,#00E5A0 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .hdr .sub{font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;margin-top:2px;letter-spacing:0.04em}
+  .card{background:var(--card);border:1px solid rgba(255,255,255,0.07);border-top:1px solid rgba(0,229,160,0.10);border-radius:var(--r);padding:16px 18px;margin-bottom:10px;box-shadow:var(--sh);transition:border-color 0.2s,box-shadow 0.2s}
+  .card:hover{border-color:rgba(0,229,160,0.14);border-top-color:rgba(0,229,160,0.22);box-shadow:0 4px 24px rgba(0,0,0,0.6),0 0 0 1px rgba(0,229,160,0.07)}
+  .st{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-bottom:14px;display:flex;align-items:center;gap:8px;padding-left:9px;border-left:2px solid rgba(0,229,160,0.35)}
   .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
   .g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
   .ig{display:flex;flex-direction:column;gap:4px}
-  label{font-size:9px;font-weight:500;color:var(--td);text-transform:uppercase;letter-spacing:0.07em}
+  label{font-size:10px;font-weight:500;color:var(--td);text-transform:uppercase;letter-spacing:0.07em}
   input[type="number"],input[type="date"],input[type="text"],input[type="password"],select{background:var(--ib);border:1px solid var(--ibr);border-radius:var(--rs);padding:7px 10px;color:var(--t);font-size:12px;font-family:'IBM Plex Mono',monospace;outline:none;width:100%;transition:border-color 0.15s,box-shadow 0.15s}
-  input:focus,select:focus{border-color:var(--acl);box-shadow:0 0 0 2px var(--acd)}
+  input:focus,select:focus{border-color:var(--gn);box-shadow:0 0 0 2px var(--gnd)}
   .ii{text-align:right;padding:5px;font-size:11px}
   .ic{position:relative}.ic .p{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:9px;color:var(--tm);pointer-events:none}
   .il{font-size:8px;text-align:center;color:var(--td);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:1px}
-  .note{font-size:9px;color:var(--tm);margin-top:6px;line-height:1.5}
+  .note{font-size:10px;color:var(--tm);margin-top:6px;line-height:1.5}
   .tag{display:inline-block;font-size:8px;font-weight:600;padding:2px 6px;border-radius:4px;letter-spacing:0.04em;text-transform:uppercase}
   .mb{background:var(--bg);border-radius:var(--rs);padding:10px;margin-bottom:8px}
   .mv{font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace;letter-spacing:-0.02em}
@@ -49,19 +52,19 @@
   .ml{font-size:8px;font-weight:500;color:var(--td);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px}
   .cd{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:9px;color:var(--td)}
   .cd .v{color:var(--t);font-family:'IBM Plex Mono',monospace}
-  .btn{background:var(--acl);color:#fff;border:none;border-radius:var(--rs);padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer;width:100%;margin-top:10px;transition:all 0.15s;letter-spacing:-0.01em}
-  .btn:hover{background:var(--acll);transform:translateY(-1px);box-shadow:0 4px 12px var(--acd)}
-  .btn-api{background:transparent;color:var(--acl);border:1px solid var(--cb);border-radius:6px;padding:5px 12px;font-size:10px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;transition:all 0.15s}
-  .btn-api:hover{background:var(--acd);border-color:var(--acl);color:var(--acll)}
+  .btn{background:var(--gn);color:#09090F;border:none;border-radius:var(--rs);padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;width:100%;margin-top:10px;transition:all 0.15s;letter-spacing:-0.01em}
+  .btn:hover{background:#00F0A8;transform:translateY(-1px);box-shadow:0 4px 18px rgba(0,229,160,0.30)}
+  .btn-api{background:transparent;color:var(--ac);border:1px solid var(--cb);border-radius:6px;padding:5px 12px;font-size:10px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;transition:all 0.15s}
+  .btn-api:hover{background:var(--gnd);border-color:var(--gn);color:var(--gn)}
   .btn-api:disabled{opacity:0.35;cursor:not-allowed}
   .btn-api.btn-sm{font-size:9px;padding:3px 9px}
-  .api-ok{color:var(--acl)!important}
+  .api-ok{color:var(--gn)!important}
   .api-err{color:var(--w)!important}
   .api-load{color:var(--am)!important}
-  .live-badge{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--acl);margin-right:4px;animation:pulse 1.5s infinite}
+  .live-badge{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gn);margin-right:4px;animation:pulse 1.5s infinite}
   .live-badge.off{background:var(--w);animation:none}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
-  .px-live{background:var(--acd);border:1px solid rgba(45,184,168,0.3);border-radius:var(--rs);padding:7px 10px;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:var(--acl);min-width:100px;text-align:right;min-height:36px;display:flex;align-items:center;justify-content:flex-end}
+  .px-live{background:rgba(0,229,160,0.06);border:1px solid rgba(0,229,160,0.25);border-radius:var(--rs);padding:7px 10px;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:var(--gn);min-width:100px;text-align:right;min-height:36px;display:flex;align-items:center;justify-content:flex-end}
   .px-live.stale{color:var(--tm);border-color:var(--ibr);background:var(--ib)}
   .px-manual{border:1px solid var(--am)!important;font-size:15px!important;padding:7px 10px!important;font-weight:600!important}
   .px-manual:not(:placeholder-shown){background:rgba(240,112,64,0.05)!important;border-color:var(--am)!important}
@@ -79,17 +82,17 @@
   .method p{margin:0 0 4px;font-size:9px;color:var(--td);line-height:1.5}
   .method strong{color:var(--tm)}
   .bonds-grid,.fixed-grid{display:flex;flex-direction:column;gap:6px}
-  .list-row{background:var(--card);border:1px solid var(--cb);border-radius:var(--r);padding:10px 14px;margin-bottom:0;transition:border-color 0.15s,box-shadow 0.15s;box-shadow:var(--sh)}
-  .list-row:hover{border-color:var(--acl);box-shadow:0 4px 20px rgba(45,184,168,0.08)}
+  .list-row{background:var(--card);border:1px solid rgba(255,255,255,0.07);border-radius:var(--r);padding:10px 14px;margin-bottom:0;transition:border-color 0.15s,box-shadow 0.15s;box-shadow:var(--sh)}
+  .list-row:hover{border-color:rgba(0,229,160,0.30);box-shadow:0 4px 20px rgba(0,229,160,0.07)}
   .list-row + .list-row{margin-top:0}
   .list-head{display:grid;grid-template-columns:200px 400px 1fr;gap:12px;align-items:center}
   .list-title{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .list-meta{font-size:9px;color:var(--td);line-height:1.5}
   .list-inputs{display:grid;grid-template-columns:minmax(130px,1.3fr) auto;gap:8px;align-items:end}
   .list-metrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--cb)}
-  .metric{background:var(--bg);border-radius:10px;padding:8px 10px;min-height:52px;transition:background 0.15s}
-  .metric:hover{background:#0c1420}
-  .metric .mv{font-size:15px}
+  .metric{background:var(--bg);border-radius:10px;padding:10px 12px;min-height:54px;transition:background 0.15s,border-color 0.15s;border:1px solid transparent}
+  .metric:hover{background:#0d1020;border-color:rgba(0,229,160,0.12)}
+  .metric .mv{font-size:16px}
   .metric .ms{font-size:11px}
   .list-detail{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin-top:8px;font-size:9px;color:var(--td)}
   .list-detail .v{color:var(--t);font-family:'IBM Plex Mono',monospace}
@@ -157,19 +160,19 @@
   .gi{display:grid;grid-template-columns:repeat(auto-fill,minmax(65px,1fr));gap:5px}
   .row-actions{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
   /* Tab bar */
-  .tab-btn{background:transparent;border:none;color:var(--td);font-family:'Inter',sans-serif;font-size:11.5px;font-weight:500;padding:12px 16px;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;letter-spacing:0.01em;white-space:nowrap}
-  .tab-btn:hover{color:var(--t)}
-  .tab-btn.active{color:var(--acl);border-bottom-color:var(--acl);font-weight:600}
+  .tab-btn{background:transparent;border:none;color:var(--td);font-family:'Inter',sans-serif;font-size:12px;font-weight:400;padding:12px 16px 10px;cursor:pointer;border-bottom:2px solid transparent;border-radius:0;transition:color 0.15s,border-color 0.15s,background 0.15s;letter-spacing:0;white-space:nowrap;margin:0}
+  .tab-btn:hover{color:var(--t);background:rgba(255,255,255,0.03)}
+  .tab-btn.active{color:var(--gn);border-bottom-color:var(--gn);font-weight:600}
   /* Tables — minimal dark */
   .lt{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px}
-  .lt th{text-align:left;font-size:9px;font-weight:600;color:var(--td);text-transform:uppercase;letter-spacing:0.07em;padding:9px 10px;border-bottom:1px solid var(--cbf);white-space:nowrap;cursor:pointer;user-select:none;transition:color 0.15s;position:relative}
-  .lt th:hover{color:var(--acl)}
-  .lt th.sorted-asc::after{content:" ▲";font-size:7px;color:var(--acl)}
-  .lt th.sorted-desc::after{content:" ▼";font-size:7px;color:var(--acl)}
-  .lt td{padding:7px 10px;border-bottom:1px solid rgba(24,34,46,0.8);white-space:nowrap;transition:background 0.1s}
-  .lt tr:hover td{background:rgba(45,184,168,0.05)}
+  .lt th{text-align:left;font-size:10px;font-weight:600;color:var(--td);text-transform:uppercase;letter-spacing:0.07em;padding:9px 10px;border-bottom:1px solid var(--cbf);white-space:nowrap;cursor:pointer;user-select:none;transition:color 0.15s;position:relative}
+  .lt th:hover{color:var(--gn)}
+  .lt th.sorted-asc::after{content:" ▲";font-size:7px;color:var(--gn)}
+  .lt th.sorted-desc::after{content:" ▼";font-size:7px;color:var(--gn)}
+  .lt td{padding:7px 10px;border-bottom:1px solid rgba(30,36,53,0.8);white-space:nowrap;transition:background 0.1s}
+  .lt tr:hover td{background:rgba(226,232,240,0.04)}
   .lt tr.clickable-row{cursor:pointer}
-  .lt tr.clickable-row:hover td{background:rgba(45,184,168,0.07)}
+  .lt tr.clickable-row:hover td{background:rgba(226,232,240,0.07)}
   .lt .num{text-align:right}
   .lt .hl-g{color:var(--acl)}
   .lt .hl-b{color:var(--am)}
@@ -179,14 +182,14 @@
   .fwd-matrix{border-collapse:collapse;font-size:8px;font-family:'IBM Plex Mono',monospace;width:100%}
   .fwd-matrix th,.fwd-matrix td{padding:3px 5px;text-align:center;border:1px solid var(--cb);white-space:nowrap}
   .fwd-matrix th{background:var(--bg);color:var(--td);font-weight:600;font-size:7px}
-  .fwd-matrix td.fwd-hi{background:rgba(45,184,168,0.10);color:var(--acl)}
+  .fwd-matrix td.fwd-hi{background:rgba(226,232,240,0.10);color:var(--acl)}
   .fwd-matrix td.fwd-lo{background:rgba(240,112,64,0.10);color:var(--w)}
   .fwd-matrix td.fwd-mid{color:var(--t)}
   /* Quant additions */
   .stress-grid{display:grid;gap:2px;font-family:'IBM Plex Mono',monospace;font-size:10px}
   .stress-cell{padding:4px 6px;text-align:center;border-radius:2px;white-space:nowrap}
   .stress-hdr{background:var(--bg);color:var(--td);font-weight:600;font-size:8px;text-transform:uppercase}
-  .stress-pos{background:rgba(45,184,168,0.07);color:var(--acl)}
+  .stress-pos{background:rgba(226,232,240,0.07);color:var(--acl)}
   .stress-neg{background:rgba(240,112,64,0.07);color:var(--w)}
   .stress-zero{background:var(--bg);color:var(--t)}
   .rv-heat{display:grid;gap:3px;font-family:'IBM Plex Mono',monospace;font-size:10px}
@@ -200,20 +203,21 @@
   .tr-bar{height:16px;border-radius:3px;min-width:2px;transition:width 0.3s}
   .tr-row{display:grid;grid-template-columns:80px 1fr 80px;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid rgba(24,34,46,0.6)}
   .portfolio-kpi{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
-  .kpi{background:var(--bg);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--cb)}
+  .kpi{background:var(--bg);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--cb);transition:border-color 0.15s}
+  .kpi:hover{border-color:rgba(0,229,160,0.20)}
   .kpi .mv{font-size:18px}
   .kpi .ml{margin-top:4px}
   /* Chart toggle controls */
   .chart-toggles{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center}
   .chart-toggle{display:flex;align-items:center;gap:4px;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--td);cursor:pointer;padding:3px 8px;border-radius:4px;border:1px solid var(--cb);transition:all 0.15s;user-select:none}
-  .chart-toggle:hover{border-color:var(--acl)}
-  .chart-toggle input{accent-color:var(--acl);cursor:pointer}
-  .chart-toggle.active{border-color:var(--acl);background:var(--acd)}
+  .chart-toggle:hover{border-color:var(--gn);background:var(--gn2)}
+  .chart-toggle input{accent-color:var(--gn);cursor:pointer}
+  .chart-toggle.active{border-color:var(--gn);background:var(--gnd)}
   .chart-metric-select{background:var(--ib);border:1px solid var(--ibr);border-radius:6px;padding:5px 10px;color:var(--t);font-size:11px;font-family:'IBM Plex Mono',monospace;cursor:pointer}
   /* Resumen — layout: 3 tablas | BE strip | gráficos */
   .resumen-curve-label{font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--td);margin-bottom:4px;text-align:center}
-  .resumen-top-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px;align-items:start}
-  .resumen-table-panel{background:var(--card);border:1px solid var(--cb);border-radius:var(--r);padding:10px 10px 8px}
+  .resumen-top-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;align-items:start}
+  .resumen-table-panel{background:var(--card);border:1px solid rgba(255,255,255,0.07);border-radius:var(--r);padding:10px 10px 8px}
   .resumen-table-panel .st{margin-bottom:6px;font-size:9px}
   .resumen-table-panel .lt td,.resumen-table-panel .lt th{padding:3px 5px;font-size:10px}
   .resumen-table-panel .lt .tk{font-size:10px}
@@ -224,9 +228,11 @@
   .resumen-be-chip-h .be-val{font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--am)}
   .resumen-be-chip-h .be-range{font-size:8px;color:var(--td)}
   .resumen-be-avg{font-size:9px;color:var(--td);margin-left:auto;white-space:nowrap}
-  .resumen-charts-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:6px;min-width:0;overflow:hidden}
+  .resumen-charts-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px;margin-top:6px;min-width:0;overflow:hidden}
   .resumen-chart-cell{background:var(--card);border:1px solid var(--cb);border-radius:var(--r);padding:8px 10px;min-width:0;overflow:hidden}
   .resumen-chart-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .resumen-cell-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+  .resumen-dur-input{width:52px;font-size:9px;padding:2px 5px;background:var(--ib);border:1px solid var(--ibr);border-radius:3px;color:var(--td);font-family:'IBM Plex Mono',monospace;text-align:right}
   @media(max-width:900px){.resumen-top-grid{grid-template-columns:1fr}.resumen-charts-row{grid-template-columns:1fr}}
   /* Bond Calculator Modal */
   .bc-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -239,7 +245,7 @@
   .bc-body{padding:16px 20px}
   .bc-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:14px}
   .bc-kpi{background:var(--bg);border-radius:8px;padding:10px 12px}
-  .bc-kpi .bv{font-size:17px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--acl)}
+  .bc-kpi .bv{font-size:17px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--gn)}
   .bc-kpi .bl{font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-top:2px}
   .bc-inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
   .bc-target{background:var(--bg);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
@@ -248,6 +254,33 @@
   .bc-flows th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--cb);color:var(--td);font-size:9px;text-transform:uppercase;letter-spacing:0.06em}
   .bc-flows td{padding:5px 8px;border-bottom:1px solid rgba(31,41,55,0.4)}
   .bc-flows tfoot td{font-weight:700;border-top:2px solid var(--cb);border-bottom:none;color:var(--acl)}
+  /* Bond calc tabs */
+  .bc-tabs{display:flex;gap:0;border-bottom:1px solid var(--cb);margin:0 -20px 14px;padding:0 20px}
+  .bc-tab{background:transparent;border:none;color:var(--td);font-family:'Inter',sans-serif;font-size:11px;font-weight:500;padding:10px 14px 9px;cursor:pointer;border-bottom:2px solid transparent;letter-spacing:0.04em;text-transform:uppercase;transition:color 0.15s,border-color 0.15s}
+  .bc-tab:hover{color:var(--t)}
+  .bc-tab.active{color:var(--gn);border-bottom-color:var(--gn);font-weight:700}
+  .bc-pane{display:block}
+  /* Inflation path editor */
+  .infl-path{display:grid;grid-template-columns:1fr;gap:6px}
+  .infl-row{display:grid;grid-template-columns:80px 1fr 90px 30px;gap:8px;align-items:center;padding:6px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--cb);transition:border-color 0.15s}
+  .infl-row.locked{border-color:rgba(251,191,36,0.35)}
+  .infl-row .ilab{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--t);font-weight:600}
+  .infl-bar{height:8px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;position:relative}
+  .infl-bar-fill{height:100%;border-radius:4px;transition:width 0.2s,background 0.15s}
+  .infl-bar-be{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--am);opacity:0.7}
+  .infl-row input[type="number"]{background:var(--card);border:1px solid var(--cb);color:var(--t);padding:5px 7px;border-radius:4px;font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right;width:100%;box-sizing:border-box}
+  .infl-row input[type="number"]:focus{outline:none;border-color:var(--acl)}
+  .infl-lock{background:transparent;border:1px solid var(--cb);color:var(--td);cursor:pointer;border-radius:4px;padding:3px 0;font-size:12px;transition:all 0.15s}
+  .infl-lock.on{background:rgba(251,191,36,0.15);border-color:rgba(251,191,36,0.5);color:#fbbf24}
+  .infl-btn{background:var(--bg);border:1px solid var(--cb);color:var(--t);font-family:'Inter',sans-serif;font-size:10px;font-weight:500;padding:7px 11px;cursor:pointer;border-radius:5px;letter-spacing:0.02em;transition:all 0.15s}
+  .infl-btn:hover{border-color:var(--gn);color:var(--gn)}
+  .infl-btn.primary{background:var(--gnd);border-color:var(--gn);color:var(--gn);font-weight:700}
+  .infl-layout .infl-path{grid-template-columns:1fr 1fr;gap:8px}
+  .infl-layout .infl-row{grid-template-columns:1fr 78px 30px;padding:8px}
+  .infl-layout .infl-bar{display:none}
+  @media(max-width:700px){
+    .infl-layout .infl-path{grid-template-columns:1fr}
+  }
   .live-tk-link{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
   .live-tk-link:hover{opacity:0.8}
   /* FX Calculator Modal */
@@ -261,7 +294,7 @@
   .fxc-kpi .bv{font-size:20px;font-weight:700;font-family:'IBM Plex Mono',monospace}
   .fxc-kpi .bl{font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-top:2px}
   .fxc-badge{font-size:9px;padding:2px 7px;border-radius:4px;font-weight:600;letter-spacing:0.05em;flex-shrink:0}
-  .fxc-badge-live{background:rgba(45,184,168,0.15);color:#2db8a8;border:1px solid rgba(45,184,168,0.3)}
+  .fxc-badge-live{background:rgba(226,232,240,0.10);color:#E2E8F0;border:1px solid rgba(226,232,240,0.25)}
   .fxc-badge-manual{background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)}
   .fxc-reset-btn{font-size:9px;padding:2px 8px;cursor:pointer;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);color:#fbbf24;border-radius:4px;flex-shrink:0}
   .fxc-reset-btn:hover{background:rgba(251,191,36,0.2)}
@@ -273,7 +306,7 @@
 <div class="hdr">
   <div>
     <h1>Dashboard</h1>
-    <div class="sub">CER · LECAP · BONCAP — Análisis Quant</div>
+    <div class="sub">CER · LECAP · FX</div>
   </div>
   <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:flex-end">
     <div style="display:flex;gap:12px;align-items:center">
@@ -283,7 +316,11 @@
       </div>
       <div style="font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace;text-align:right">
         <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-bottom:1px">MEP</div>
-        <span id="hdrMepPrice" style="font-size:13px;font-weight:700;color:#4da6ff">—</span>
+        <span id="hdrMepPrice" style="font-size:13px;font-weight:700;color:var(--bl)">—</span>
+      </div>
+      <div style="font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace;text-align:right;border-left:1px solid var(--cb);padding-left:12px">
+        <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-bottom:1px">CAUCIÓN 1D <span id="hdrCaucionDays" style="color:var(--tm)"></span></div>
+        <span id="hdrCaucionTNA" style="font-size:13px;font-weight:700;color:var(--fut)">—</span>
       </div>
     </div>
     <div style="font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace;text-align:right">
@@ -295,20 +332,20 @@
 <!-- TABS -->
 <div class="tab-bar-wrap" style="border-bottom:1px solid var(--cb)">
 <div style="display:flex;gap:0;flex-wrap:nowrap;min-width:max-content">
-  <button class="tab-btn active" onclick="switchTab('calculadoras')">Calculadoras</button>
-  <button class="tab-btn" onclick="switchTab('resumen')">Resumen</button>
+  <button class="tab-btn active" onclick="switchTab('resumen')">Resumen</button>
+  <button class="tab-btn" onclick="switchTab('fx')">FX</button>
+  <button class="tab-btn" onclick="switchTab('calculadoras')">Calculadoras</button>
   <button class="tab-btn" onclick="switchTab('analysis')">Análisis</button>
-  <button class="tab-btn" onclick="switchTab('quantplus')">Quant+</button>
+  <button class="tab-btn" onclick="switchTab('quantplus')">Desarrollo</button>
   <button class="tab-btn" onclick="switchTab('livescreen')">Live Screen</button>
   <button class="tab-btn" onclick="switchTab('positions')">Posiciones</button>
   <button class="tab-btn" onclick="switchTab('pases')">Pases</button>
   <button class="tab-btn" onclick="switchTab('databcra')">BCRA</button>
-  <button class="tab-btn" onclick="switchTab('fx')">FX</button>
 </div>
 </div>
 
 <!-- TAB: CALCULADORAS -->
-<div id="tab-calculadoras">
+<div id="tab-calculadoras" style="display:none">
 
 <!-- LIVE PRICES (via Python server → Google Sheets) -->
 <div class="card" id="connCard">
@@ -326,8 +363,8 @@
 <div class="card">
   <div class="st">CER Base — <span id="apiStatus" style="color:var(--tm);font-weight:400;text-transform:none">sin conectar</span></div>
   <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-bottom:8px;align-items:end">
-    <div class="ig"><label>Valor CER</label><input type="number" id="baseCER" step="0.0001" value="745.5496"></div>
-    <div class="ig"><label>Fecha CER</label><input type="date" id="baseCERDate" value="2026-04-15"></div>
+    <div class="ig"><label>Valor CER</label><input type="number" id="baseCER" step="0.0001" value="770.0396"></div>
+    <div class="ig"><label>Fecha CER</label><input type="date" id="baseCERDate" value="2026-05-14"></div>
     <button class="btn-api" onclick="fetchLatestCER()">Obtener CER BCRA</button>
   </div>
   <div id="cerApiLog" class="note"></div>
@@ -392,7 +429,7 @@
 </div><!-- end tab-calculadoras -->
 
 <!-- TAB: RESUMEN -->
-<div id="tab-resumen" style="display:none">
+<div id="tab-resumen">
   <!-- Fila 1: 3 tablas comprimidas -->
   <div class="resumen-top-grid">
     <!-- CER -->
@@ -433,6 +470,32 @@
         <tbody id="resumenTAMARBody"><tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin datos</td></tr></tbody>
       </table>
     </div>
+    <!-- DL Bonds -->
+    <div class="resumen-table-panel">
+      <div class="st" style="color:#22d3ee">Dollar Linked <span style="color:var(--td);font-weight:400;text-transform:none;letter-spacing:0">click → calc</span></div>
+      <table class="lt">
+        <thead><tr>
+          <th>Ticker</th><th class="num">Var%</th><th class="num">Px</th>
+          <th class="num" style="color:#22d3ee">TNA</th>
+          <th class="num">Días</th>
+        </tr></thead>
+        <tbody id="resumenDLBody"><tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin datos</td></tr></tbody>
+      </table>
+    </div>
+    <!-- CAUCIONES -->
+    <div class="resumen-table-panel">
+      <div class="st" style="color:var(--fut)">Cauciones XMEV <span style="color:var(--td);font-weight:400;text-transform:none;letter-spacing:0;font-size:9px">pesos · TNA %</span></div>
+      <table class="lt">
+        <thead><tr>
+          <th>Tenor</th>
+          <th>Fecha</th>
+          <th class="num" style="color:var(--bl)">BID</th>
+          <th class="num" style="color:var(--gn)">LAST</th>
+          <th class="num" style="color:var(--am)">OFFER</th>
+        </tr></thead>
+        <tbody id="resumenCaucionesBody"><tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin datos — conectá precios</td></tr></tbody>
+      </table>
+    </div>
   </div>
   <!-- Fila 2: Breakeven strip -->
   <div class="resumen-be-strip" id="resumenBEStripRow">
@@ -444,33 +507,62 @@
   <div class="resumen-chart-controls">
     <span style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--td);font-weight:600">Ver</span>
     <select id="resumenDurChartSelector" onchange="switchResumenCharts(this.value)" style="font-size:11px;padding:3px 8px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;font-family:'IBM Plex Mono',monospace">
-      <option value="all">Los 4</option>
+      <option value="all">Todos</option>
       <option value="fx">Solo Tasa Fija</option>
       <option value="cer">Solo CER Real</option>
       <option value="combo">Solo Combinado</option>
       <option value="tamar">Solo TAMAR</option>
+      <option value="dl">Solo Dollar Linked</option>
+      <option value="rofex">Solo ROFEX</option>
       <option value="fx_cer">Tasa Fija + CER</option>
       <option value="fx_combo">Tasa Fija + Combinado</option>
       <option value="cer_combo">CER + Combinado</option>
+      <option value="dl_rofex">DL + ROFEX</option>
     </select>
     <span style="font-size:9px;color:var(--td)">— — log &nbsp; ━ NSS &nbsp; <span style="opacity:0.5">░ cierre ant.</span></span>
   </div>
   <div class="resumen-charts-row" id="resumenChartsGrid">
     <div id="resumenWrapFX" class="resumen-chart-cell">
-      <div class="resumen-curve-label" style="color:var(--fx)">LECAP/BONCAP — TNA</div>
+      <div class="resumen-cell-hdr">
+        <div class="resumen-curve-label" style="color:var(--fx)">LECAP/BONCAP — TNA</div>
+        <input type="number" id="maxDurFX" class="resumen-dur-input" placeholder="auto" title="Duración máxima (días)" oninput="renderResumenCurves()">
+      </div>
       <div class="chart-c" id="resumenChartFXContainer" style="height:200px"><canvas id="resumenChartFX"></canvas></div>
     </div>
     <div id="resumenWrapCER" class="resumen-chart-cell">
-      <div class="resumen-curve-label" style="color:var(--acl)">CER — TIR Real</div>
+      <div class="resumen-cell-hdr">
+        <div class="resumen-curve-label" style="color:var(--acl)">CER — TIR Real</div>
+        <input type="number" id="maxDurCER" class="resumen-dur-input" placeholder="auto" title="Duración máxima (días)" oninput="renderResumenCurves()">
+      </div>
       <div class="chart-c" id="resumenChartCERContainer" style="height:200px"><canvas id="resumenChartCER"></canvas></div>
     </div>
     <div id="resumenWrapCombo" class="resumen-chart-cell">
-      <div class="resumen-curve-label" style="color:var(--am)">Combinado</div>
+      <div class="resumen-cell-hdr">
+        <div class="resumen-curve-label" style="color:var(--am)">Combinado</div>
+        <input type="number" id="maxDurCombo" class="resumen-dur-input" placeholder="auto" title="Duración máxima (días)" oninput="renderResumenCurves()">
+      </div>
       <div class="chart-c" id="resumenChartComboContainer" style="height:200px"><canvas id="resumenChartCombo"></canvas></div>
     </div>
     <div id="resumenWrapTAMAR" class="resumen-chart-cell">
-      <div class="resumen-curve-label" style="color:var(--bl)">TAMAR — TNA efectiva</div>
+      <div class="resumen-cell-hdr">
+        <div class="resumen-curve-label" style="color:var(--bl)">TAMAR — TNA efectiva</div>
+        <input type="number" id="maxDurTAMAR" class="resumen-dur-input" placeholder="auto" title="Duración máxima (días)" oninput="renderResumenCurves()">
+      </div>
       <div class="chart-c" id="resumenChartTAMARContainer" style="height:200px"><canvas id="resumenChartTAMAR"></canvas></div>
+    </div>
+    <div id="resumenWrapDL" class="resumen-chart-cell">
+      <div class="resumen-cell-hdr">
+        <div class="resumen-curve-label" style="color:#22d3ee">Dollar Linked — TNA devaluatoria</div>
+        <input type="number" id="maxDurDL" class="resumen-dur-input" placeholder="auto" title="Duración máxima (días)" oninput="renderResumenCurves()">
+      </div>
+      <div class="chart-c" id="resumenChartDLContainer" style="height:200px"><canvas id="resumenChartDL"></canvas></div>
+    </div>
+    <div id="resumenWrapROFEX" class="resumen-chart-cell">
+      <div class="resumen-cell-hdr">
+        <div class="resumen-curve-label" style="color:var(--fut)">Futuros ROFEX — TNA implícita</div>
+        <input type="number" id="maxDurROFEX" class="resumen-dur-input" placeholder="auto" title="Duración máxima (días)" oninput="renderResumenCurves()">
+      </div>
+      <div class="chart-c" id="resumenChartROFEXContainer" style="height:200px"><canvas id="resumenChartROFEX"></canvas></div>
     </div>
   </div>
   <div id="resumenCurveNote" class="note" style="text-align:center;margin-top:5px">Calculá primero para ver curvas</div>
@@ -626,27 +718,14 @@
 <!-- TAB: QUANT+ -->
 <div id="tab-quantplus" style="display:none">
 
-<!-- SCENARIO / STRESS TABLE -->
-<div class="card" style="margin-top:10px">
-  <div class="st">Scenario / Stress Table — P&L por instrumento</div>
-  <div class="note" style="margin-bottom:10px">Shock paralelo a la curva (±bps TNA) y shock a inflación mensual (±bps TEM). P&L usa duración + convexidad: ΔP ≈ −Dur×Δy + ½×Cvx×(Δy)². Seleccioná un instrumento o dejá "Portfolio" para ver el agregado de posiciones.</div>
-  <div style="display:grid;grid-template-columns:auto auto auto 1fr;gap:10px;align-items:end;margin-bottom:10px">
-    <div class="ig"><label>Instrumento</label><select id="stressAsset" style="width:120px"><option value="__portfolio__">Portfolio</option></select></div>
-    <div class="ig"><label>Nominales</label><input type="number" id="stressNom" value="1000000" style="width:120px"></div>
-    <div class="ig"><label>Rango bps</label><select id="stressRange" style="width:80px" onchange="buildStressTable()"><option value="50">±50</option><option value="100" selected>±100</option><option value="200">±200</option></select></div>
-    <button class="btn-api" onclick="buildStressTable()">Calcular Stress</button>
-  </div>
-  <div id="stressResult" style="overflow-x:auto"></div>
-</div>
-
 <!-- BUTTERFLY / RV TRADE BUILDER -->
-<div class="card">
+<div class="card" style="margin-top:10px">
   <div class="st">Butterfly & Relative Value Trade Builder</div>
-  <div class="note" style="margin-bottom:10px">Armá trades de 2 o 3 patas DV01-neutral. El builder calcula ratios de hedge, carry neto del package, y breakeven en bps. Elegí los instrumentos y la dirección.</div>
+  <div class="note" style="margin-bottom:10px">Armá trades de 2 o 3 patas DV01-neutral. El builder calcula ratios de hedge, carry neto del package y breakeven en bps. La selección queda persistida y no se resetea con las actualizaciones live.</div>
   <div style="display:grid;grid-template-columns:auto auto auto 1fr;gap:8px;align-items:end;margin-bottom:10px">
     <div class="ig"><label>Tipo</label><select id="bfType" onchange="toggleBfLegs()"><option value="2leg">2-Leg RV</option><option value="3leg">Butterfly</option></select></div>
     <div class="ig"><label>Nominal pata larga</label><input type="number" id="bfNom" value="100000000" step="1000000" style="width:130px"></div>
-    <div></div>
+    <div id="bfPersistHint" style="font-size:9px;color:var(--td);align-self:center">Selección persistente</div>
     <button class="btn-api" onclick="calcButterfly()">Calcular</button>
   </div>
   <div id="bfLegs">
@@ -659,10 +738,12 @@
 
 <!-- TOTAL RETURN PROJECTOR -->
 <div class="card">
-  <div class="st">Total Return Projector — 30d / 60d / 90d</div>
-  <div class="note" style="margin-bottom:10px">Para cada instrumento: carry accrued + rolldown gain + CER appreciation (usando la grilla de inflación), neto de spread cost. Se rankea por total return proyectado. Responde: ¿qué conviene holdear?</div>
-  <div style="display:grid;grid-template-columns:auto auto 1fr;gap:10px;align-items:end;margin-bottom:10px">
-    <div class="ig"><label>Horizonte</label><select id="trHorizon" onchange="calcTotalReturn()"><option value="30">30 dias</option><option value="60" selected>60 dias</option><option value="90">90 dias</option></select></div>
+  <div class="st">Total Return Projector — Neto de Fondeo</div>
+  <div class="note" style="margin-bottom:10px">Descompone carry + rolldown + apreciación CER y le resta costo de spread y fondeo explícito. Si un instrumento vence antes del horizonte, queda afuera del ranking para no mezclar horizontes distintos.</div>
+  <div style="display:grid;grid-template-columns:auto auto auto 1fr;gap:10px;align-items:end;margin-bottom:10px">
+    <div class="ig"><label>Horizonte</label><select id="trHorizon" onchange="calcTotalReturn()"><option value="30">30 dias</option><option value="60" selected>60 dias</option><option value="90">90 dias</option><option value="120">120 dias</option><option value="180">180 dias</option><option value="max_common">Max comun</option></select></div>
+    <div class="ig"><label>Fondeo TNA %</label><input type="number" id="trFundingTNA" step="0.01" style="width:110px" oninput="calcTotalReturn()"></div>
+    <div id="trFundingInfo" style="font-size:9px;color:var(--td);align-self:center">—</div>
     <button class="btn-api" onclick="calcTotalReturn()">Proyectar</button>
   </div>
   <div id="trResult" style="overflow-x:auto"></div>
@@ -675,36 +756,24 @@
   <div id="zspreadResult" style="overflow-x:auto"></div>
 </div>
 
-<!-- PORTFOLIO RISK SUMMARY -->
-<div class="card">
-  <div class="st">Portfolio Risk Summary</div>
-  <div class="note" style="margin-bottom:10px">Métricas agregadas de la cartera (desde pestaña Posiciones). DV01 net/gross, duration ponderada, carry diario, y VaR paramétrico asumiendo vol diaria configurable.</div>
-  <div style="display:grid;grid-template-columns:auto auto 1fr;gap:10px;align-items:end;margin-bottom:10px">
-    <div class="ig"><label>Vol diaria curva (bps)</label><input type="number" id="portVol" value="15" step="1" style="width:80px"></div>
-    <button class="btn-api" onclick="calcPortfolioRisk()">Calcular</button>
-  </div>
-  <div class="portfolio-kpi" id="portKPI"></div>
-  <div id="portDetail" style="margin-top:10px"></div>
-</div>
-
 <!-- RV HEATMAP -->
 <div class="card">
   <div class="st">Relative Value Heatmap — Composite Rich/Cheap Score</div>
-  <div class="note" style="margin-bottom:10px">Score compuesto: 40% residual vs curva + 25% carry rank + 20% rolldown rank + 15% liquidez (1/spread). Verde = barato, rojo = caro. Cada score normalizado 0-100 dentro de su universo (CER o FX por separado).</div>
+  <div class="note" style="margin-bottom:10px">Score compuesto para lectura rápida de desk: 40% residual vs curva + 25% carry + 20% rolldown + 15% liquidez. Separamos señal, driver dominante y universo para que no quede como un heatmap decorativo.</div>
   <div id="rvHeatmap"></div>
 </div>
 
 <!-- FORWARD INFLATION TERM STRUCTURE -->
 <div class="card">
   <div class="st">Implied Forward Inflation Term Structure</div>
-  <div class="note" style="margin-bottom:10px">Inflacion mensual implicita por el mercado para cada mes futuro, derivada de breakeven CER vs LECAP comparable. Barras violeta = forward-forward entre bonos adyacentes (inflación implicita entre nodos). X = mes forward, Y = TEM implicita. Compara con tu proyección (grilla de inflación).</div>
+  <div class="note" style="margin-bottom:10px">Inflacion mensual implicita por el mercado para cada mes futuro todavía desconocido, derivada de breakeven CER vs LECAP comparable. Barras violeta = forward-forward implícito por mes. X = mes de inflación, Y = TEM implicita. Compara con tu proyección (grilla de inflación).</div>
   <div class="chart-c" style="height:280px"><canvas id="fwdInflTSChart"></canvas></div>
   <div class="legend" id="fwdInflTSLegend"></div>
 </div>
 
 <div class="card">
   <div class="st">Forward Inflation Matrix — Shock por Mes</div>
-  <div class="note" style="margin-bottom:10px">Elegís un mes a shockear y una grilla de inflaciones posibles. La matriz te muestra cuánto debería dar cada mes siguiente para que el breakeven acumulado hacia cada horizonte siga siendo el implicito del mercado. Ejemplo: si Marzo da 3.0%, cuánto debería dar Abril para sostener el BE de Mayo.</div>
+  <div class="note" style="margin-bottom:10px">Escenario condicional: fijás un mes de inflación y el cuadro te devuelve el sendero requerido para los meses siguientes si querés sostener la curva implícita del mercado. También se muestra el desvío versus la curva BE base para que sea más legible.</div>
   <div style="display:grid;grid-template-columns:auto auto auto auto auto 1fr;gap:10px;align-items:end;margin-bottom:10px">
     <div class="ig"><label>Mes shock</label><select id="fwdInflShockMonth" onchange="buildForwardInflationMatrix()"></select></div>
     <div class="ig"><label>Desde %</label><input type="number" id="fwdInflShockStart" value="2.8" step="0.1" oninput="buildForwardInflationMatrix()"></div>
@@ -723,7 +792,7 @@
     <div class="ig"><label>Spot A3500 ($/USD)</label><input type="number" id="arbSpot" step="0.01" placeholder="1200.00" value="1200"></div>
     <div class="ig"><label>Futuro ROFEX</label><input type="number" id="arbFuturo" step="0.01" placeholder="1350.00" value="1350"></div>
     <div class="ig"><label>Días al vto</label><input type="number" id="arbDias" step="1" placeholder="90" value="90"></div>
-    <div class="ig"><label>Tasa pesos TNA %</label><input type="number" id="arbTasaPesos" step="0.1" placeholder="38" value="38"></div>
+    <div class="ig"><label>Tasa pesos TNA % <span id="arbTasaPesosLive" style="color:var(--gn);font-size:8px;text-transform:none;letter-spacing:0"></span></label><input type="number" id="arbTasaPesos" step="0.1" placeholder="38" value="38"></div>
     <button class="btn-api" onclick="calcSyntheticArbitrage()">Calcular</button>
   </div>
   <div id="arbResult" style="margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.8">—</div>
@@ -930,22 +999,22 @@
     <div class="st" style="color:#22d3ee">Bonos Dollar Linked — TNA</div>
     <table class="lt">
       <thead><tr>
-        <th>Ticker</th><th class="num">Precio</th><th class="num">DLR Spot</th>
+        <th>Ticker</th><th class="num">Precio</th>
         <th class="num" style="color:#22d3ee">TNA</th><th class="num">Días</th>
       </tr></thead>
-      <tbody id="fxDLBody"><tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Esperando precios...</td></tr></tbody>
+      <tbody id="fxDLBody"><tr><td colspan="4" style="text-align:center;color:var(--tm);padding:10px">Esperando precios...</td></tr></tbody>
     </table>
   </div>
 
   <!-- Futures Table -->
   <div class="card">
-    <div class="st" style="color:#f97316">Futuros DLR ROFEX — TNA implícita (T+0)</div>
+    <div class="st" style="color:var(--fut)">Futuros DLR ROFEX — TNA implícita (T+0)</div>
     <table class="lt">
       <thead><tr>
-        <th>Contrato</th><th class="num">Precio Futuro</th><th class="num">Spot</th>
-        <th class="num" style="color:#f97316">TNA</th><th class="num">Días</th>
+        <th>Contrato</th><th class="num">Precio Futuro</th>
+        <th class="num" style="color:var(--fut)">TNA</th><th class="num">Días</th>
       </tr></thead>
-      <tbody id="fxFutBody"><tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Esperando precios...</td></tr></tbody>
+      <tbody id="fxFutBody"><tr><td colspan="4" style="text-align:center;color:var(--tm);padding:10px">Esperando precios...</td></tr></tbody>
     </table>
   </div>
 
@@ -958,7 +1027,7 @@
       </div>
     </div>
     <div class="card">
-      <div class="st" style="color:#f97316">Curva TNA — Futuros ROFEX</div>
+      <div class="st" style="color:var(--fut)">Curva TNA — Futuros ROFEX</div>
       <div class="chart-c" id="fxFutCurveContainer" style="height:240px">
         <canvas id="fxFutCurveChart"></canvas>
       </div>
@@ -978,6 +1047,53 @@
       <div class="chart-c" id="fxMepIntradayContainer" style="height:220px">
         <canvas id="fxMepIntradayChart"></canvas>
       </div>
+    </div>
+  </div>
+
+  <!-- SYNTHETICS: DL vs Futuro, Spot vs Futuro -->
+  <div class="card">
+    <div class="st" style="color:#c084fc">Sintéticos FX — Arbitraje DL / Futuros / Spot</div>
+    <div class="note" style="margin-bottom:10px">Retorno Directo = Px Futuro / Px DL − 1. El precio del bono DL es el FX implícito hoy; el precio del futuro es el FX implícito al vencimiento. TNA = Retorno × 365/días. Hacé click en una fila para ver el detalle.</div>
+
+    <!-- Strategy selector -->
+    <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+      <button id="fxSynthBtnDLF" class="btn-api btn-sm" onclick="_fxSynthMode('dlf')" style="background:var(--acd);border-color:var(--acl);color:var(--acl);font-weight:700">DL vs Futuro</button>
+      <button id="fxSynthBtnSF" class="btn-api btn-sm" onclick="_fxSynthMode('sf')">Spot vs Futuro</button>
+    </div>
+
+    <!-- DL vs Futuro -->
+    <div id="fxSynthDLF">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">
+        <div class="ig"><label>Bono DL</label>
+          <select id="fxSynthDL" style="font-size:11px" onchange="calcFxSynthetic()"></select>
+        </div>
+        <div class="ig"><label>Futuro ROFEX</label>
+          <select id="fxSynthFut" style="font-size:11px" onchange="calcFxSynthetic()"></select>
+        </div>
+        <div class="ig"><label>Tasa Pesos TNA % <span id="fxSynthTasaPesosLive" style="color:var(--gn);font-size:8px;text-transform:none;letter-spacing:0"></span></label>
+          <input type="number" id="fxSynthTasaPesos" step="0.1" placeholder="ej: 30" value="30" style="font-size:11px" onchange="calcFxSynthetic()">
+        </div>
+        <button class="btn-api" onclick="calcFxSynthetic()">Calcular</button>
+      </div>
+      <div id="fxSynthDLFResult" style="margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.8">Seleccioná DL y futuro para ver el spread</div>
+      <div id="fxSynthDLFSingle" style="font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.8"></div>
+    </div>
+
+    <!-- Spot vs Futuro (Cash & Carry) -->
+    <div id="fxSynthSF" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">
+        <div class="ig"><label>Futuro ROFEX</label>
+          <select id="fxSynthFut2" style="font-size:11px" onchange="calcFxSynthSpotFut()"></select>
+        </div>
+        <div class="ig"><label>Tasa Pesos TNA % <span id="fxSynthTasaPesos2Live" style="color:var(--gn);font-size:8px;text-transform:none;letter-spacing:0"></span></label>
+          <input type="number" id="fxSynthTasaPesos2" step="0.1" placeholder="ej: 30" value="30" style="font-size:11px" onchange="calcFxSynthSpotFut()">
+        </div>
+        <div class="ig"><label>DLR SPOT (auto)</label>
+          <input type="number" id="fxSynthSpot" step="0.01" style="font-size:11px" readonly>
+        </div>
+        <button class="btn-api" onclick="calcFxSynthSpotFut()">Calcular</button>
+      </div>
+      <div id="fxSynthSFResult" style="margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.8">Seleccioná futuro para ver el arbitraje</div>
     </div>
   </div>
 </div><!-- end tab-fx -->
@@ -1094,24 +1210,24 @@ let _tamarMonthlyTouched=new Set();
 // ═══ BONOS DOLLAR LINKED ══════════
 const DL_BONDS=[
   {id:"D30A6",  ticker:"D30A6",  name:"DL ABRIL 2026", mat:"2026-04-30", color:"#22d3ee"},
-  {id:"D30S6",  ticker:"D30S6",  name:"DL SEPTIEMBRE 2026", mat:"2026-09-30", color:"#06b6d4"},
   {id:"TZV26", ticker:"TZV26", name:"DL JUNIO 2026", mat:"2026-06-30", color:"#67e8f9"},
+  {id:"D30S6",  ticker:"D30S6",  name:"DL SEPTIEMBRE 2026", mat:"2026-09-30", color:"#06b6d4"},
 ];
 
 // ═══ FUTUROS ROFEX DLR ═══════════
 const ROFEX_FUTURES=[
-  {id:"DLR/ABR26", ticker:"DLR/ABR26", name:"DLR Abr-26", exp:"2026-04-30", color:"#f97316"},
-  {id:"DLR/MAY26", ticker:"DLR/MAY26", name:"DLR May-26", exp:"2026-05-29", color:"#fb923c"},
-  {id:"DLR/JUN26", ticker:"DLR/JUN26", name:"DLR Jun-26", exp:"2026-06-30", color:"#fbbf24"},
-  {id:"DLR/JUL26", ticker:"DLR/JUL26", name:"DLR Jul-26", exp:"2026-07-31", color:"#facc15"},
-  {id:"DLR/AGO26", ticker:"DLR/AGO26", name:"DLR Ago-26", exp:"2026-08-31", color:"#a3e635"},
-  {id:"DLR/SEP26", ticker:"DLR/SEP26", name:"DLR Sep-26", exp:"2026-09-30", color:"#4ade80"},
-  {id:"DLR/OCT26", ticker:"DLR/OCT26", name:"DLR Oct-26", exp:"2026-10-30", color:"#34d399"},
-  {id:"DLR/NOV26", ticker:"DLR/NOV26", name:"DLR Nov-26", exp:"2026-11-30", color:"#2dd4bf"},
-  {id:"DLR/DIC26", ticker:"DLR/DIC26", name:"DLR Dic-26", exp:"2026-12-31", color:"#22d3ee"},
-  {id:"DLR/ENE27", ticker:"DLR/ENE27", name:"DLR Ene-27", exp:"2027-01-29", color:"#38bdf8"},
-  {id:"DLR/FEB27", ticker:"DLR/FEB27", name:"DLR Feb-27", exp:"2027-02-26", color:"#818cf8"},
-  {id:"DLR/MAR27", ticker:"DLR/MAR27", name:"DLR Mar-27", exp:"2027-03-31", color:"#a78bfa"},
+  {id:"DLR/ABR26", ticker:"DLR/ABR26", name:"DLR Abr-26", exp:"2026-04-30", color:"#FDE68A"},
+  {id:"DLR/MAY26", ticker:"DLR/MAY26", name:"DLR May-26", exp:"2026-05-29", color:"#FCD34D"},
+  {id:"DLR/JUN26", ticker:"DLR/JUN26", name:"DLR Jun-26", exp:"2026-06-30", color:"#FBBF24"},
+  {id:"DLR/JUL26", ticker:"DLR/JUL26", name:"DLR Jul-26", exp:"2026-07-31", color:"#F8AF12"},
+  {id:"DLR/AGO26", ticker:"DLR/AGO26", name:"DLR Ago-26", exp:"2026-08-31", color:"#F59E0B"},
+  {id:"DLR/SEP26", ticker:"DLR/SEP26", name:"DLR Sep-26", exp:"2026-09-30", color:"#E89008"},
+  {id:"DLR/OCT26", ticker:"DLR/OCT26", name:"DLR Oct-26", exp:"2026-10-30", color:"#D97706"},
+  {id:"DLR/NOV26", ticker:"DLR/NOV26", name:"DLR Nov-26", exp:"2026-11-30", color:"#C46C05"},
+  {id:"DLR/DIC26", ticker:"DLR/DIC26", name:"DLR Dic-26", exp:"2026-12-31", color:"#B45309"},
+  {id:"DLR/ENE27", ticker:"DLR/ENE27", name:"DLR Ene-27", exp:"2027-01-29", color:"#A34808"},
+  {id:"DLR/FEB27", ticker:"DLR/FEB27", name:"DLR Feb-27", exp:"2027-02-26", color:"#92400E"},
+  {id:"DLR/MAR27", ticker:"DLR/MAR27", name:"DLR Mar-27", exp:"2027-03-31", color:"#7C3009"},
 ];
 
 // ═══ FX EXTRA TICKERS (spot, MEP) ═
@@ -1122,16 +1238,42 @@ let _intradaySpot=[];   // [{t:Date, v:number}]
 let _intradayMep=[];    // [{t:Date, v:number}]
 let _intradayTimer=null;
 
+// ═══ INTRADAY LOCALSTORAGE PERSISTENCE ═══
+function _fxIntradayKey(type){
+  const d=new Date(); return `fxIntraday_${type}_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function _fxSaveIntraday(){
+  try{
+    localStorage.setItem(_fxIntradayKey('spot'),JSON.stringify(_intradaySpot.map(p=>({t:p.t.getTime(),v:p.v}))));
+    localStorage.setItem(_fxIntradayKey('mep'),JSON.stringify(_intradayMep.map(p=>({t:p.t.getTime(),v:p.v}))));
+  }catch(e){}
+}
+function _fxLoadIntraday(){
+  try{
+    const sk=_fxIntradayKey('spot'), mk=_fxIntradayKey('mep');
+    const sd=JSON.parse(localStorage.getItem(sk)||'[]');
+    const md=JSON.parse(localStorage.getItem(mk)||'[]');
+    _intradaySpot=sd.map(p=>({t:new Date(p.t),v:p.v}));
+    _intradayMep=md.map(p=>({t:new Date(p.t),v:p.v}));
+    // Clean old days (keep only today's key)
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k&&k.startsWith('fxIntraday_')&&k!==sk&&k!==mk) localStorage.removeItem(k);
+    }
+  }catch(e){ _intradaySpot=[]; _intradayMep=[]; }
+}
+_fxLoadIntraday(); // Load on startup
+
 // ═══ INFLATION MONTHS ══════════════
 const IM=[
-  {k:"2026-03",l:"Mar 26",d:"2.9"},
-  {k:"2026-04",l:"Abr 26",d:"2.5"},
+  {k:"2026-03",l:"Mar 26",d:"3"},
+  {k:"2026-04",l:"Abr 26",d:"2.6"},
   {k:"2026-05",l:"May 26",d:"2.2"},
   {k:"2026-06",l:"Jun 26",d:"2"},
-  {k:"2026-07",l:"Jul 26",d:"1.9"},
-  {k:"2026-08",l:"Ago 26",d:"1.7"},
-  {k:"2026-09",l:"Sep 26",d:"1.5"},
-  {k:"2026-10",l:"Oct 26",d:"1.5"},
+  {k:"2026-07",l:"Jul 26",d:"2"},
+  {k:"2026-08",l:"Ago 26",d:"1.8"},
+  {k:"2026-09",l:"Sep 26",d:"1.8"},
+  {k:"2026-10",l:"Oct 26",d:"1.6"},
   {k:"2026-11",l:"Nov 26",d:"1.5"},
   {k:"2026-12",l:"Dic 26",d:"1.5"},
   {k:"2027-01",l:"Ene 27",d:"1.5"},
@@ -1317,7 +1459,16 @@ async function fetchLatestCER(){
     detalle.sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
     // Store ALL historical values in cache
     detalle.forEach(d=>{ if(d.fecha&&d.valor) _bcraHistorico.set(d.fecha, d.valor); });
-    const latest=detalle[0];
+    // Cap at the last day of the next CER window after today.
+    // When INDEC publishes IPC of month M (around mid M+1), BCRA publishes CER
+    // through the end of the [15/M+1 – 14/M+2] window = 14/M+2.
+    // Any data beyond that would require the next unknown IPC — exclude it.
+    const todayAnchor=getAnchor15(hoy);
+    const nextAnchor=getNextAnchor15(todayAnchor);
+    // Cap at 14/M+2: last day before nextAnchor (= last day BCRA publishes using current known IPC).
+    // nextNextAnchor would go one window too far and pick up dates using the next unknown IPC.
+    const capStr=DS(new Date(nextAnchor.getTime()-864e5)); // day before next anchor = 14/M+2
+    const latest=detalle.find(d=>d.fecha<=capStr)||detalle[detalle.length-1];
     document.getElementById("baseCER").value=latest.valor;
     document.getElementById("baseCERDate").value=latest.fecha;
     status.textContent="conectado ✓";status.className="api-ok";
@@ -1384,8 +1535,59 @@ async function fetchSettleCER(){
 // ═══ BUILD UI ══════════════════════
 function buildInflGrid(){
   document.getElementById("inflGrid").innerHTML=IM.map(m=>`
-    <div class="ig"><div class="il">${m.l}</div><div class="ic"><input type="number" class="ii" id="i_${m.k}" step="0.1" value="${m.d}"><span class="p">%</span></div></div>
+    <div class="ig" id="infl_${m.k}">
+      <div class="il" id="infl_lbl_${m.k}" data-base-label="${m.l}">${m.l}</div>
+      <div class="ic"><input type="number" class="ii" id="i_${m.k}" data-infl-month="${m.k}" step="0.1" value="${m.d}"><span class="p">%</span></div>
+    </div>
   `).join("");
+  applyKnownInflationState();
+}
+function getInflInputValue(key){
+  const el=document.getElementById("i_"+key);
+  if(!el) return null;
+  const v=parseFloat(el.value);
+  return isNaN(v)?null:v;
+}
+function getLastKnownInflKey(baseDateStr){
+  if(!baseDateStr) return null;
+  const baseDate=new Date(baseDateStr+"T00:00:00");
+  if(isNaN(baseDate.getTime())) return null;
+  return inflKeyForAnchor(getAnchor15(baseDate));
+}
+function getUnknownInflationMonths(baseDateStr){
+  const lastKnownKey=getLastKnownInflKey(baseDateStr||document.getElementById("baseCERDate")?.value||"");
+  return IM.filter(m=>!lastKnownKey||m.k>lastKnownKey);
+}
+function applyKnownInflationState(){
+  const baseCERDateEl=document.getElementById("baseCERDate");
+  const lastKnownKey=getLastKnownInflKey(baseCERDateEl?baseCERDateEl.value:"");
+  IM.forEach(m=>{
+    const wrap=document.getElementById("infl_"+m.k);
+    const label=document.getElementById("infl_lbl_"+m.k);
+    const input=document.getElementById("i_"+m.k);
+    if(!wrap||!label||!input) return;
+    const known=!!lastKnownKey&&m.k<=lastKnownKey;
+    wrap.style.display=known?"none":"";
+    input.readOnly=known;
+  });
+}
+function getProjectedInflationAverage(baseDateStr){
+  const vals=getUnknownInflationMonths(baseDateStr)
+    .map(m=>getInflInputValue(m.k))
+    .filter(v=>v!=null);
+  if(!vals.length) return null;
+  return vals.reduce((a,b)=>a+b,0)/vals.length;
+}
+function buildInflMapFromInputs(defaultValue=0, extraKeys=[]){
+  const inflMap={};
+  IM.forEach(m=>{
+    const v=getInflInputValue(m.k);
+    inflMap[m.k]=v!=null?v:defaultValue;
+  });
+  extraKeys.forEach(k=>{
+    if(k&&!Object.prototype.hasOwnProperty.call(inflMap,k)) inflMap[k]=defaultValue;
+  });
+  return inflMap;
 }
 function buildBondCards(){
   document.getElementById("bondsRow").innerHTML='<div class="section-band">Bonos CER</div>'+BONDS.map(b=>`
@@ -1471,11 +1673,6 @@ function buildFixedCards(){
 // ═══ TAMAR MATH ═══════════════════════════════════════════════════
 function normTxt(s){
   return (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-}
-function getTamarMonthStart(){
-  if(TM.length) return new Date(TM[0].k+"-01T00:00:00");
-  const now=new Date();
-  return new Date(now.getFullYear(),now.getMonth(),1);
 }
 function buildTamarGrid(){
   const grid=document.getElementById("tamarGrid");
@@ -1692,10 +1889,7 @@ function onTamarMonthInput(monthKey){
 }
 function buildTamarAvg5Info(series){
   if(!series.length) return null;
-  const cutoff=getTamarMonthStart();
-  const eligible=series.filter(x=>new Date(x.fecha+"T00:00:00")<=cutoff);
-  const base=eligible.length>=5?eligible:series;
-  const obs=base.slice(-5);
+  const obs=series.slice(-5);
   if(!obs.length) return null;
   return {avg:obs.reduce((s,x)=>s+x.valor,0)/obs.length,obs};
 }
@@ -1754,7 +1948,7 @@ async function fetchLatestTAMAR(){
       const lastObs=series.length?series[series.length-1]:null;
       log.innerHTML=
         `<span class="api-ok">OK ${meta.descripcion||'TAMAR BCRA'} | ${series.length} obs</span><br>`+
-        `<span style="color:var(--td)">Prom. últimas 5 para el mes proyectado: <strong>${avgTxt}</strong> (${obsTxt})</span>`+
+        `<span style="color:var(--td)">Prom. últimas 5 observaciones BCRA disponibles: <strong>${avgTxt}</strong> (${obsTxt})</span>`+
         (lastObs?`<br><span style="color:var(--tm)">Último dato descargado: ${lastObs.fecha} = ${lastObs.valor.toFixed(4)}%</span>`:"");
     }
     scheduleAutoCalc();
@@ -2477,13 +2671,12 @@ function calculate(){
     const tem30=(Math.pow(1+ly/100,30/365)-1)*100;
     const lecapTNA=tem30*365/30;
     document.getElementById("lecapTNA").textContent=lecapTNA.toFixed(2)+"% (TEM 30d: "+tem30.toFixed(2)+"%)";
-    const ai=IM.map(m=>parseFloat(document.getElementById("i_"+m.k).value)||0);
-    const avg=ai.reduce((a,b)=>a+b,0)/ai.length;
+    const avg=getProjectedInflationAverage(bd);
     let h='<div class="be-cols">';
     BONDS.filter(b=>b._ok).forEach(bc=>{
       const bea=((1+ly/100)/(1+bc._tr/100)-1)*100;
       const bem=(Math.pow(1+bea/100,30/365)-1)*100;
-      const sig=bem>avg?"CER":"LECAP";
+      const sig=avg!=null?(bem>avg?"CER":"LECAP"):null;
       h+=`<div class="beb">
         <span class="tag" style="background:${bc.color}22;color:${bc.color}">${bc.ticker}</span>
         <div class="g2" style="margin-top:6px">
@@ -2491,8 +2684,8 @@ function calculate(){
           <div><div class="ms" style="color:var(--w)">${bea.toFixed(1)}%</div><div class="ml">BE anual</div></div>
         </div>
         <div style="margin-top:4px;font-size:8px;color:var(--td)">TIR Nom: ${bc._tn.toFixed(1)}% TEA | TNA: ${(bc._tnaTF||0).toFixed(1)}%</div>
-        <div class="bes" style="background:${sig==="CER"?"var(--acd)":"var(--wd)"};color:${sig==="CER"?"var(--ac)":"var(--w)"}">
-          ${sig==="CER"?"Proy "+avg.toFixed(1)+"% < BE → CER":"Proy "+avg.toFixed(1)+"% > BE → LECAP"}
+        <div class="bes" style="background:${sig==="CER"?"var(--acd)":sig==="LECAP"?"var(--wd)":"#1e293b"};color:${sig==="CER"?"var(--ac)":sig==="LECAP"?"var(--w)":"var(--td)"}">
+          ${avg!=null?(sig==="CER"?"Proy "+avg.toFixed(1)+"% < BE → CER":"Proy "+avg.toFixed(1)+"% > BE → LECAP"):"Sin meses futuros incógnita para comparar"}
         </div>
       </div>`;
     });
@@ -2560,27 +2753,60 @@ const MNAMES=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov",
 let _implInflResults=[];
 let _implInflFullyKnown=[];
 
+function parseInflMonthKey(key){
+  const m=String(key||"").match(/^(\d{4})-(\d{2})$/);
+  if(!m) return null;
+  const y=Number(m[1]), mo=Number(m[2])-1;
+  if(!Number.isFinite(y)||!Number.isFinite(mo)||mo<0||mo>11) return null;
+  return {y,m:mo};
+}
+function formatInflMonthKey(y,m){
+  return y+"-"+String(m+1).padStart(2,"0");
+}
+function buildInflMonthSpan(firstKey,lastKey,maxMonths=120){
+  const start=parseInflMonthKey(firstKey);
+  const end=parseInflMonthKey(lastKey);
+  if(!start||!end) return [];
+  const months=[];
+  let cy=start.y, cm=start.m;
+  for(let i=0;i<maxMonths;i++){
+    months.push({m:cm,y:cy,label:MNAMES[cm]+" "+String(cy).slice(2),key:formatInflMonthKey(cy,cm)});
+    if(cy===end.y&&cm===end.m) return months;
+    cm++;
+    if(cm>11){cm=0;cy++}
+  }
+  return [];
+}
+
 // Implied inflation month logic:
-// CER at date D sits in a window that uses CPI = inflKeyForAnchor(getAnchor15(D))
-// = anchor(D).month - 1 (0-indexed). This is the CPI NEEDED.
-// But for the BASE date, the CER value already HAS that CPI baked in via BCRA data.
-// The CPI that's "consumed" (already embedded) = anchor(base).month - 2.
+// CER at date D sits in a window that uses CPI = inflKeyForAnchor(getAnchor15(D)).
+// For projections / breakevens we exclude every IPC month that is already PUBLIC,
+// even if that CPI is only partially interpolated into the current CER window.
 //
-// Example: base=Apr 15 → anchor=Apr → consumed=Feb → lastKnown=Feb
-//          target=Apr 30 → anchor=Apr → needed=Mar → 1 unknown (Mar)
-//          target=Jul 17 → anchor=Jul → needed=Jun → 4 unknown (Mar,Apr,May,Jun)
+// Example: base=May 14 → anchor=Apr 15 → current window already uses Mar CPI,
+// so lastKnown=Mar and only Apr+ stays as unknown.
 
 function getUnknownMonthRange(cerBaseDate, cerRefDate){
-  // Last KNOWN: CPI already embedded in the CER base value
-  const baseAnchor=getAnchor15(cerBaseDate);
-  let lkm=baseAnchor.getMonth()-2, lky=baseAnchor.getFullYear();
-  while(lkm<0){lkm+=12;lky--}
-  const lastKnown={m:lkm,y:lky,label:MNAMES[lkm]+" "+String(lky).slice(2),key:lky+"-"+String(lkm+1).padStart(2,"0")};
+  // Last KNOWN = latest IPC month already public and therefore already determined
+  // by the current CER base window.
+  const lastKnownKey=inflKeyForAnchor(getAnchor15(cerBaseDate));
+  const lastKnownParsed=parseInflMonthKey(lastKnownKey);
+  if(!lastKnownParsed) return {lastKnown:null,lastUnknown:null,months:[],fullyKnown:true,rangeError:true};
+  const lastKnown={m:lastKnownParsed.m,y:lastKnownParsed.y,label:MNAMES[lastKnownParsed.m]+" "+String(lastKnownParsed.y).slice(2),key:lastKnownKey};
 
-  // Last NEEDED: CPI that feeds the window containing the ref date
+  // Last NEEDED: CPI that feeds the window containing the ref date.
+  // If the ref date falls in the first half of the current CER window
+  // (weight < 0.5), the current window's CPI has negligible influence
+  // and we drop it — matching market convention where a bond maturing
+  // mid-month is effectively priced off the previous month's CPI.
   const refAnchor=getAnchor15(cerRefDate);
+  const nextRefAnchor=getNextAnchor15(refAnchor);
+  const nWin=DB(refAnchor,cerRefDate);
+  const Dwin=Math.max(1,DB(refAnchor,nextRefAnchor));
+  const weight=nWin/Dwin;
   let lnm=refAnchor.getMonth()-1, lny=refAnchor.getFullYear();
-  if(lnm<0){lnm=11;lny--}
+  if(weight<0.5){ lnm-=1; } // drop trailing month whose influence is < 50%
+  while(lnm<0){lnm+=12;lny--}
   const lastUnknown={m:lnm,y:lny,label:MNAMES[lnm]+" "+String(lny).slice(2),key:lny+"-"+String(lnm+1).padStart(2,"0")};
 
   let firstUnkM=lastKnown.m+1, firstUnkY=lastKnown.y;
@@ -2592,12 +2818,10 @@ function getUnknownMonthRange(cerBaseDate, cerRefDate){
     return {lastKnown, lastUnknown, months:[], fullyKnown:true};
   }
 
-  const months=[];
-  let cm=firstUnkM, cy=firstUnkY;
-  for(let i=0;i<24;i++){
-    months.push({m:cm,y:cy,label:MNAMES[cm]+" "+String(cy).slice(2),key:cy+"-"+String(cm+1).padStart(2,"0")});
-    if(cm===lastUnknown.m&&cy===lastUnknown.y) break;
-    cm++;if(cm>11){cm=0;cy++}
+  const firstUnkKey=formatInflMonthKey(firstUnkY, firstUnkM);
+  const months=buildInflMonthSpan(firstUnkKey,lastUnknown.key,120);
+  if(!months.length){
+    return {lastKnown, lastUnknown, months:[], fullyKnown:false, rangeError:true};
   }
   return {lastKnown, lastUnknown, months, fullyKnown:false};
 }
@@ -2615,15 +2839,9 @@ function calcImpliedInflation(settle, cerLiqInput, getCER){
   const fullyKnownBonds=[];
 
   // Helper: build a CER projector where all UNKNOWN months use uniform π
-  function buildCERWithPi(pi){
-    const inflMap={};
-    // Fill ALL months from Jan 2026 to Dec 2027 with trial π
-    // This ensures CER projection works for any bond maturity
-    for(let y=2025;y<=2027;y++){
-      for(let m=1;m<=12;m++){
-        inflMap[y+"-"+String(m).padStart(2,"0")]=pi;
-      }
-    }
+  function buildCERWithPi(pi, monthKeys=[]){
+    const inflMap=buildInflMapFromInputs(pi, monthKeys);
+    monthKeys.forEach(k=>{ inflMap[k]=pi; });
     return buildCER(cerAtBase, baseDateStr, inflMap);
   }
 
@@ -2670,7 +2888,7 @@ function calcImpliedInflation(settle, cerLiqInput, getCER){
     let implPi=null;
     for(let iter=0;iter<60;iter++){
       const mid=(lo+hi)/2;
-      const trialCER=buildCERWithPi(mid);
+      const trialCER=buildCERWithPi(mid, range.months.map(m=>m.key));
       const xirr=bondXIRR(b, price, cerEm, trialCER);
       if(xirr===null) break;
       if(xirr < targetTEA){ lo=mid; }
@@ -2945,29 +3163,27 @@ function applyDurChartLayout({mode,gridId,wrapFXId,wrapCERId,wrapComboId,chartFX
 }
 
 function switchResumenCharts(mode){
-  const show={fx:false,cer:false,combo:false,tamar:false};
-  if(mode==='all'){show.fx=show.cer=show.combo=show.tamar=true;}
+  const show={fx:false,cer:false,combo:false,tamar:false,dl:false,rofex:false};
+  if(mode==='all'){show.fx=show.cer=show.combo=show.tamar=show.dl=show.rofex=true;}
   else if(mode==='fx'){show.fx=true;}
   else if(mode==='cer'){show.cer=true;}
   else if(mode==='combo'){show.combo=true;}
   else if(mode==='tamar'){show.tamar=true;}
+  else if(mode==='dl'){show.dl=true;}
+  else if(mode==='rofex'){show.rofex=true;}
   else if(mode==='fx_cer'){show.fx=show.cer=true;}
   else if(mode==='fx_combo'){show.fx=show.combo=true;}
   else if(mode==='cer_combo'){show.cer=show.combo=true;}
+  else if(mode==='dl_rofex'){show.dl=show.rofex=true;}
   const grid=document.getElementById('resumenChartsGrid');
-  const wFX=document.getElementById('resumenWrapFX');
-  const wCER=document.getElementById('resumenWrapCER');
-  const wCombo=document.getElementById('resumenWrapCombo');
-  const wTAMAR=document.getElementById('resumenWrapTAMAR');
-  if(!grid) return;
-  wFX&&(wFX.style.display=show.fx?'':'none');
-  wCER&&(wCER.style.display=show.cer?'':'none');
-  wCombo&&(wCombo.style.display=show.combo?'':'none');
-  wTAMAR&&(wTAMAR.style.display=show.tamar?'':'none');
-  const count=[show.fx,show.cer,show.combo,show.tamar].filter(Boolean).length;
-  grid.style.gridTemplateColumns=count>=3?'repeat('+count+',1fr)':count===2?'1fr 1fr':'1fr';
-  const h=count===1?'400px':count===2?'280px':'200px';
-  ['resumenChartFXContainer','resumenChartCERContainer','resumenChartComboContainer','resumenChartTAMARContainer']
+  if(!grid)return;
+  const ids=['resumenWrapFX','resumenWrapCER','resumenWrapCombo','resumenWrapTAMAR','resumenWrapDL','resumenWrapROFEX'];
+  const keys=['fx','cer','combo','tamar','dl','rofex'];
+  ids.forEach((id,i)=>{const el=document.getElementById(id);if(el)el.style.display=show[keys[i]]?'':'none';});
+  const count=keys.filter(k=>show[k]).length;
+  grid.style.gridTemplateColumns=count>=3?'repeat(auto-fill,minmax(260px,1fr))':count===2?'1fr 1fr':'1fr';
+  const h=count>=4?'200px':count===3?'240px':count===2?'280px':'400px';
+  ['resumenChartFXContainer','resumenChartCERContainer','resumenChartComboContainer','resumenChartTAMARContainer','resumenChartDLContainer','resumenChartROFEXContainer']
     .forEach(id=>{const el=document.getElementById(id);if(el)el.style.height=h;});
   setTimeout(()=>renderResumenCurves(),30);
 }
@@ -3028,7 +3244,7 @@ function getPriceVariationMeta(ticker, manualInputId){
     last,
     varPct,
     text:varPct!=null?(varPct>=0?"+":"")+varPct.toFixed(2)+"%":"—",
-    color:varPct!=null?(varPct>=0?"var(--bl)":"var(--am)"):"var(--tm)"
+    color:varPct!=null?(varPct>=0?"var(--pos)":"var(--neg)"):"var(--tm)"
   };
 }
 
@@ -3092,8 +3308,85 @@ function renderResumen(){
       tamarBody.innerHTML=rows;
     }
   }
+  // DL Bonds
+  const dlBody=document.getElementById("resumenDLBody");
+  if(dlBody){
+    const today=new Date();today.setHours(0,0,0,0);
+    const spot=getFxSpot();
+    const spotClose=(_livePrices["DLR/SPOT"]||{}).close||0;
+    let rows="";
+    DL_BONDS.forEach(b=>{
+      const lp=_livePrices[b.ticker]||{};
+      const px=lp.last||0;
+      const matD=new Date(b.mat+"T00:00:00");
+      const days=DB(settle,matD);
+      if(days<=0){rows+=`<tr><td class="tk" style="color:${b.color}">${b.ticker}</td><td class="num" colspan="4" style="color:var(--tm)">vencido</td></tr>`;return;}
+      const tna=(px&&spot&&days>0)?(100*spot/px-1)*365/days*100:null;
+      // Var% vs cierre anterior
+      let varPct=null, varColor="var(--td)";
+      if(px&&lp.close&&lp.close>0){ varPct=(px/lp.close-1)*100; varColor=varPct>0?'var(--ac)':varPct<0?'var(--w)':'var(--td)'; }
+      rows+=`<tr class="fxc-row-clickable" onclick="openFxCalculator('dl','${b.id}')" title="Click para calculadora">
+        <td class="tk" style="color:${b.color}">${b.ticker}</td>
+        <td class="num" style="color:${varColor};font-weight:600">${varPct!=null?(varPct>0?'+':'')+varPct.toFixed(2)+'%':'—'}</td>
+        <td class="num">${px?px.toFixed(2):'—'}</td>
+        <td class="num" style="color:#22d3ee;font-weight:600">${tna!=null?tna.toFixed(2)+'%':'—'}</td>
+        <td class="num">${days}</td>
+      </tr>`;
+    });
+    dlBody.innerHTML=rows||'<tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin datos</td></tr>';
+  }
   renderResumenCurves();
   renderResumenBreakevenVertical();
+  renderCaucionesResumen();
+}
+
+function _getCaucionLast1D(){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const baseCal=_calDaysToNextBusinessDays(today,1);
+  const found=_findCaucionTicker(today,baseCal);
+  return (found.lp.last)||0;
+}
+
+function _syncCaucionRateToInputs(){
+  const rate=_getCaucionLast1D();
+  if(!rate) return;
+  const r=rate.toFixed(2);
+  const liveLabel=`● caución ${r}%`;
+  [["arbTasaPesos","arbTasaPesosLive"],
+   ["fxSynthTasaPesos","fxSynthTasaPesosLive"],
+   ["fxSynthTasaPesos2","fxSynthTasaPesos2Live"]].forEach(([inId,lblId])=>{
+    const el=document.getElementById(inId);
+    if(el) el.value=r;
+    const lbl=document.getElementById(lblId);
+    if(lbl) lbl.textContent=liveLabel;
+  });
+  // Re-trigger dependent calculations if already rendered
+  if(typeof calcFxSynthetic==="function") calcFxSynthetic();
+  if(typeof calcFxSynthSpotFut==="function") calcFxSynthSpotFut();
+}
+
+function renderCaucionesResumen(){
+  const body=document.getElementById("resumenCaucionesBody");
+  if(!body) return;
+  const today=new Date(); today.setHours(0,0,0,0);
+  const tenors=_getCaucionTenors(today);
+  let rows="";
+  tenors.forEach(t=>{
+    const found=_findCaucionTicker(today,t.baseCal);
+    const lp=found.lp||{};
+    const bid=lp.bid||0, last=lp.last||0, ask=lp.ask||0;
+    const dateStr=found.settleDate.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit"});
+    const isFallback=found.cal!==t.baseCal;
+    const daysLabel=`${found.cal}D`;
+    rows+=`<tr>
+      <td class="tk" style="color:var(--fut)">${t.label} <span style="color:${isFallback?"var(--am)":"var(--tm)"};font-size:9px;font-weight:400">${daysLabel}</span></td>
+      <td style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace">${dateStr}</td>
+      <td class="num" style="color:var(--bl)">${bid?bid.toFixed(2)+"%":"—"}</td>
+      <td class="num" style="color:var(--gn);font-weight:${last?"700":"400"}">${last?last.toFixed(2)+"%":"—"}</td>
+      <td class="num" style="color:var(--am)">${ask?ask.toFixed(2)+"%":"—"}</td>
+    </tr>`;
+  });
+  body.innerHTML=rows;
 }
 
 function renderResumenCurves(){
@@ -3104,27 +3397,34 @@ function renderResumenCurves(){
     return;
   }
   if(note) note.textContent='';
-  // Apply current selector visibility
   const mode=document.getElementById('resumenDurChartSelector')?.value||'all';
   switchResumenCharts(mode);
   const all=[...cd.fx,...cd.cerReal,...cd.combo].filter(p=>p.x>0&&isFinite(p.y));
   if(!all.length) return;
-  const maxXUse=getAutoDurMax(all);
-  drawOneChart('resumenChartFX', cd.fx, maxXUse, 'LECAP/BONCAP','#9b7af0',
+  const autoMax=getAutoDurMax(all);
+  function getMax(inputId,fallback){const v=parseFloat(document.getElementById(inputId)?.value);return(v&&v>0)?v:fallback;}
+  drawOneChart('resumenChartFX', cd.fx, getMax('maxDurFX',autoMax), 'LECAP/BONCAP','#9b7af0',
     lbl=>{const f=FIXED.find(x=>x.ticker===lbl);if(f)openBondCalculator('fixed',f.id);},
     _closeDurData.fx);
-  drawOneChart('resumenChartCER', cd.cerReal, maxXUse, 'CER Real','#2db8a8',
+  drawOneChart('resumenChartCER', cd.cerReal, getMax('maxDurCER',autoMax), 'CER Real','#2db8a8',
     lbl=>{const b=BONDS.find(x=>x.ticker===lbl);if(b)openBondCalculator('cer',b.id);},
     _closeDurData.cerReal);
-  drawOneChart('resumenChartCombo', cd.combo, maxXUse, 'Combinado','#f07040',
+  drawOneChart('resumenChartCombo', cd.combo, getMax('maxDurCombo',autoMax), 'Combinado','#f07040',
     lbl=>{const b=BONDS.find(x=>x.ticker===lbl);if(b){openBondCalculator('cer',b.id)}else{const f=FIXED.find(x=>x.ticker===lbl);if(f)openBondCalculator('fixed',f.id);}});
-  // TAMAR chart — duration vs TNA efectiva (TAMAR proyectada + margen)
   const ptsTAMAR=TAMAR_BONDS.filter(t=>t._ok&&t._dur!=null).map(t=>({
     x:t._dur, y:t._tnaNeta, label:t.ticker, color:t.color, id:t.id
   })).filter(p=>p.x>0&&isFinite(p.y));
   if(ptsTAMAR.length){
-    drawOneChart('resumenChartTAMAR', ptsTAMAR, maxXUse, 'TAMAR','#4da6ff',
+    drawOneChart('resumenChartTAMAR', ptsTAMAR, getMax('maxDurTAMAR',autoMax), 'TAMAR','#4da6ff',
       lbl=>{const t=TAMAR_BONDS.find(x=>x.ticker===lbl);if(t)openBondCalculator('tamar',t.id);});
+  }
+  if(_dlCurvePoints.length){
+    const dlAutoMax=getAutoDurMax(_dlCurvePoints);
+    drawFxCurveChart('resumenChartDL',_dlCurvePoints,getMax('maxDurDL',dlAutoMax),_dlCurvePrevPoints,'#22d3ee');
+  }
+  if(_futCurvePoints.length){
+    const futAutoMax=getAutoDurMax(_futCurvePoints);
+    drawFxCurveChart('resumenChartROFEX',_futCurvePoints,getMax('maxDurROFEX',futAutoMax),_futCurvePrevPoints,'#FBBF24');
   }
 }
 
@@ -3251,7 +3551,8 @@ function renderVolume(){
   const allTickers=[
     ...BONDS.map(b=>({ticker:b.ticker,color:b.color,type:"CER"})),
     ...FIXED.map(f=>({ticker:f.ticker,color:f.color,type:f.type})),
-    ...TAMAR_BONDS.map(t=>({ticker:t.ticker,color:t.color,type:"TAMAR"}))
+    ...TAMAR_BONDS.map(t=>({ticker:t.ticker,color:t.color,type:"TAMAR"})),
+    ...DL_BONDS.map(d=>({ticker:d.ticker,color:d.color,type:"DL"}))
   ];
   const items=[];
   allTickers.forEach(a=>{
@@ -3343,6 +3644,12 @@ function openBondCalculator(bondType, bondId){
         <button class="bc-close" id="bcClose">&times;</button>
       </div>
       <div class="bc-body">
+        ${bondType==='cer'?`
+        <div class="bc-tabs">
+          <button class="bc-tab active" id="bcTabCalc" onclick="_bcSwitchTab('calc')">Calculadora</button>
+          <button class="bc-tab" id="bcTabInfl" onclick="_bcSwitchTab('infl')">Inflación</button>
+        </div>`:''}
+        <div class="bc-pane" id="bc-pane-calc">
         <!-- Liquidacion toggle -->
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--cb)">
           <span style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--td);font-weight:600">Liquidacion</span>
@@ -3355,6 +3662,12 @@ function openBondCalculator(bondType, bondId){
             <label>Precio ${bondType==='cer'?'(% VT)':'($)'}</label>
             <input type="number" id="bci-price" step="0.01" value="${defaultPx}" placeholder="Precio"
               style="font-size:15px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;gap:8px">
+              <label style="display:flex;align-items:center;gap:5px;font-size:9px;color:var(--td)">
+                <input type="checkbox" id="bci-price-auto-live" ${lp.last?'checked':''}> Auto LAST live
+              </label>
+              <span id="bcPriceLiveBadge" style="font-size:9px;color:var(--tm)">${lp.last?('LIVE LAST '+lp.last.toFixed(2)):'LIVE sin dato'}</span>
+            </div>
           </div>
           <div class="ig">
             <label>VNO (cantidad de titulos)</label>
@@ -3405,7 +3718,7 @@ function openBondCalculator(bondType, bondId){
           </div>
           <div style="border-top:1px solid var(--cb);padding-top:10px">
             <div class="st" style="margin-bottom:4px">Proyección TAMAR</div>
-            <div style="font-size:10px;color:var(--td);margin-bottom:8px">Vacío = usar la grilla mensual. Default actual del VF: <strong style="color:var(--bl)">${defaultTamarProjLabel}</strong> (promedio de las últimas 5 observaciones BCRA del mes proyectado).</div>
+            <div style="font-size:10px;color:var(--td);margin-bottom:8px">Vacío = usar la grilla mensual. Default actual del VF: <strong style="color:var(--bl)">${defaultTamarProjLabel}</strong> (promedio de las últimas 5 observaciones BCRA disponibles).</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end">
               <div class="ig">
                 <label>Override TAMAR plana TNA %</label>
@@ -3434,12 +3747,35 @@ function openBondCalculator(bondType, bondId){
           </div>
         </div>`:''}
         <div class="bc-flows" id="bck-flows"></div>
+        </div>
+        ${bondType==='cer'?`
+        <div class="bc-pane" id="bc-pane-infl" style="display:none">
+          <div id="bc-infl-content"></div>
+        </div>`:''}
       </div>
     </div>`;
 
   document.body.appendChild(overlay);
-  document.getElementById('bcClose').addEventListener('click', ()=>{ delete window._bcSetSettle; overlay.remove(); });
-  overlay.addEventListener('click', e=>{ if(e.target===overlay){ delete window._bcSetSettle; overlay.remove(); } });
+  _bondCalcCtx={ticker:b.ticker,bondType,bondId:b.id};
+  document.getElementById('bcClose').addEventListener('click', ()=>{ delete window._bcSetSettle; delete window._bcSwitchTab; _bondCalcCtx=null; overlay.remove(); });
+  overlay.addEventListener('click', e=>{ if(e.target===overlay){ delete window._bcSetSettle; delete window._bcSwitchTab; _bondCalcCtx=null; overlay.remove(); } });
+
+  // Tab switcher (only active for CER)
+  window._bcSwitchTab=function(which){
+    const calc=document.getElementById('bc-pane-calc');
+    const infl=document.getElementById('bc-pane-infl');
+    const tCalc=document.getElementById('bcTabCalc');
+    const tInfl=document.getElementById('bcTabInfl');
+    if(!calc||!infl) return;
+    if(which==='infl'){
+      calc.style.display='none'; infl.style.display='block';
+      tCalc.classList.remove('active'); tInfl.classList.add('active');
+      if(typeof _bcRenderInflTab==='function') _bcRenderInflTab();
+    } else {
+      calc.style.display='block'; infl.style.display='none';
+      tInfl.classList.remove('active'); tCalc.classList.add('active');
+    }
+  };
 
   // TAMAR projection sensitivity
   if(bondType==='tamar'){
@@ -3489,12 +3825,10 @@ function openBondCalculator(bondType, bondId){
         const bvL=parseFloat(document.getElementById("baseCER").value);
         const bDateL=document.getElementById("baseCERDate").value;
         if(!bvL||!bDateL||!cerLiqVal2){resultEl.textContent='Completá los datos CER base primero';return;}
-        const inflMap2={};
-        for(let y=2025;y<=2027;y++){
-          for(let m=1;m<=12;m++){
-            inflMap2[y+'-'+String(m).padStart(2,'0')]=inflTEM;
-          }
-        }
+        const refDateMat2=SBD(matD,10);
+        const range2=getUnknownMonthRange(new Date(bDateL+"T00:00:00"), refDateMat2);
+        const inflMap2=buildInflMapFromInputs(inflTEM, (range2.months||[]).map(m=>m.key));
+        (range2.months||[]).forEach(m=>{ inflMap2[m.key]=inflTEM; });
         let trialCER=null;
         try{trialCER=buildCER(bvL,bDateL,inflMap2);}catch(e){}
         if(!trialCER){resultEl.textContent='Error construyendo CER';return;}
@@ -3516,6 +3850,453 @@ function openBondCalculator(bondType, bondId){
       };
       inflInput.addEventListener('input',recalcBE);
     }
+  }
+
+  // ── INFLACION TAB (CER only) ────────────────────────────────────
+  let _bcRenderInflTab=null;
+  if(bondType==='cer'){
+    // Per-bond editable path + lock state, persisted across tab switches
+    const inflPath={};   // key → number (TEM %)
+    const inflLocked={}; // key → bool (user-pinned)
+    let _inflMonthsCache=[]; // cached month list for closures
+
+    const getInflSourceValue=(k)=>{
+      const direct=document.getElementById('i_'+k);
+      if(direct){
+        const v=parseFloat(direct.value);
+        if(!isNaN(v)) return v;
+      }
+      const alt=document.querySelector(`[data-infl-month="${k}"]`);
+      if(alt){
+        const v=parseFloat(alt.value||alt.textContent||'');
+        if(!isNaN(v)) return v;
+      }
+      return null;
+    };
+
+    _bcRenderInflTab=function(){
+      const host=document.getElementById('bc-infl-content');
+      if(!host) return;
+      const bvL=parseFloat(document.getElementById("baseCER").value);
+      const bDateL=document.getElementById("baseCERDate").value;
+      const cerLiqVal=parseFloat(document.getElementById("cerLiq").value);
+      if(!bvL||!bDateL||!cerLiqVal){
+        host.innerHTML='<div style="padding:20px;color:var(--td);font-size:11px;text-align:center">Completá los datos CER base (valor, fecha, CER liquidación) primero.</div>';
+        return;
+      }
+      const cerBaseDate=new Date(bDateL+"T00:00:00");
+      const refDateMat=SBD(matD,10);
+      const range=getUnknownMonthRange(cerBaseDate, refDateMat);
+      const months=range.months||[];
+      const beData=(_implInflResults||[]).find(r=>r.ticker===b.ticker);
+      const targetTEA=beData?beData.compTEA:null;   // TEA % of matched FIXED bond
+      const bePi=beData?beData.implPi:null;          // flat BE TEM %
+      const compTicker=beData?beData.comp:'-';
+
+      if(months.length===0){
+        host.innerHTML=`<div style="padding:20px;color:var(--td);font-size:11px;text-align:center">
+          Este bono ya no tiene meses de inflación incógnita (vto: ${b.mat}).<br>
+          Último CPI conocido: <strong style="color:var(--t)">${range.lastKnown.label}</strong>
+        </div>`;
+        return;
+      }
+
+      // Seed path with BE flat if empty
+      months.forEach(m=>{
+        if(inflPath[m.key]==null){
+          inflPath[m.key]=bePi!=null?parseFloat(bePi.toFixed(3)):3.0;
+        }
+        if(inflLocked[m.key]==null) inflLocked[m.key]=false;
+      });
+      _inflMonthsCache=months.slice();
+
+      const beTxt=bePi!=null
+        ? `BE mercado: <strong style="color:var(--am)">${bePi.toFixed(2)}%</strong> TEM plana vs <strong style="color:var(--fx)">${compTicker}</strong> @ <strong>${targetTEA.toFixed(2)}%</strong> TEA`
+        : `<span style="color:var(--td)">Sin BE de mercado disponible — corré el cálculo principal primero.</span>`;
+
+      const nUnk=months.length;
+
+      host.innerHTML=`
+        <div class="infl-layout" id="bcIflLayout">
+        <div style="margin-bottom:10px">
+          <div class="st" style="margin-bottom:6px">Sendero de inflación · ${b.ticker}</div>
+          <div style="font-size:10px;color:var(--td);line-height:1.6">
+            ${beTxt}<br>
+            ${nUnk} mes${nUnk>1?'es':''} incógnita: <strong style="color:var(--t)">${months[0].label}${nUnk>1?' → '+months[nUnk-1].label:''}</strong> · último CPI conocido: <strong style="color:var(--t)">${range.lastKnown.label}</strong>
+          </div>
+        </div>
+        <div class="bc-kpis" style="grid-template-columns:repeat(4,1fr)">
+          <div class="bc-kpi"><div class="bv" id="bcIflTnaTF" style="font-size:18px;color:var(--acl)">—</div><div class="bl">TNA TF CER</div></div>
+          <div class="bc-kpi"><div class="bv" id="bcIflTirReal" style="font-size:15px">—</div><div class="bl">TIR real TEA</div></div>
+          <div class="bc-kpi"><div class="bv" id="bcIflTirNom" style="font-size:15px;color:var(--fx)">—</div><div class="bl">TIR nom TEA</div></div>
+          <div class="bc-kpi"><div class="bv"><input type="number" id="bcIflPriceIn" step="0.01" value="${(parseFloat(document.getElementById('bci-price')?.value)||defaultPx||0).toFixed(2)}" style="background:transparent;border:none;border-bottom:1px solid var(--acl);color:var(--acl);font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right;width:80px;outline:none;padding:0"></div><div class="bl">Precio</div></div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+          <button class="infl-btn primary" id="bcIflBtnCalc">Calcular TNA TF CER</button>
+          <button class="infl-btn primary" id="bcIflBtnBE">Calcular BE (no-bloqueados)</button>
+          <button class="infl-btn" id="bcIflBtnReset">Reset INDEC</button>
+          <button class="infl-btn" id="bcIflBtnClearLocks">Quitar locks</button>
+        </div>
+        <div style="font-size:9px;color:var(--tm);margin-bottom:8px;line-height:1.5">
+          1) Tocá el 🔓 para bloquear los meses que querés fijar. 2) <strong>Calcular BE</strong> resuelve una TEM uniforme para los no-bloqueados que hace la TIR nominal = TEA del bono fija comparable. 3) <strong>Calcular TNA TF CER</strong> evalúa el bono con el sendero que ves en pantalla.
+        </div>
+        <div class="infl-path" id="bcIflPath"></div>
+        <div style="margin-top:12px;border-top:1px solid var(--cb);padding-top:10px">
+          <div class="st" style="margin-bottom:6px">Módulo A→B (equivalencia vs tasa fija comparable)</div>
+          <div style="font-size:10px;color:var(--td);line-height:1.6;margin-bottom:8px">
+            Dado <strong>precio X</strong> e inflación <strong>A%</strong> para <strong>${months[0].label}</strong>, resolvemos <strong>B%</strong> uniforme para los meses siguientes para igualar la TNA/TEA nominal del comparable en tasa fija.
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">
+            <div class="ig"><label>Precio X</label><input type="number" id="bcEqPriceX" step="0.01" value="${(parseFloat(document.getElementById('bci-price')?.value)||defaultPx||0)}"></div>
+            <div class="ig"><label>A% (${months[0].label})</label><input type="number" id="bcEqInflA" step="0.05" value="${(inflPath[months[0].key]||0).toFixed(3)}"></div>
+            <div class="ig"><label>B% (resto)</label><input type="number" id="bcEqInflB" step="0.0001" readonly style="opacity:0.85"></div>
+            <button class="infl-btn primary" id="bcEqSolveBtn">Resolver B</button>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+            <button class="infl-btn" id="bcEqUseLive">Tomar precio live</button>
+            <button class="infl-btn" id="bcEqUseCalcPx">Usar precio calculadora</button>
+          </div>
+          <div id="bcEqResult" style="font-size:10px;color:var(--td);line-height:1.6;margin-top:8px;min-height:20px">Esperando inputs…</div>
+        </div>
+        </div>
+      `;
+
+      const renderRows=()=>{
+        const pathHost=document.getElementById('bcIflPath');
+        if(!pathHost) return;
+        let pathHTML='';
+        months.forEach(m=>{
+          const v=inflPath[m.key];
+          const locked=inflLocked[m.key];
+          pathHTML+=`<div class="infl-row ${locked?'locked':''}" id="bcIflRow_${m.key}">
+            <div class="ilab">${m.label}</div>
+            <input type="number" step="0.05" id="bcIflIn_${m.key}" value="${v.toFixed(3)}" ${locked?'readonly style="opacity:0.5"':''}>
+            <button class="infl-lock ${locked?'on':''}" id="bcIflLk_${m.key}" title="Bloquear mes">${locked?'🔒':'🔓'}</button>
+          </div>`;
+        });
+        pathHost.innerHTML=pathHTML;
+        wireRows();
+        redrawBars();
+      };
+
+      // Wire up row inputs — stores value + auto-recalculates KPIs live
+      const updateKPIs=()=>{
+        const r=evaluatePath(inflPath);
+        const elR=document.getElementById('bcIflTirReal');
+        const elN=document.getElementById('bcIflTirNom');
+        const elT=document.getElementById('bcIflTnaTF');
+        if(r){
+          if(elR) elR.textContent=r.tirReal!=null?r.tirReal.toFixed(2)+'%':'—';
+          if(elN) elN.textContent=r.tirNom!=null?r.tirNom.toFixed(2)+'%':'—';
+          if(elT) elT.textContent=r.tnaTF!=null?r.tnaTF.toFixed(2)+'%':'—';
+        } else {
+          if(elR) elR.textContent='—';
+          if(elN) elN.textContent='—';
+          if(elT) elT.textContent='—';
+        }
+      };
+      const wireRows=()=>{
+        months.forEach(m=>{
+          const inp=document.getElementById('bcIflIn_'+m.key);
+          const lk=document.getElementById('bcIflLk_'+m.key);
+          if(inp) inp.addEventListener('input',()=>{
+            const v=parseFloat(inp.value);
+            if(!isNaN(v)) inflPath[m.key]=v;
+            redrawBars();
+            updateKPIs();
+          });
+          if(lk) lk.addEventListener('click',()=>{
+            inflLocked[m.key]=!inflLocked[m.key];
+            const row=document.getElementById('bcIflRow_'+m.key);
+            if(inflLocked[m.key]){
+              row.classList.add('locked'); lk.classList.add('on'); lk.textContent='🔒';
+              if(inp){ inp.readOnly=true; inp.style.opacity='0.5'; }
+            } else {
+              row.classList.remove('locked'); lk.classList.remove('on'); lk.textContent='🔓';
+              if(inp){ inp.readOnly=false; inp.style.opacity='1'; }
+            }
+          });
+        });
+      };
+
+      renderRows();
+
+      // Wire price input in inflacion tab → auto-recalc KPIs
+      const bcIflPriceInEl=document.getElementById('bcIflPriceIn');
+      if(bcIflPriceInEl){
+        bcIflPriceInEl.addEventListener('input',()=>{ redrawBars(); updateKPIs(); });
+      }
+
+      // Button: calculate TNA TF CER from the on-screen path
+      document.getElementById('bcIflBtnCalc').addEventListener('click',()=>{
+        // Pull current input values into inflPath
+        months.forEach(m=>{
+          const inp=document.getElementById('bcIflIn_'+m.key);
+          if(inp){ const v=parseFloat(inp.value); if(!isNaN(v)) inflPath[m.key]=v; }
+        });
+        const r=evaluatePath(inflPath);
+        if(!r){
+          ['bcIflTirReal','bcIflTirNom','bcIflTnaTF'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='—';});
+          alert('No se pudo calcular. Revisá precio, CER base y datos del bono.');
+          return;
+        }
+        const elR=document.getElementById('bcIflTirReal');
+        const elN=document.getElementById('bcIflTirNom');
+        const elT=document.getElementById('bcIflTnaTF');
+        if(elR) elR.textContent=r.tirReal!=null?r.tirReal.toFixed(2)+'%':'—';
+        if(elN) elN.textContent=r.tirNom!=null?r.tirNom.toFixed(2)+'%':'—';
+        if(elT) elT.textContent=r.tnaTF!=null?r.tnaTF.toFixed(2)+'%':'—';
+        redrawBars();
+      });
+
+      // Button: solve BE for unlocked months
+      document.getElementById('bcIflBtnBE').addEventListener('click',()=>{
+        // Pull current on-screen values into inflPath before solving
+        months.forEach(m=>{
+          const inp=document.getElementById('bcIflIn_'+m.key);
+          if(inp){ const v=parseFloat(inp.value); if(!isNaN(v)) inflPath[m.key]=v; }
+        });
+        const ok=solveUnlockedToBE();
+        if(!ok) return;
+        // Write solved values back into the inputs
+        months.forEach(m=>{
+          if(!inflLocked[m.key]){
+            const inp=document.getElementById('bcIflIn_'+m.key);
+            if(inp) inp.value=inflPath[m.key].toFixed(3);
+          }
+        });
+        redrawBars();
+        updateKPIs();
+      });
+
+      // Button: reset to INDEC grid (main calc tab values)
+      document.getElementById('bcIflBtnReset').addEventListener('click',()=>{
+        let any=0, miss=0;
+        months.forEach(m=>{
+          const raw=getInflSourceValue(m.key);
+          if(raw!=null){
+            inflPath[m.key]=raw;
+            const inp=document.getElementById('bcIflIn_'+m.key);
+            if(inp) inp.value=raw.toFixed(3);
+            any++;
+          } else miss++;
+        });
+        if(!any){ alert('No encontré valores en la grilla INDEC. Completá los TEM en la pestaña CALCULADORA primero.'); return; }
+        if(miss>0){ alert(`Reset parcial: ${any} meses actualizados y ${miss} sin dato INDEC.`); }
+        redrawBars();
+        updateKPIs();
+      });
+
+      document.getElementById('bcIflBtnClearLocks').addEventListener('click',()=>{
+        months.forEach(m=>{
+          inflLocked[m.key]=false;
+          const row=document.getElementById('bcIflRow_'+m.key);
+          const lkBtn=document.getElementById('bcIflLk_'+m.key);
+          const inp=document.getElementById('bcIflIn_'+m.key);
+          if(row) row.classList.remove('locked');
+          if(lkBtn){ lkBtn.classList.remove('on'); lkBtn.textContent='🔓'; }
+          if(inp){ inp.readOnly=false; inp.style.opacity='1'; }
+        });
+      });
+
+      const eqPriceEl=document.getElementById('bcEqPriceX');
+      const eqAEl=document.getElementById('bcEqInflA');
+      const eqBEl=document.getElementById('bcEqInflB');
+      const eqResEl=document.getElementById('bcEqResult');
+      const eqBtn=document.getElementById('bcEqSolveBtn');
+      const eqUseLive=document.getElementById('bcEqUseLive');
+      const eqUseCalc=document.getElementById('bcEqUseCalcPx');
+
+      const renderEqMsg=(msg,color='var(--td)')=>{ if(eqResEl){eqResEl.style.color=color;eqResEl.innerHTML=msg;} };
+      if(eqUseLive){
+        eqUseLive.addEventListener('click',()=>{
+          const lp=_livePrices[b.ticker]||{};
+          const px=lp.last||lp.bid||lp.ask||0;
+          if(!(px>0)){ renderEqMsg('No hay precio live disponible para este ticker.','var(--tm)'); return; }
+          if(eqPriceEl) eqPriceEl.value=px.toFixed(2);
+          renderEqMsg(`Precio live cargado: <strong style="color:var(--acl)">${px.toFixed(2)}</strong>`,'var(--td)');
+        });
+      }
+      if(eqUseCalc){
+        eqUseCalc.addEventListener('click',()=>{
+          const px=parseFloat(document.getElementById('bci-price').value)||0;
+          if(!(px>0)){ renderEqMsg('No hay precio en la calculadora.','var(--tm)'); return; }
+          if(eqPriceEl) eqPriceEl.value=px.toFixed(2);
+          renderEqMsg(`Precio calculadora copiado: <strong style="color:var(--acl)">${px.toFixed(2)}</strong>`,'var(--td)');
+        });
+      }
+      if(eqBtn){
+        eqBtn.addEventListener('click',()=>{
+          const px=parseFloat(eqPriceEl?.value);
+          const a=parseFloat(eqAEl?.value);
+          if(!(px>0)){ renderEqMsg('Ingresá Precio X válido.','var(--neg)'); return; }
+          if(isNaN(a)){ renderEqMsg('Ingresá A% válido.','var(--neg)'); return; }
+          const solved=solveBFromPriceAndA(px,a);
+          if(!solved.ok){ renderEqMsg(solved.msg,'var(--neg)'); return; }
+          if(eqBEl) eqBEl.value=solved.b.toFixed(4);
+          const r=solved.eval||{};
+          const diff=(r.tirNom!=null&&solved.targetTEA!=null)?(r.tirNom-solved.targetTEA):null;
+          renderEqMsg(`B resuelta: <strong style="color:var(--acl)">${solved.b.toFixed(4)}%</strong> ${solved.single?'(único mes)':'(meses restantes)'} · Comparable <strong style="color:var(--fx)">${solved.comp}</strong> @ <strong>${solved.targetTEA.toFixed(2)}%</strong> TEA · TNA TF CER: <strong style="color:var(--am)">${r.tnaTF!=null?r.tnaTF.toFixed(2)+'%':'—'}</strong>${diff!=null?` · gap TEA ${diff>=0?'+':''}${diff.toFixed(4)}%`:''}`,'var(--td)');
+          if(months.length){
+            inflPath[months[0].key]=a;
+            for(let i=1;i<months.length;i++) inflPath[months[i].key]=solved.b;
+            months.forEach((m,idx)=>{
+              const inp=document.getElementById('bcIflIn_'+m.key);
+              if(inp) inp.value=(idx===0?a:solved.b).toFixed(3);
+            });
+            redrawBars();
+            updateKPIs();
+          }
+        });
+      }
+    };
+
+    // Build a CER projector using the current path + existing grid for the rest
+    const buildTrialCER=(pathOverride)=>{
+      const bvL=parseFloat(document.getElementById("baseCER").value);
+      const bDateL=document.getElementById("baseCERDate").value;
+      const inflMap={};
+      IM.forEach(m=>{
+        const src=getInflSourceValue(m.k);
+        inflMap[m.k]=src!=null?src:0;
+      });
+      Object.keys(pathOverride).forEach(k=>{
+        if(pathOverride[k]!=null) inflMap[k]=pathOverride[k];
+      });
+      try{ return buildCER(bvL,bDateL,inflMap); }catch(e){ return null; }
+    };
+
+    // Evaluate the bond with current path → TIR real/nom, TNA TF
+    const evaluatePath=(path,priceOverride=null)=>{
+      const cerLiqVal=parseFloat(document.getElementById("cerLiq").value);
+      const trialCER=buildTrialCER(path);
+      if(!trialCER) return null;
+      const flows=getBondSchedule(b, settle, trialCER, cerLiqVal);
+      if(!flows.length) return null;
+      const pxInfl=parseFloat(document.getElementById('bcIflPriceIn')?.value);
+      const price=(priceOverride!=null?priceOverride:(!isNaN(pxInfl)&&pxInfl>0?pxInfl:parseFloat(document.getElementById('bci-price').value)))||0;
+      if(price<=0) return null;
+      const yNom=xirrFromFlows(price,flows,'nominal');
+      const yReal=xirrFromFlows(price,flows,'real');
+      const d=DB(settle,matD);
+      const tirNom=yNom!=null?yNom*100:null;
+      const tirReal=yReal!=null?yReal*100:null;
+      const tnaTF=tirNom!=null&&d>0?((Math.pow(1+tirNom/100,d/365)-1)*(365/d))*100:null;
+      return {tirNom,tirReal,tnaTF,days:d};
+    };
+
+    // Redraw the visual bars — does NOT evaluate the bond
+    const redrawBars=()=>{
+      const beData=(_implInflResults||[]).find(r=>r.ticker===b.ticker);
+      const bePi=beData?beData.implPi:null;
+      const vals=Object.values(inflPath).map(v=>Math.abs(v));
+      const maxAbs=Math.max(6, ...vals, bePi!=null?Math.abs(bePi):0);
+      Object.keys(inflPath).forEach(k=>{
+        const bar=document.getElementById('bcIflBar_'+k);
+        const be=document.getElementById('bcIflBe_'+k);
+        if(bar){
+          const pct=Math.max(0,Math.min(100,(Math.abs(inflPath[k])/maxAbs)*100));
+          bar.style.width=pct+'%';
+          bar.style.background=inflPath[k]>=0?b.color:'var(--neg)';
+        }
+        if(be&&bePi!=null){
+          const pctBE=Math.max(0,Math.min(100,(bePi/maxAbs)*100));
+          be.style.left=pctBE+'%';
+        }
+      });
+    };
+
+    // Bisect a uniform TEM for unlocked months so that TIR nominal == targetTEA
+    // Returns true on success, false on failure. Updates inflPath in place.
+    const solveUnlockedToBE=()=>{
+      const beData=(_implInflResults||[]).find(r=>r.ticker===b.ticker);
+      if(!beData||beData.compTEA==null){
+        alert('Sin BE de mercado para este bono. Corré el cálculo principal primero.');
+        return false;
+      }
+      const target=beData.compTEA/100;
+      const keys=Object.keys(inflPath).filter(k=>!inflLocked[k]);
+      if(keys.length===0){
+        alert('Todos los meses están bloqueados. Destrabá al menos uno para resolver.');
+        return false;
+      }
+      const pxInflSolve=parseFloat(document.getElementById('bcIflPriceIn')?.value);
+      const price=(!isNaN(pxInflSolve)&&pxInflSolve>0?pxInflSolve:parseFloat(document.getElementById('bci-price').value))||0;
+      if(!price){ alert('Ingresá precio en el campo Precio de la pestaña Inflación (o en la pestaña Calculadora).'); return false; }
+      const cerLiqVal=parseFloat(document.getElementById("cerLiq").value);
+      const bvL=parseFloat(document.getElementById("baseCER").value);
+      const bDateL=document.getElementById("baseCERDate").value;
+      if(!cerLiqVal||!bvL||!bDateL){ alert('Completá CER base y fecha primero.'); return false; }
+
+      const trialXIRR=(pi)=>{
+        const inflMap={};
+        IM.forEach(m=>{
+          const src=getInflSourceValue(m.k);
+          inflMap[m.k]=src!=null?src:0;
+        });
+        Object.keys(inflPath).forEach(k=>{
+          inflMap[k]=inflLocked[k]?inflPath[k]:pi;
+        });
+        let trialCER=null;
+        try{ trialCER=buildCER(bvL,bDateL,inflMap); }catch(e){ return null; }
+        if(!trialCER) return null;
+        const flows=getBondSchedule(b,settle,trialCER,cerLiqVal);
+        if(!flows.length) return null;
+        return xirrFromFlows(price,flows,'nominal');
+      };
+
+      let lo=-10, hi=30, found=null;
+      const xLo=trialXIRR(lo), xHi=trialXIRR(hi);
+      if(xLo==null||xHi==null){ alert('No se pudo evaluar el XIRR. Revisá precio y datos.'); return false; }
+      for(let i=0;i<80;i++){
+        const mid=(lo+hi)/2;
+        const xm=trialXIRR(mid);
+        if(xm==null) break;
+        if(xm<target) lo=mid; else hi=mid;
+        if(Math.abs(hi-lo)<0.0001){ found=(lo+hi)/2; break; }
+      }
+      if(found==null) found=(lo+hi)/2;
+      keys.forEach(k=>{ inflPath[k]=parseFloat(found.toFixed(4)); });
+      return true;
+    };
+
+    const solveBFromPriceAndA=(priceX,inflA)=>{
+      const beData=(_implInflResults||[]).find(r=>r.ticker===b.ticker);
+      if(!beData||beData.compTEA==null) return {ok:false,msg:'Sin comparable de tasa fija para este bono.'};
+      if(!(_inflMonthsCache&&_inflMonthsCache.length)) return {ok:false,msg:'Sin meses incógnita para resolver.'};
+      const months=_inflMonthsCache;
+      const first=months[0];
+      const rest=months.slice(1);
+      const target=beData.compTEA/100;
+      const trial=(bVal)=>{
+        const path={};
+        path[first.key]=inflA;
+        rest.forEach(m=>{ path[m.key]=bVal; });
+        return evaluatePath(path,priceX);
+      };
+      if(rest.length===0){
+        const r=trial(inflA);
+        if(!r||r.tirNom==null) return {ok:false,msg:'No se pudo evaluar con ese precio.'};
+        return {ok:true,b:inflA,eval:r,single:true,targetTEA:beData.compTEA,comp:beData.comp};
+      }
+      let lo=-10,hi=30,found=null;
+      const rLo=trial(lo),rHi=trial(hi);
+      if(!rLo||!rHi||rLo.tirNom==null||rHi.tirNom==null){
+        return {ok:false,msg:'No se pudo evaluar XIRR con los extremos. Revisá precio/CER.'};
+      }
+      for(let i=0;i<80;i++){
+        const mid=(lo+hi)/2;
+        const rm=trial(mid);
+        if(!rm||rm.tirNom==null) return {ok:false,msg:'XIRR no converge durante la resolución.'};
+        const ym=rm.tirNom/100;
+        if(ym<target) lo=mid; else hi=mid;
+        if(Math.abs(hi-lo)<0.0001){ found=(lo+hi)/2; break; }
+      }
+      if(found==null) found=(lo+hi)/2;
+      const rFinal=trial(found);
+      if(!rFinal) return {ok:false,msg:'No se pudo evaluar solución final.'};
+      return {ok:true,b:found,eval:rFinal,single:false,targetTEA:beData.compTEA,comp:beData.comp};
+    };
   }
 
   function recalc(){
@@ -3771,6 +4552,20 @@ function openBondCalculator(bondType, bondId){
     }
   }
 
+  const autoLiveEl=document.getElementById('bci-price-auto-live');
+  if(autoLiveEl){
+    autoLiveEl.addEventListener('change',()=>{ if(autoLiveEl.checked) syncBondCalcModal(); });
+    const pxInput=document.getElementById('bci-price');
+    if(pxInput){
+      pxInput.addEventListener('input',()=>{
+        if(autoLiveEl.checked && document.activeElement===pxInput){
+          autoLiveEl.checked=false;
+        }
+      });
+    }
+    syncBondCalcModal();
+  }
+
   document.getElementById('bci-price').addEventListener('input', recalc);
   document.getElementById('bci-vno').addEventListener('input', recalc);
   document.getElementById('bci-target-tir').addEventListener('input', recalc);
@@ -3935,13 +4730,67 @@ setInterval(()=>{
 },1000);
 
 // ═══ LIVE PRICES (via Python server.py → Google Sheets) ═════════
+// ── Feriados Argentina 2025-2027 ────────────────────────────────
+const _AR_HOLIDAYS=new Set([
+  "2025-01-01","2025-03-03","2025-03-04","2025-03-24","2025-04-02",
+  "2025-04-18","2025-05-01","2025-05-25","2025-06-20",
+  "2025-07-09","2025-08-18","2025-10-13","2025-11-24","2025-12-08","2025-12-25",
+  "2026-01-01","2026-02-16","2026-02-17","2026-03-24",
+  "2026-04-02","2026-04-03","2026-05-01","2026-05-25",
+  "2026-06-15","2026-07-09","2026-08-17","2026-10-12",
+  "2026-12-08","2026-12-25",
+  "2027-01-01","2027-02-08","2027-02-09","2027-03-24","2027-04-01",
+  "2027-04-02","2027-05-25","2027-06-21","2027-07-09",
+  "2027-08-16","2027-10-11","2027-11-22","2027-12-08","2027-12-25"
+]);
+function _isBusinessDay(d){
+  const dow=d.getDay();
+  if(dow===0||dow===6) return false;
+  const s=d.toISOString().split("T")[0];
+  return !_AR_HOLIDAYS.has(s);
+}
+function _calDaysToNextBusinessDays(today, nBizDays){
+  let d=new Date(today); let count=0;
+  while(count<nBizDays){ d.setDate(d.getDate()+1); if(_isBusinessDay(d)) count++; }
+  return Math.round((d-today)/86400000);
+}
+// Finds the best ticker starting at targetCal calendar days.
+// If no data at that exact tenor, tries targetCal+1, +2 ... up to +10.
+// Returns {cal, lp, settleDate}. lp may be empty object if nothing found.
+function _findCaucionTicker(today, targetCal){
+  for(let i=0;i<=10;i++){
+    const cal=targetCal+i;
+    const lp=_livePrices[`CAUCION-${cal}D`];
+    if(lp && (lp.bid||lp.last||lp.ask)){
+      const s=new Date(today); s.setDate(s.getDate()+cal);
+      return {cal, lp, settleDate:s};
+    }
+  }
+  const s=new Date(today); s.setDate(s.getDate()+targetCal);
+  return {cal:targetCal, lp:{}, settleDate:s};
+}
+// Returns array of tenor specs: first is "1 día hábil", rest are calendar days
+function _getCaucionTenors(today){
+  const t=new Date(today); t.setHours(0,0,0,0);
+  return [
+    {label:"1 día hábil", baseCal:_calDaysToNextBusinessDays(t,1), biz:true},
+    {label:"3 días",      baseCal:3,  biz:false},
+    {label:"7 días",      baseCal:7,  biz:false},
+    {label:"15 días",     baseCal:15, biz:false},
+    {label:"30 días",     baseCal:30, biz:false}
+  ];
+}
+
 let _livePrices={};
 let _closeDurData={fx:[],cerReal:[]};
+let _dlCurvePoints=[];let _dlCurvePrevPoints=[];
+let _futCurvePoints=[];let _futCurvePrevPoints=[];
 let _priceTimer=null;
 let _priceConnected=false;
 let _autoCalcTimer=null;
 let _fxSpotOverride=null; // null = live; number = manual override for all FX curves
 let _fxCalcCtx=null;      // context of currently open FX calculator modal
+let _bondCalcCtx=null;    // context of currently open bond calculator modal
 let _fxCalcUpdating=false;
 
 function getAllTickers(){
@@ -3969,13 +4818,13 @@ async function fetchPricesFromServer(){
     const allTickers=getAllTickers();
     let updated=0;
     (data.data||[]).forEach(p=>{
-      if(!allTickers.includes(p.ticker)) return;
+      if(!allTickers.includes(p.ticker) && !p.ticker.startsWith("CAUCION-")) return;
       _livePrices[p.ticker]={
         bid:p.bid||0, ask:p.ask||0, last:p.last||0,
         mid:p.mid||0, bidSize:p.bidSize||0, askSize:p.askSize||0,
         close:p.close||0, volume:p.volume||0, ts:Date.now()
       };
-      updateLivePrice(p.ticker);
+      if(!p.ticker.startsWith("CAUCION-")) updateLivePrice(p.ticker);
       updated++;
     });
     if(!_priceConnected){
@@ -3991,7 +4840,24 @@ async function fetchPricesFromServer(){
     const _hm=document.getElementById("hdrMepPrice");
     if(_hs){ const sv=getFxSpot(); _hs.textContent=sv?sv.toFixed(2):"—"; }
     if(_hm){ const mv=getFxMep(); _hm.textContent=mv?mv.toFixed(2):"—"; }
+    // Header caución chip — 1 día hábil (con fallback)
+    const _hc=document.getElementById("hdrCaucionTNA");
+    const _hcd=document.getElementById("hdrCaucionDays");
+    if(_hc){
+      const today=new Date(); today.setHours(0,0,0,0);
+      const baseCal=_calDaysToNextBusinessDays(today,1);
+      const found=_findCaucionTicker(today,baseCal);
+      const tna1=(found.lp.last)||0;
+      _hc.textContent=tna1?tna1.toFixed(2)+"%":"—";
+      if(_hcd){
+        const dateStr=found.settleDate.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit"});
+        _hcd.textContent=`(${dateStr})`;
+      }
+    }
+    renderCaucionesResumen();
+    _syncCaucionRateToInputs();
     syncFxCalcModal();
+    syncBondCalcModal();
   }catch(e){
     const ts=new Date().toLocaleTimeString("es-AR");
     log.innerHTML=`<span class="api-err">✗ ${e.message} · ${ts}</span> — Verificá que <code style="color:var(--ac)">python server.py</code> esté corriendo`;
@@ -4769,13 +5635,10 @@ function buildAllForwardMatrices(){
 // ═══ V7 QUANT+ FUNCTIONS ═════════════════════════════════════════
 
 function refreshQuantPlus(){
-  populateStressSelect();
   populateBfSelects();
-  buildStressTable();
   calcButterfly();
   calcTotalReturn();
   calcZSpread();
-  calcPortfolioRisk();
   buildRVHeatmap();
   drawFwdInflTS();
   buildForwardInflationMatrix();
@@ -4825,17 +5688,39 @@ function getAllCalculatedItems(){
   return items.sort((a,b)=>a.days-b.days);
 }
 
-function populateStressSelect(){
-  const sel=document.getElementById("stressAsset");
-  if(!sel)return;
-  const items=getAllCalculatedItems();
-  let opts='<option value="__portfolio__">Portfolio (posiciones)</option>';
-  items.forEach(it=>opts+=`<option value="${it.id}">${it.ticker} (${it.type})</option>`);
-  sel.innerHTML=opts;
+const BF_STATE_KEY="cer_bf_state_v1";
+function readBfState(){
+  try{return JSON.parse(localStorage.getItem(BF_STATE_KEY)||"{}")||{}}catch(_e){return {}}
 }
-
+function saveBfState(){
+  const state={
+    type:document.getElementById("bfType")?.value||"2leg",
+    nom:document.getElementById("bfNom")?.value||"",
+    leg1:document.getElementById("bfLeg1")?.value||"",
+    leg2:document.getElementById("bfLeg2")?.value||"",
+    leg3:document.getElementById("bfLeg3")?.value||""
+  };
+  try{localStorage.setItem(BF_STATE_KEY,JSON.stringify(state))}catch(_e){}
+}
+function wireBfPersistence(){
+  ["bfType","bfNom","bfLeg1","bfLeg2","bfLeg3"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el||el.dataset.persistWired==="1") return;
+    const evt=el.tagName==="SELECT"?"change":"input";
+    el.addEventListener(evt,saveBfState);
+    el.dataset.persistWired="1";
+  });
+}
 function populateBfSelects(){
   const items=getAllCalculatedItems();
+  const saved=readBfState();
+  const current={
+    type:document.getElementById("bfType")?.value||saved.type||"2leg",
+    nom:document.getElementById("bfNom")?.value||saved.nom||"100000000",
+    leg1:document.getElementById("bfLeg1")?.value||saved.leg1||"",
+    leg2:document.getElementById("bfLeg2")?.value||saved.leg2||"",
+    leg3:document.getElementById("bfLeg3")?.value||saved.leg3||""
+  };
   ["bfLeg1","bfLeg2","bfLeg3"].forEach(id=>{
     const sel=document.getElementById(id);
     if(!sel)return;
@@ -4843,11 +5728,24 @@ function populateBfSelects(){
     items.forEach(it=>opts+=`<option value="${it.id}">${it.ticker}</option>`);
     sel.innerHTML=opts;
   });
-  // Default: short end long, long end short for RV
+  const typeEl=document.getElementById("bfType");
+  const nomEl=document.getElementById("bfNom");
+  if(typeEl) typeEl.value=current.type;
+  if(nomEl&&current.nom) nomEl.value=current.nom;
   if(items.length>=2){
-    document.getElementById("bfLeg1").value=items[items.length-1].id;
-    document.getElementById("bfLeg2").value=items[0].id;
+    const defaultLeg1=items[items.length-1].id;
+    const defaultLeg2=items[0].id;
+    const defaultLeg3=items[Math.floor(items.length/2)].id;
+    const leg1El=document.getElementById("bfLeg1");
+    const leg2El=document.getElementById("bfLeg2");
+    const leg3El=document.getElementById("bfLeg3");
+    if(leg1El) leg1El.value=items.some(it=>it.id===current.leg1)?current.leg1:defaultLeg1;
+    if(leg2El) leg2El.value=items.some(it=>it.id===current.leg2)?current.leg2:defaultLeg2;
+    if(leg3El) leg3El.value=items.some(it=>it.id===current.leg3)?current.leg3:defaultLeg3;
   }
+  toggleBfLegs();
+  wireBfPersistence();
+  saveBfState();
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -4960,6 +5858,7 @@ function buildStressTable(){
 function toggleBfLegs(){
   const type=document.getElementById("bfType").value;
   document.getElementById("bfLeg3Row").style.display=type==="3leg"?"":"none";
+  saveBfState();
 }
 
 function calcButterfly(){
@@ -5040,17 +5939,47 @@ function calcButterfly(){
 // ══════════════════════════════════════════════════════════════════
 // 3. TOTAL RETURN PROJECTOR
 // ══════════════════════════════════════════════════════════════════
+function getTRFundingDefaultTNA(){
+  const tamar=getTamarProjectionDefaultTNA();
+  return isFinite(tamar)&&tamar>0?tamar:0;
+}
+function ensureTRFundingInput(){
+  const input=document.getElementById("trFundingTNA");
+  const info=document.getElementById("trFundingInfo");
+  if(!input) return getTRFundingDefaultTNA();
+  const def=getTRFundingDefaultTNA();
+  if(!input.dataset.userEdited&&(!input.value||!isFinite(parseFloat(input.value)))){
+    input.value=def?def.toFixed(2):"0.00";
+  }
+  if(input.dataset.wired!=="1"){
+    input.addEventListener("input",()=>{ input.dataset.userEdited="1"; });
+    input.dataset.wired="1";
+  }
+  if(info){
+    info.textContent=def?`Default desk: TAMAR proj ${def.toFixed(2)}% TNA`:`Ingresá TNA de fondeo`;
+  }
+  const val=parseFloat(input.value);
+  return isFinite(val)?val:def;
+}
 function calcTotalReturn(){
   const el=document.getElementById("trResult");
   if(!el)return;
   const items=getAllCalculatedItems();
   if(!items.length){el.innerHTML='<div class="note">Calculá primero.</div>';return}
 
-  const horizon=parseInt(document.getElementById("trHorizon").value)||60;
+  const horizonSel=document.getElementById("trHorizon")?.value||"60";
+  const maxCommon=items.length?Math.max(1,Math.min(...items.map(it=>it.days))):0;
+  const horizon=horizonSel==="max_common"?maxCommon:(parseInt(horizonSel,10)||60);
+  const fundingTNA=ensureTRFundingInput();
   const inflMap={};
   IM.forEach(m=>{inflMap[m.k]=parseFloat(document.getElementById("i_"+m.k).value)||0});
+  const eligible=items.filter(it=>it.days>=horizon);
+  if(!eligible.length){
+    el.innerHTML='<div class="note">No hay instrumentos con suficiente vida remanente para ese horizonte.</div>';
+    return;
+  }
 
-  const results=items.map(it=>{
+  const results=eligible.map(it=>{
     // Carry = TNA/100 * px * horizon/365
     const carry=it.tna!=null?it.tna/100*it.px*horizon/365:0;
 
@@ -5071,27 +6000,35 @@ function calcTotalReturn(){
     let cerAppreciation=0;
     if(it.isCER){
       const monthsCovered=horizon/30;
-      const avgInfl=Object.values(inflMap).reduce((s,v)=>s+v,0)/Math.max(Object.values(inflMap).length,1);
-      const cerGrowth=Math.pow(1+avgInfl/100,monthsCovered)-1;
+      const avgInfl=getProjectedInflationAverage(document.getElementById("baseCERDate")?.value);
+      const avgInflUse=avgInfl!=null?avgInfl:0;
+      const cerGrowth=Math.pow(1+avgInflUse/100,monthsCovered)-1;
       cerAppreciation=it.px*cerGrowth*it.dur; // rough: CER growth feeds through duration
     }
 
     // Spread cost (round trip = full spread)
     const spreadCost=it.spreadHalf!=null?(it.spreadHalf*2/10000*it.px):0;
+    const fundingCost=fundingTNA>0?fundingTNA/100*it.px*horizon/365:0;
 
-    const totalReturn=carry+rolldownPx+cerAppreciation-spreadCost;
+    const totalReturn=carry+rolldownPx+cerAppreciation-fundingCost-spreadCost;
     const totalReturnPct=it.px>0?(totalReturn/it.px*100):0;
 
-    return {...it,carry,rolldownPx,cerAppreciation,spreadCost,totalReturn,totalReturnPct,horizon};
+    return {...it,carry,rolldownPx,cerAppreciation,spreadCost,fundingCost,totalReturn,totalReturnPct,horizon};
   });
 
   results.sort((a,b)=>b.totalReturnPct-a.totalReturnPct);
   const maxTR=Math.max(...results.map(r=>Math.abs(r.totalReturnPct)),1);
 
-  let html=`<div style="font-size:9px;color:var(--td);margin-bottom:6px">Horizonte: ${horizon}d | Ranking por Total Return %</div>`;
+  let html=`<div style="display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:8px;margin-bottom:10px">`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Horizonte usado</div><div style="font-size:20px;font-weight:700;color:var(--acl)">${horizon}d</div></div>`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Fondeo</div><div style="font-size:20px;font-weight:700;color:var(--fx)">${fundingTNA.toFixed(2)}%</div><div style="font-size:8px;color:var(--tm)">TNA explícita</div></div>`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Instrumentos elegibles</div><div style="font-size:20px;font-weight:700;color:var(--t)">${results.length}</div><div style="font-size:8px;color:var(--tm)">viven ≥ horizonte</div></div>`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Top idea</div><div style="font-size:20px;font-weight:700;color:${results[0].color}">${results[0].ticker}</div><div style="font-size:8px;color:var(--tm)">${results[0].totalReturnPct.toFixed(2)}% neto</div></div>`;
+  html+=`</div>`;
+  html+=`<div style="font-size:9px;color:var(--td);margin-bottom:6px">Ranking por total return neto de fondeo y costo de spread. Si elegís <b>Max común</b>, toma automáticamente el mayor plazo comparable entre todos los instrumentos vivos.</div>`;
   html+='<table class="lt"><thead><tr>';
   html+='<th>Ticker</th><th>Tipo</th><th class="num">Px</th><th class="num">Carry</th>';
-  html+='<th class="num">Rolldown</th><th class="num">CER Appr</th><th class="num" style="color:var(--w)">Spread Cost</th>';
+  html+='<th class="num">Rolldown</th><th class="num">CER Appr</th><th class="num" style="color:var(--fx)">Fondeo</th><th class="num" style="color:var(--w)">Spread Cost</th>';
   html+='<th class="num" style="color:var(--ac)">Total Return</th><th class="num" style="color:var(--ac)">TR %</th>';
   html+='<th style="min-width:120px">Bar</th>';
   html+='</tr></thead><tbody>';
@@ -5106,6 +6043,7 @@ function calcTotalReturn(){
     html+=`<td class="num">${r.carry.toFixed(3)}</td>`;
     html+=`<td class="num">${r.rolldownPx.toFixed(3)}</td>`;
     html+=`<td class="num">${r.cerAppreciation.toFixed(3)}</td>`;
+    html+=`<td class="num" style="color:var(--fx)">${r.fundingCost.toFixed(3)}</td>`;
     html+=`<td class="num" style="color:var(--w)">${r.spreadCost.toFixed(3)}</td>`;
     html+=`<td class="num" style="color:${r.totalReturn>=0?'var(--ac)':'var(--w)'};font-weight:700">${r.totalReturn.toFixed(3)}</td>`;
     html+=`<td class="num" style="color:${r.totalReturnPct>=0?'var(--ac)':'var(--w)'};font-weight:700">${r.totalReturnPct>=0?"+":""}${r.totalReturnPct.toFixed(3)}%</td>`;
@@ -5296,7 +6234,7 @@ function calcPortfolioRisk(){
 // ══════════════════════════════════════════════════════════════════
 // 6. RV HEATMAP
 // ══════════════════════════════════════════════════════════════════
-function buildRVHeatmap(){
+function buildRVHeatmap_legacy(){
   const el=document.getElementById("rvHeatmap");
   if(!el)return;
   const items=getAllCalculatedItems();
@@ -5396,6 +6334,110 @@ function buildRVHeatmap(){
 // ══════════════════════════════════════════════════════════════════
 // 7. FORWARD INFLATION TERM STRUCTURE
 // ══════════════════════════════════════════════════════════════════
+function buildRVHeatmap(){
+  const el=document.getElementById("rvHeatmap");
+  if(!el)return;
+  const items=getAllCalculatedItems();
+  if(!items.length){el.innerHTML='<div class="note">Calcula primero.</div>';return}
+
+  function fmtSigned(v,digits=1,suffix=""){
+    if(v==null||!isFinite(v)) return "n/d";
+    return `${v>=0?"+":""}${v.toFixed(digits)}${suffix}`;
+  }
+  function rankNorm(arr,key,higherBetter=true){
+    const vals=arr.map(a=>a[key]).filter(v=>v!=null&&isFinite(v));
+    if(!vals.length) return arr.map(()=>50);
+    const mn=Math.min(...vals), mx=Math.max(...vals);
+    const range=mx-mn||1;
+    return arr.map(a=>{
+      const v=a[key];
+      if(v==null||!isFinite(v)) return 50;
+      const norm=(v-mn)/range*100;
+      return higherBetter?norm:100-norm;
+    });
+  }
+  function scoreUniverse(universe,label){
+    if(!universe.length) return [];
+    if(universe.length===1){
+      const it=universe[0];
+      return [{...it,universe:label,score:50,residualScore:50,carryScore:50,rolldownScore:50,liqScore:50,side:"Neutro",driverLabel:"Sin comparables",driverDetail:"Universo con un solo bono"}];
+    }
+    const residualScores=rankNorm(universe,"residual",true);
+    const carryScores=rankNorm(universe,"carry30",true);
+    const rolldownScores=rankNorm(universe,"rolldown",true);
+    const liqScores=universe.map(it=>{
+      if(!it.spreadHalf||it.spreadHalf<=0) return 50;
+      return Math.max(0,100-it.spreadHalf*2);
+    });
+    return universe.map((it,i)=>{
+      const score=residualScores[i]*0.40+carryScores[i]*0.25+rolldownScores[i]*0.20+liqScores[i]*0.15;
+      const side=score>=62?"Barato":score<=38?"Caro":"Neutro";
+      const drivers=[
+        {label:"Residual",score:residualScores[i],detail:`${fmtSigned(it.residual,0," bps")} vs curva`},
+        {label:"Carry30",score:carryScores[i],detail:`${fmtSigned(it.carry30,3," pt")}`},
+        {label:"Rolldown",score:rolldownScores[i],detail:`${fmtSigned(it.rolldown,1," bps")}`},
+        {label:"Liquidez",score:liqScores[i],detail:it.spreadHalf!=null?`${it.spreadHalf.toFixed(1)} bps half spread`:"sin spread"}
+      ];
+      const rankedDrivers=drivers.slice().sort((a,b)=>score>=50?b.score-a.score:a.score-b.score);
+      return {...it,universe:label,score,residualScore:residualScores[i],carryScore:carryScores[i],rolldownScore:rolldownScores[i],liqScore:liqScores[i],side,driverLabel:rankedDrivers[0].label,driverDetail:rankedDrivers[0].detail};
+    });
+  }
+  function scoreTone(score){
+    if(score>=62) return {bg:"rgba(34,197,94,0.10)",fg:"var(--ac)"};
+    if(score<=38) return {bg:"rgba(240,112,64,0.10)",fg:"var(--w)"};
+    return {bg:"rgba(148,163,184,0.10)",fg:"var(--td)"};
+  }
+  function board(title,list,tone){
+    const body=list.length?list.map((it,idx)=>`
+      <div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-top:${idx?'1px solid var(--cb)':'0'}">
+        <div>
+          <div style="font-weight:700;color:${it.color}">${it.ticker}</div>
+          <div style="font-size:8px;color:var(--td)">${it.driverLabel}: ${it.driverDetail}</div>
+        </div>
+        <div style="font-family:'IBM Plex Mono',monospace;color:${tone};font-weight:700">${it.score.toFixed(0)}</div>
+      </div>`).join(""):'<div style="font-size:9px;color:var(--tm)">Sin universo suficiente.</div>';
+    return `<div class="beb"><div class="il" style="color:${tone}">${title}</div>${body}</div>`;
+  }
+
+  const cerItems=scoreUniverse(items.filter(i=>i.isCER),"CER");
+  const fxItems=scoreUniverse(items.filter(i=>!i.isCER),"Tasa fija");
+  const allScored=[...cerItems,...fxItems].sort((a,b)=>b.score-a.score);
+  const cerCheap=cerItems.slice().sort((a,b)=>b.score-a.score).slice(0,3);
+  const cerRich=cerItems.slice().sort((a,b)=>a.score-b.score).slice(0,3);
+  const fxCheap=fxItems.slice().sort((a,b)=>b.score-a.score).slice(0,3);
+  const fxRich=fxItems.slice().sort((a,b)=>a.score-b.score).slice(0,3);
+
+  let html='<div style="margin-bottom:8px;font-size:9px;color:var(--td)">Score compuesto (0-100): 40% residual + 25% carry + 20% rolldown + 15% liquidez. El ranking se arma dentro de cada universo para no mezclar CER con tasa fija.</div>';
+  html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:10px">';
+  html+=board("CER mas baratos",cerCheap,"var(--ac)");
+  html+=board("CER mas caros",cerRich,"var(--w)");
+  html+=board("TF mas baratas",fxCheap,"var(--acl)");
+  html+=board("TF mas caras",fxRich,"var(--am)");
+  html+='</div>';
+  html+='<div style="overflow-x:auto">';
+  html+='<table class="lt"><thead><tr>';
+  html+='<th>Rank</th><th>Ticker</th><th>U</th><th class="num">Score</th><th>Sesgo</th><th class="num">Residual</th><th class="num">Carry30</th><th class="num">Rolldown</th><th class="num">Spread</th><th class="num">Dur</th><th>Driver</th>';
+  html+='</tr></thead><tbody>';
+  allScored.forEach((it,idx)=>{
+    const tone=scoreTone(it.score);
+    html+=`<tr style="border-left:3px solid ${it.color}">`;
+    html+=`<td class="num">${idx+1}</td>`;
+    html+=`<td class="tk" style="color:${it.color}">${it.ticker}</td>`;
+    html+=`<td>${it.universe}</td>`;
+    html+=`<td class="num"><span style="display:inline-block;min-width:38px;padding:2px 6px;border-radius:999px;background:${tone.bg};color:${tone.fg};font-family:'IBM Plex Mono',monospace;font-weight:700">${it.score.toFixed(0)}</span></td>`;
+    html+=`<td style="color:${tone.fg};font-weight:700">${it.side}</td>`;
+    html+=`<td class="num">${fmtSigned(it.residual,0," bps")}</td>`;
+    html+=`<td class="num">${fmtSigned(it.carry30,3)}</td>`;
+    html+=`<td class="num">${fmtSigned(it.rolldown,1," bps")}</td>`;
+    html+=`<td class="num">${it.spreadHalf!=null?it.spreadHalf.toFixed(1)+" bps hs":"n/d"}</td>`;
+    html+=`<td class="num">${it.dur.toFixed(3)}</td>`;
+    html+=`<td style="min-width:170px"><span style="font-weight:700">${it.driverLabel}</span><span style="color:var(--td)"> - ${it.driverDetail}</span></td>`;
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+  el.innerHTML=html;
+}
+
 let _fwdInflTSChartObj=null;
 function drawFwdInflTS(){
   const cv=document.getElementById("fwdInflTSChart");
@@ -5405,107 +6447,97 @@ function drawFwdInflTS(){
   cv.width=W;cv.height=H;
   ctx.clearRect(0,0,W,H);
 
-  const items=getAllCalculatedItems();
-  const cerBonds=items.filter(i=>i.isCER&&i.tna!=null).sort((a,b)=>a.days-b.days);
-  const fxBonds=items.filter(i=>!i.isCER&&i.tna!=null);
-  if(!cerBonds.length||!fxBonds.length)return;
+  const results=(_implInflResults||[]).slice().sort((a,b)=>a.lastMonth.key.localeCompare(b.lastMonth.key));
+  const monthlyCurve=buildMonthlyBEForwardCurve();
+  if(!results.length||!monthlyCurve.length)return;
 
-  const sd=document.getElementById("settleDate").value;
-  const settle=new Date(sd+"T00:00:00");
+  const months=monthlyCurve.map(r=>r.month).filter(Boolean);
+  if(!months.length)return;
 
-  // Breakeven per CER bond
-  const points=[];
-  cerBonds.forEach(cer=>{
-    const closestFX=fxBonds.reduce((best,fx)=>Math.abs(fx.dur-cer.dur)<Math.abs(best.dur-cer.dur)?fx:best);
-    if(cer.tnaReal==null)return;
-    const fxTEA=closestFX.tea/100;
-    const beAnnual=((1+fxTEA)/(1+(cer.tnaReal||0)/100))-1;
-    const beTEM=(Math.pow(1+beAnnual,30/365)-1)*100;
-    const monthsFwd=cer.days/30;
-    if(beTEM>0&&beTEM<20&&monthsFwd>0){
-      points.push({x:monthsFwd,y:beTEM,beAnnual:beAnnual*100,dur:cer.dur,ticker:cer.ticker,color:cer.color,comp:closestFX.ticker});
-    }
-  });
-  if(!points.length)return;
+  const monthIdx=new Map(months.map((m,i)=>[m.key,i]));
+  const points=results.map(r=>{
+    const idx=monthIdx.get(r.lastMonth.key);
+    if(idx==null)return null;
+    return {idx,y:r.implPi,ticker:r.ticker,color:r.color,comp:r.comp};
+  }).filter(Boolean);
+  const fwdBars=monthlyCurve.map(r=>{
+    const idx=monthIdx.get(r.month.key);
+    if(idx==null)return null;
+    return {idx,y:r.tem,label:r.month.label};
+  }).filter(Boolean);
+  const projPoints=months.map((m,idx)=>{
+    const v=getInflInputValue(m.key);
+    return v==null?null:{idx,y:v,label:m.label};
+  }).filter(Boolean);
 
-  // Forward-Forward implied inflation between adjacent CER bonds
-  const fwdFwdBars=[];
-  for(let i=0;i<points.length-1;i++){
-    const p1=points[i], p2=points[i+1];
-    const fwdTEM=calcFwdFwdTEM(p1.dur, p1.beAnnual, p2.dur, p2.beAnnual);
-    if(fwdTEM!=null&&fwdTEM>0&&fwdTEM<20){
-      fwdFwdBars.push({x1:p1.x,x2:p2.x,y:fwdTEM,label:p1.ticker+"→"+p2.ticker});
-    }
-  }
+  const allY=points.map(p=>p.y).concat(fwdBars.map(p=>p.y)).concat(projPoints.map(p=>p.y));
+  if(!allY.length)return;
 
-  // User projection
-  const projPoints=[];
-  IM.forEach((m,i)=>{
-    const v=parseFloat(document.getElementById("i_"+m.k).value);
-    if(v) projPoints.push({x:i+1,y:v,label:m.l});
-  });
-
-  // Draw
-  const pad={l:50,r:20,t:20,b:40};
+  const pad={l:54,r:18,t:20,b:46};
   const gw=W-pad.l-pad.r, gh=H-pad.t-pad.b;
-  const allY=points.map(p=>p.y).concat(projPoints.map(p=>p.y)).concat(fwdFwdBars.map(b=>b.y));
-  const allX=points.map(p=>p.x).concat(projPoints.map(p=>p.x));
-  const xMin=0, xMax=Math.max(...allX)*1.1;
-  const yMin=Math.min(...allY)*0.8, yMax=Math.max(...allY)*1.2;
-  const sx=x=>pad.l+(x-xMin)/(xMax-xMin)*gw;
-  const sy=y=>pad.t+gh-(y-yMin)/(yMax-yMin)*gh;
+  const rawMin=Math.min(...allY), rawMax=Math.max(...allY);
+  const yPad=Math.max((rawMax-rawMin)*0.18,0.25);
+  const yMin=rawMin-yPad, yMax=rawMax+yPad, ySpan=Math.max(0.25,yMax-yMin);
+  const colW=gw/Math.max(1,months.length);
+  const sx=i=>pad.l+i*colW+colW/2;
+  const sy=y=>pad.t+gh-(y-yMin)/ySpan*gh;
+  const baseY=rawMin>=0?(pad.t+gh):sy(0);
 
-  // Grid
   ctx.strokeStyle="#1a2233";ctx.lineWidth=0.5;
   for(let i=0;i<=5;i++){
-    const y=yMin+(yMax-yMin)*i/5;
-    ctx.beginPath();ctx.moveTo(pad.l,sy(y));ctx.lineTo(W-pad.r,sy(y));ctx.stroke();
+    const y=yMin+ySpan*i/5;
+    const py=sy(y);
+    ctx.beginPath();ctx.moveTo(pad.l,py);ctx.lineTo(W-pad.r,py);ctx.stroke();
     ctx.fillStyle="#64748b";ctx.font="9px 'IBM Plex Mono'";ctx.textAlign="right";
-    ctx.fillText(y.toFixed(1)+"%",pad.l-4,sy(y)+3);
+    ctx.fillText(y.toFixed(1)+"%",pad.l-4,py+3);
   }
-  for(let x=0;x<=xMax;x+=2){
+  months.forEach((m,i)=>{
+    const x=sx(i);
+    ctx.strokeStyle="#1a223344";ctx.lineWidth=0.5;
+    ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,pad.t+gh);ctx.stroke();
     ctx.fillStyle="#64748b";ctx.font="9px 'IBM Plex Mono'";ctx.textAlign="center";
-    ctx.fillText(x.toFixed(0)+"m",sx(x),H-pad.b+14);
-  }
-
-  // Forward-Forward bars (draw first, behind dots)
-  fwdFwdBars.forEach(b=>{
-    const x1=sx(b.x1), x2=sx(b.x2), yBar=sy(b.y);
-    const barH=4;
-    ctx.fillStyle="rgba(139,92,246,0.25)";
-    ctx.fillRect(x1,yBar-barH/2,x2-x1,barH);
-    ctx.fillStyle="#8b5cf6";ctx.font="bold 8px 'IBM Plex Mono'";ctx.textAlign="center";
-    ctx.fillText("Fwd: "+b.y.toFixed(2)+"%",(x1+x2)/2,yBar-8);
+    ctx.fillText(m.label,x,H-pad.b+15);
   });
 
-  // Projection line
-  if(projPoints.length>1){
+  fwdBars.forEach(b=>{
+    const x=sx(b.idx);
+    const y=sy(b.y);
+    const bw=Math.max(10,colW*0.58);
+    const top=Math.min(y,baseY);
+    const bh=Math.max(2,Math.abs(baseY-y));
+    ctx.fillStyle="rgba(139,92,246,0.22)";
+    ctx.fillRect(x-bw/2,top,bw,bh);
+    ctx.strokeStyle="rgba(139,92,246,0.65)";
+    ctx.lineWidth=1;
+    ctx.strokeRect(x-bw/2,top,bw,bh);
+  });
+
+  if(projPoints.length){
     ctx.beginPath();ctx.strokeStyle="#ffb84d";ctx.lineWidth=2;ctx.setLineDash([4,4]);
-    projPoints.forEach((p,i)=>{i===0?ctx.moveTo(sx(p.x),sy(p.y)):ctx.lineTo(sx(p.x),sy(p.y))});
+    projPoints.forEach((p,i)=>{i===0?ctx.moveTo(sx(p.idx),sy(p.y)):ctx.lineTo(sx(p.idx),sy(p.y))});
     ctx.stroke();ctx.setLineDash([]);
     projPoints.forEach(p=>{
-      ctx.beginPath();ctx.arc(sx(p.x),sy(p.y),3,0,Math.PI*2);ctx.fillStyle="#ffb84d";ctx.fill();
+      ctx.beginPath();ctx.arc(sx(p.idx),sy(p.y),3,0,Math.PI*2);ctx.fillStyle="#ffb84d";ctx.fill();
     });
   }
 
-  // Implied breakeven dots
   points.forEach(p=>{
-    ctx.beginPath();ctx.arc(sx(p.x),sy(p.y),5,0,Math.PI*2);
+    const x=sx(p.idx), y=sy(p.y);
+    ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);
     ctx.fillStyle=p.color;ctx.fill();
     ctx.strokeStyle="rgba(255,255,255,0.3)";ctx.lineWidth=1;ctx.stroke();
     ctx.fillStyle=p.color;ctx.font="bold 8px 'IBM Plex Mono'";ctx.textAlign="center";
-    ctx.fillText(p.ticker,sx(p.x),sy(p.y)-8);
+    ctx.fillText(p.ticker,x,y-9);
     ctx.fillStyle="#64748b";ctx.font="8px 'IBM Plex Mono'";
-    ctx.fillText(p.y.toFixed(2)+"%",sx(p.x),sy(p.y)+14);
+    ctx.fillText(p.y.toFixed(2)+"%",x,y+14);
   });
 
-  // Axes
   ctx.fillStyle="#64748b";ctx.font="10px 'IBM Plex Mono'";ctx.textAlign="center";
-  ctx.fillText("Meses forward",W/2,H-4);
+  ctx.fillText("Mes de inflación aún desconocido",W/2,H-4);
   ctx.save();ctx.translate(12,H/2);ctx.rotate(-Math.PI/2);ctx.fillText("TEM implicita %",0,0);ctx.restore();
 
   const leg=document.getElementById("fwdInflTSLegend");
-  if(leg) leg.innerHTML='<span><span class="ldot" style="background:var(--ac)"></span>Breakeven spot</span> <span><span class="ldot" style="background:#8b5cf6"></span>Forward-Forward implicito</span> <span><span class="ldot" style="background:var(--am)"></span>Tu proyección</span>';
+  if(leg) leg.innerHTML='<span><span class="ldot" style="background:var(--ac)"></span>Breakeven promedio por bono</span> <span><span class="ldot" style="background:#8b5cf6"></span>Forward mensual implícito</span> <span><span class="ldot" style="background:var(--am)"></span>Tu proyección</span> <span style="color:var(--td)">· sólo meses todavía desconocidos</span>';
 }
 
 function buildMonthlyBEForwardCurve(){
@@ -5527,10 +6559,18 @@ function buildMonthlyBEForwardCurve(){
     cumPrev=cumNow;
     prevN=n;
   });
-  return series;
+  const lastKnownKey=getLastKnownInflKey(document.getElementById("baseCERDate")?.value||"");
+  const seen=new Set();
+  return series.filter(row=>{
+    const key=row?.month?.key;
+    if(!key||seen.has(key)) return false;
+    if(lastKnownKey&&key<=lastKnownKey) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
-function buildForwardInflationMatrix(){
+function buildForwardInflationMatrix_legacy(){
   const el=document.getElementById("fwdInflMonthMatrix");
   if(!el) return;
   const baseSeries=buildMonthlyBEForwardCurve();
@@ -5607,6 +6647,134 @@ function buildForwardInflationMatrix(){
 // ══════════════════════════════════════════════════════════════════
 // 8. SYNTHETIC FX ARBITRAGE (ROFEX)
 // ══════════════════════════════════════════════════════════════════
+function buildForwardInflationMatrix(){
+  const el=document.getElementById("fwdInflMonthMatrix");
+  if(!el) return;
+  const baseSeries=buildMonthlyBEForwardCurve();
+  if(!baseSeries.length){
+    el.innerHTML='<div class="note">Calcula primero breakevens CER vs LECAP para construir la matriz.</div>';
+    return;
+  }
+
+  const shockSel=document.getElementById("fwdInflShockMonth");
+  const optionsHtml=baseSeries.map(m=>`<option value="${m.month.key}">${m.month.label}</option>`).join("");
+  if(shockSel&&shockSel.innerHTML!==optionsHtml) shockSel.innerHTML=optionsHtml;
+
+  const defaultShockKey=baseSeries[0].month.key;
+  const shockKey=(shockSel&&baseSeries.some(m=>m.month.key===shockSel.value))?shockSel.value:defaultShockKey;
+  if(shockSel) shockSel.value=shockKey;
+  const shockIdx=baseSeries.findIndex(m=>m.month.key===shockKey);
+  if(shockIdx<0){
+    el.innerHTML='<div class="note">No pude identificar el mes shock.</div>';
+    return;
+  }
+
+  const start=parseFloat(document.getElementById("fwdInflShockStart").value);
+  const end=parseFloat(document.getElementById("fwdInflShockEnd").value);
+  const step=parseFloat(document.getElementById("fwdInflShockStep").value);
+  if(!isFinite(start)||!isFinite(end)||!isFinite(step)||step<=0){
+    el.innerHTML='<div class="note">Completa una grilla valida de escenarios.</div>';
+    return;
+  }
+
+  const lo=Math.min(start,end), hi=Math.max(start,end);
+  const scenarios=[];
+  for(let v=lo;v<=hi+1e-9;v+=step) scenarios.push(Math.round(v*1000)/1000);
+  if(!scenarios.length){
+    el.innerHTML='<div class="note">La grilla de escenarios quedo vacia.</div>';
+    return;
+  }
+
+  const shockBase=baseSeries[shockIdx];
+  const remaining=baseSeries.slice(shockIdx+1);
+  const baseFactors=baseSeries.map(m=>1+m.tem/100);
+  const baseAvgRest=remaining.length?remaining.reduce((s,m)=>s+m.tem,0)/remaining.length:null;
+
+  function bandCls(value,base){
+    if(value>base+0.15) return "fwd-hi";
+    if(value<base-0.15) return "fwd-lo";
+    return "fwd-mid";
+  }
+  function deltaColor(delta){
+    if(delta>0.15) return "var(--w)";
+    if(delta<-0.15) return "var(--ac)";
+    return "var(--tm)";
+  }
+  function avg(list){
+    return list.length?list.reduce((s,v)=>s+v,0)/list.length:null;
+  }
+  function solveScenario(shockTem){
+    const rowFactors=baseFactors.slice();
+    rowFactors[shockIdx]=1+shockTem/100;
+    const solved=[];
+    for(let j=shockIdx+1;j<baseSeries.length;j++){
+      let targetCum=1, solvedPrev=1;
+      for(let k=shockIdx;k<=j;k++) targetCum*=baseFactors[k];
+      for(let k=shockIdx;k<j;k++) solvedPrev*=rowFactors[k];
+      const reqFactor=targetCum/solvedPrev;
+      if(reqFactor<=0||!isFinite(reqFactor)) return null;
+      rowFactors[j]=reqFactor;
+      solved.push((reqFactor-1)*100);
+    }
+    return {shockTem,solved,avgRest:avg(solved)};
+  }
+  function valueCell(value,base,label,subLabel){
+    const delta=value-base;
+    return `<td class="${bandCls(value,base)}" title="${label}">
+      <div style="font-weight:700">${value.toFixed(2)}%</div>
+      <div style="font-size:7px;color:${deltaColor(delta)}">${subLabel||`${delta>=0?"+":""}${delta.toFixed(2)} vs BE`}</div>
+    </td>`;
+  }
+  function renderScenarioRow(label,scenario,isProjection=false){
+    if(!scenario) return "";
+    const deltaShock=scenario.shockTem-shockBase.tem;
+    let row=`<tr${isProjection?' style="border-top:1px solid var(--cb)"':''}><th>${label}</th>`;
+    row+=`<td class="${bandCls(scenario.shockTem,shockBase.tem)}"><div style="font-weight:700">${deltaShock>=0?"+":""}${deltaShock.toFixed(2)}</div><div style="font-size:7px;color:${deltaColor(deltaShock)}">shock</div></td>`;
+    scenario.solved.forEach((reqTem,idx)=>{
+      const month=remaining[idx];
+      row+=valueCell(reqTem,month.tem,month.month.label);
+    });
+    if(remaining.length) row+=valueCell(scenario.avgRest,baseAvgRest,"Promedio restante","prom");
+    row+='</tr>';
+    return row;
+  }
+
+  const userShock=getInflInputValue(shockBase.month.key);
+  const userScenario=userShock!=null?solveScenario(userShock):null;
+
+  let html=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:10px">`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Mes shock</div><div style="font-size:18px;font-weight:700;color:var(--am)">${shockBase.month.label}</div><div style="font-size:8px;color:var(--tm)">BE base ${shockBase.tem.toFixed(2)}%</div></div>`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Meses a resolver</div><div style="font-size:18px;font-weight:700;color:var(--t)">${remaining.length}</div><div style="font-size:8px;color:var(--tm)">${remaining.length?remaining[0].month.label+" -> "+remaining[remaining.length-1].month.label:"sin cola restante"}</div></div>`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Rango</div><div style="font-size:18px;font-weight:700;color:var(--fx)">${lo.toFixed(2)}% a ${hi.toFixed(2)}%</div><div style="font-size:8px;color:var(--tm)">paso ${step.toFixed(2)}%</div></div>`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Tu proyeccion</div><div style="font-size:18px;font-weight:700;color:${userShock!=null?'var(--acl)':'var(--tm)'}">${userShock!=null?userShock.toFixed(2)+"%":"-"}</div><div style="font-size:8px;color:var(--tm)">${userShock!=null?'tomada de tu grilla actual':'sin proyeccion manual para ese mes'}</div></div>`;
+  html+='</div>';
+
+  if(!remaining.length){
+    html+=`<div class="note">Elegiste el ultimo mes desconocido. Ya no hay meses posteriores para redistribuir el breakeven: aca solo importa cuanto queres fijar <b>${shockBase.month.label}</b> versus su BE base de <b>${shockBase.tem.toFixed(2)}%</b>.</div>`;
+    el.innerHTML=html;
+    return;
+  }
+
+  html+='<div style="overflow-x:auto">';
+  html+='<table class="fwd-matrix"><thead><tr><th>Escenario</th><th>Delta</th>';
+  remaining.forEach(m=>html+=`<th>${m.month.label}</th>`);
+  html+='<th>Prom resto</th></tr></thead><tbody>';
+
+  html+='<tr><th>Curva BE</th><td class="fwd-mid"><div style="font-weight:700">0.00</div><div style="font-size:7px;color:var(--tm)">shock</div></td>';
+  remaining.forEach(m=>html+=valueCell(m.tem,m.tem,m.month.label,"base"));
+  html+=valueCell(baseAvgRest,baseAvgRest,"Promedio restante","base");
+  html+='</tr>';
+
+  if(userScenario) html+=renderScenarioRow("Tu proy.",userScenario,true);
+  scenarios.forEach(scn=>{
+    html+=renderScenarioRow(`${shockBase.month.label} = ${scn.toFixed(2)}%`,solveScenario(scn));
+  });
+
+  html+='</tbody></table></div>';
+  html+=`<div class="note" style="margin-top:8px">Lectura: fijas el <b>mes shock</b> y cada fila muestra que inflacion deberia convalidar el resto de la curva para que el breakeven acumulado siga siendo el mismo. El numero grande es la <b>TEM requerida</b>; el chico, el <b>desvio vs la curva BE base</b>. Solo aparecen meses todavia no publicados por INDEC.</div>`;
+  el.innerHTML=html;
+}
+
 function calcSyntheticArbitrage(){
   const spot=parseFloat(document.getElementById("arbSpot").value);
   const futuro=parseFloat(document.getElementById("arbFuturo").value);
@@ -6219,10 +7387,12 @@ document.getElementById("settleDate").addEventListener("change",function(){
     document.getElementById("cerLiqDate").value=DS(cerDate);
   }
 });
+document.getElementById("baseCERDate").addEventListener("change",()=>applyKnownInflationState());
 
 setTimeout(()=>{
   fetchLatestCER().then(detalle=>{
     if(detalle){
+      applyKnownInflationState();
       const sd=document.getElementById("settleDate").value;
       if(sd){
         const settle=new Date(sd+"T00:00:00");
@@ -6241,6 +7411,7 @@ setTimeout(()=>{
 
 setTimeout(()=>{
   try{ startPricePolling(); }catch(e){}
+  try{ renderResumen(); }catch(e){}
 },800);
 
 // ═══ FX TAB: RENDER + INTRADAY ═══════════════════════════════
@@ -6277,32 +7448,30 @@ function renderFX(){
   const dlPoints=[];
   DL_BONDS.forEach(b=>{
     const lp=_livePrices[b.ticker];
-    const px=lp?(lp.last||lp.close||lp.mid||0):0;
+    const px=lp&&lp.last?lp.last:0;
     const matDate=new Date(b.mat+"T00:00:00");
     const days=DB(settle,matDate);
     if(days<=0){
-      dlRows+=`<tr><td class="tk" style="color:${b.color}">${b.ticker}</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">vencido</td></tr>`;
+      dlRows+=`<tr><td class="tk" style="color:${b.color}">${b.ticker}</td><td class="num">—</td><td class="num">—</td><td class="num">vencido</td></tr>`;
       return;
     }
     if(!px||!spot){
       dlRows+=`<tr class="fxc-row-clickable" onclick="openFxCalculator('dl','${b.id}')">
         <td class="tk" style="color:${b.color}">${b.ticker}</td><td class="num">—</td>
-        <td class="num">—</td><td class="num">—</td><td class="num">${days}</td>
+        <td class="num">—</td><td class="num">${days}</td>
       </tr>`;
       return;
     }
-    // TNA = (100 / (pxDL / pxUSD) - 1) * 365 / days
     const tna=(100/(px/spot)-1)*365/days*100;
     dlRows+=`<tr class="fxc-row-clickable" onclick="openFxCalculator('dl','${b.id}')">
       <td class="tk" style="color:${b.color}">${b.ticker}</td>
       <td class="num">${px.toFixed(2)}</td>
-      <td class="num">${spot.toFixed(2)}</td>
       <td class="num" style="color:#22d3ee;font-weight:600">${tna.toFixed(2)}%</td>
       <td class="num">${days}</td>
     </tr>`;
     dlPoints.push({x:days,y:tna,label:b.ticker,color:b.color,id:b.id});
   });
-  dlBody.innerHTML=dlRows||'<tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin precios DL</td></tr>';
+  dlBody.innerHTML=dlRows||'<tr><td colspan="4" style="text-align:center;color:var(--tm);padding:10px">Sin precios DL</td></tr>';
 
   // Futures table
   const futBody=document.getElementById("fxFutBody");
@@ -6310,50 +7479,84 @@ function renderFX(){
   const futPoints=[];
   ROFEX_FUTURES.forEach(f=>{
     const lp=_livePrices[f.ticker];
-    const px=lp?(lp.last||lp.close||lp.mid||0):0;
+    const px=lp&&lp.last?lp.last:0;
     const expDate=new Date(f.exp+"T00:00:00");
     const days=DB(today,expDate); // T+0 para futuros
     if(days<=0){
-      futRows+=`<tr><td class="tk" style="color:${f.color}">${f.ticker.replace("DLR/","")}</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">vencido</td></tr>`;
+      futRows+=`<tr><td class="tk" style="color:${f.color}">${f.ticker.replace("DLR/","")}</td><td class="num">—</td><td class="num">—</td><td class="num">vencido</td></tr>`;
       return;
     }
     if(!px||!spot){
       futRows+=`<tr class="fxc-row-clickable" onclick="openFxCalculator('fut','${f.id}')">
         <td class="tk" style="color:${f.color}">${f.ticker.replace("DLR/","")}</td>
-        <td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">${days}</td>
+        <td class="num">—</td><td class="num">—</td><td class="num">${days}</td>
       </tr>`;
       return;
     }
-    // TNA = (pxFuturo / pxSpot - 1) * 365 / days
     const tna=(px/spot-1)*365/days*100;
     futRows+=`<tr class="fxc-row-clickable" onclick="openFxCalculator('fut','${f.id}')">
       <td class="tk" style="color:${f.color}">${f.ticker.replace("DLR/","")}</td>
       <td class="num">${px.toFixed(2)}</td>
-      <td class="num">${spot.toFixed(2)}</td>
-      <td class="num" style="color:#f97316;font-weight:600">${tna.toFixed(2)}%</td>
+      <td class="num" style="color:var(--fut);font-weight:600">${tna.toFixed(2)}%</td>
       <td class="num">${days}</td>
     </tr>`;
     futPoints.push({x:days,y:tna,label:f.ticker.replace("DLR/",""),color:f.color,id:f.id});
   });
-  futBody.innerHTML=futRows||'<tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin precios futuros</td></tr>';
+  futBody.innerHTML=futRows||'<tr><td colspan="4" style="text-align:center;color:var(--tm);padding:10px">Sin precios futuros</td></tr>';
+
+  // ── Yesterday's close points (gray overlay) ──────────────────
+  const spotClose=(_livePrices["DLR/SPOT"]||{}).close||0;
+  const dlPointsPrev=[];
+  if(spotClose>0){
+    DL_BONDS.forEach(b=>{
+      const lp=_livePrices[b.ticker]||{};
+      const pxClose=lp.close||0;
+      if(!pxClose) return;
+      const matDate=new Date(b.mat+"T00:00:00");
+      const days=DB(settle,matDate);
+      if(days<=0) return;
+      const tnaPrev=(100*spotClose/pxClose-1)*365/days*100;
+      if(isFinite(tnaPrev)) dlPointsPrev.push({x:days,y:tnaPrev,label:b.ticker,color:'#475569'});
+    });
+  }
+  const futPointsPrev=[];
+  if(spotClose>0){
+    ROFEX_FUTURES.forEach(f=>{
+      const lp=_livePrices[f.ticker]||{};
+      const pxClose=lp.close||0;
+      if(!pxClose) return;
+      const expDate=new Date(f.exp+"T00:00:00");
+      const days=DB(today,expDate);
+      if(days<=0) return;
+      const tnaPrev=(pxClose/spotClose-1)*365/days*100;
+      if(isFinite(tnaPrev)) futPointsPrev.push({x:days,y:tnaPrev,label:f.ticker.replace("DLR/",""),color:'#475569'});
+    });
+  }
 
   // DL curve chart
   const dlPtsValid=dlPoints.filter(p=>isFinite(p.y)&&p.x>0);
-  if(dlPtsValid.length>=1){
-    const maxX=Math.max(...dlPtsValid.map(p=>p.x))*1.1;
-    drawFxCurveChart("fxDLCurveChart",dlPtsValid,maxX);
+  const allDLX=[...dlPtsValid,...dlPointsPrev].filter(p=>p.x>0);
+  _dlCurvePoints=[...dlPtsValid];_dlCurvePrevPoints=[...dlPointsPrev];
+  if(dlPtsValid.length>=1||dlPointsPrev.length>=1){
+    const maxX=allDLX.length?Math.max(...allDLX.map(p=>p.x))*1.1:365;
+    drawFxCurveChart("fxDLCurveChart",dlPtsValid,maxX,dlPointsPrev,'#22d3ee');
   }
 
   // Futures curve chart
   const futPtsValid=futPoints.filter(p=>isFinite(p.y)&&p.x>0);
-  if(futPtsValid.length>=1){
-    const maxX=Math.max(...futPtsValid.map(p=>p.x))*1.1;
-    drawFxCurveChart("fxFutCurveChart",futPtsValid,maxX);
+  const allFutX=[...futPtsValid,...futPointsPrev].filter(p=>p.x>0);
+  _futCurvePoints=[...futPtsValid];_futCurvePrevPoints=[...futPointsPrev];
+  if(futPtsValid.length>=1||futPointsPrev.length>=1){
+    const maxX=allFutX.length?Math.max(...allFutX.map(p=>p.x))*1.1:400;
+    drawFxCurveChart("fxFutCurveChart",futPtsValid,maxX,futPointsPrev,'#f97316');
   }
 
   // Intraday charts (SPOT 10-15, MEP 10-17)
   drawIntradayChart("fxSpotIntradayChart",_intradaySpot,"DLR/SPOT","#2db8a8",15);
   drawIntradayChart("fxMepIntradayChart",_intradayMep,"MEP","#4da6ff",17);
+
+  // Populate synthetics selects
+  populateFxSynthSelects();
 }
 
 // ═══ FX CALCULATOR MODAL ═════════════════════════════════════════
@@ -6563,6 +7766,34 @@ function openFxCalculator(type, id){
 }
 
 // Called after each server price fetch to keep open modal in sync
+function syncBondCalcModal(){
+  const modal=document.getElementById("bondCalcModal");
+  if(!modal||!_bondCalcCtx) return;
+  const priceEl=document.getElementById('bci-price');
+  const autoEl=document.getElementById('bci-price-auto-live');
+  const badgeEl=document.getElementById('bcPriceLiveBadge');
+  if(!priceEl) return;
+
+  const lp=_livePrices[_bondCalcCtx.ticker]||{};
+  const livePx=lp.last||lp.bid||lp.ask||0;
+  if(badgeEl){
+    if(livePx>0){
+      badgeEl.textContent=`LIVE LAST ${livePx.toFixed(2)}`;
+      badgeEl.style.color='var(--acl)';
+    }else{
+      badgeEl.textContent='LIVE sin dato';
+      badgeEl.style.color='var(--tm)';
+    }
+  }
+  if(!autoEl||!autoEl.checked) return;
+  if(!(livePx>0)) return;
+  const cur=parseFloat(priceEl.value);
+  if(isNaN(cur)||Math.abs(cur-livePx)>0.0001){
+    priceEl.value=livePx.toFixed(2);
+    priceEl.dispatchEvent(new Event('input'));
+  }
+}
+
 function syncFxCalcModal(){
   if(!_fxCalcCtx) return;
   const modal=document.getElementById('fxCalcModal');
@@ -6606,24 +7837,30 @@ function syncFxCalcModal(){
   }
 }
 
-function drawFxCurveChart(canvasId,points,maxX){
+function drawFxCurveChart(canvasId,points,maxX,prevPoints=[],seriesColor='#94a3b8'){
   const cv=document.getElementById(canvasId);
   if(!cv)return;
   const ct=cv.parentElement;
   const valid=points.filter(p=>p.x>0&&p.x<=maxX&&isFinite(p.y));
-  if(!valid.length){const c2=cv.getContext("2d");c2.clearRect(0,0,cv.width,cv.height);return;}
+  const validPrev=(prevPoints||[]).filter(p=>p.x>0&&p.x<=maxX&&isFinite(p.y));
+  if(!valid.length&&!validPrev.length){const c2=cv.getContext("2d");c2.clearRect(0,0,cv.width,cv.height);return;}
   const dpr=window.devicePixelRatio||1,W=ct.clientWidth,H=ct.clientHeight;
   cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+"px";cv.style.height=H+"px";
   const c=cv.getContext("2d");c.setTransform(dpr,0,0,dpr,0,0);
-  const pad={t:14,r:14,b:30,l:50},cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
+  const pad={t:20,r:70,b:30,l:50},cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
   const minX=0;
-  const ySpread=Math.max(...valid.map(p=>p.y))-Math.min(...valid.map(p=>p.y));
+
+  // Y range: include prev points and fitted curves in range
+  const allYs=[...valid.map(p=>p.y),...validPrev.map(p=>p.y)].filter(isFinite);
+  if(!allYs.length) return;
+  const ySpread=Math.max(...allYs)-Math.min(...allYs);
   const yPad=Math.max(ySpread*0.2,2);
-  const minY=Math.min(...valid.map(p=>p.y))-yPad;
-  const maxY=Math.max(...valid.map(p=>p.y))+yPad;
+  const minY=Math.min(...allYs)-yPad;
+  const maxY=Math.max(...allYs)+yPad;
   const xP=x=>pad.l+((x-minX)/(Math.max(1e-9,maxX-minX)))*cw;
   const yP=y=>pad.t+(1-(y-minY)/(Math.max(1e-9,maxY-minY)))*ch;
   c.clearRect(0,0,W,H);
+
   // Grid
   c.strokeStyle="#1a2233";c.lineWidth=0.5;
   for(let i=0;i<=5;i++){
@@ -6636,12 +7873,84 @@ function drawFxCurveChart(canvasId,points,maxX){
     c.beginPath();c.moveTo(px,pad.t);c.lineTo(px,H-pad.b);c.stroke();
     c.fillStyle="#475569";c.textAlign="center";c.font="8px 'IBM Plex Mono',monospace";c.fillText(Math.round(x)+"d",px,H-14);
   }
-  // Points
+
+  // ── Prev-day curve (gray) ─────────────────────────────────────
+  if(validPrev.length>=1){
+    const sorted=[...validPrev].sort((a,b)=>a.x-b.x);
+    // Connect prev points with dashed gray line
+    c.save();c.setLineDash([4,3]);c.strokeStyle="rgba(100,116,139,0.5)";c.lineWidth=1;
+    c.beginPath();
+    sorted.forEach((p,i)=>{
+      const px=xP(p.x),py=yP(p.y);
+      i===0?c.moveTo(px,py):c.lineTo(px,py);
+    });
+    c.stroke();c.restore();
+    // Gray dots
+    sorted.forEach(p=>{
+      const px=xP(p.x),py=yP(p.y);
+      c.beginPath();c.arc(px,py,4,0,Math.PI*2);
+      c.fillStyle="rgba(100,116,139,0.35)";c.fill();
+      c.strokeStyle="rgba(100,116,139,0.6)";c.lineWidth=1;c.stroke();
+    });
+  }
+
+  // ── Fit curves (log regression + NSS) on current points ──────
+  if(valid.length>=2){
+    const fitPts=valid.map(p=>({x:p.x,y:p.y}));
+    const logFit=logRegression(fitPts);
+    const nssFit=valid.length>=3?fitNSS(fitPts):null;
+    const steps=80;
+    const dx=(maxX-1)/steps;
+
+    // Log regression — dashed
+    if(logFit){
+      c.save();c.setLineDash([5,3]);c.strokeStyle=seriesColor+'99';c.lineWidth=1.5;
+      c.beginPath();let first=true;
+      for(let i=0;i<=steps;i++){
+        const x=1+i*dx;
+        const y=logFit.predict(x);
+        if(!isFinite(y)||y<minY-5||y>maxY+5){first=true;continue;}
+        const px=xP(x),py=yP(y);
+        first?(c.moveTo(px,py),first=false):c.lineTo(px,py);
+      }
+      c.stroke();c.restore();
+      // Label at right edge
+      const yEdge=logFit.predict(maxX);
+      if(isFinite(yEdge)&&yEdge>=minY&&yEdge<=maxY){
+        c.fillStyle=seriesColor+'aa';c.font="7px 'IBM Plex Mono',monospace";c.textAlign="left";
+        c.fillText("LOG",W-pad.r+3,yP(yEdge)+3);
+      }
+    }
+
+    // NSS — solid
+    if(nssFit){
+      c.save();c.setLineDash([]);c.strokeStyle=seriesColor+'cc';c.lineWidth=1.8;
+      c.beginPath();let first=true;
+      for(let i=0;i<=steps;i++){
+        const x=Math.max(1,1+i*dx);
+        const y=nssFit.predict(x);
+        if(!isFinite(y)||y<minY-5||y>maxY+5){first=true;continue;}
+        const px=xP(x),py=yP(y);
+        first?(c.moveTo(px,py),first=false):c.lineTo(px,py);
+      }
+      c.stroke();c.restore();
+      const yEdge=nssFit.predict(maxX);
+      if(isFinite(yEdge)&&yEdge>=minY&&yEdge<=maxY){
+        c.fillStyle=seriesColor;c.font="7px 'IBM Plex Mono',monospace";c.textAlign="left";
+        c.fillText("NSS",W-pad.r+3,yP(yEdge)+3);
+      }
+    }
+  }
+
+  // ── Current points ────────────────────────────────────────────
   valid.forEach(p=>{
     const px=xP(p.x),py=yP(p.y);
-    c.beginPath();c.arc(px,py,5,0,Math.PI*2);c.fillStyle=p.color;c.fill();c.strokeStyle="#080c14";c.lineWidth=1.2;c.stroke();
-    c.fillStyle=p.color;c.font="bold 8px 'IBM Plex Mono',monospace";c.textAlign="center";c.fillText(p.label,px,py-10);
-    c.fillStyle="#94a3b8";c.font="8px 'IBM Plex Mono',monospace";c.fillText(p.y.toFixed(1)+"%",px,py+16);
+    c.beginPath();c.arc(px,py,5,0,Math.PI*2);c.fillStyle=p.color;c.fill();
+    c.strokeStyle="#080c14";c.lineWidth=1.2;c.stroke();
+    c.fillStyle=p.color;c.font="bold 8px 'IBM Plex Mono',monospace";c.textAlign="center";
+    c.fillText(p.label,px,py-10);
+    c.fillStyle="#94a3b8";c.font="8px 'IBM Plex Mono',monospace";
+    c.fillText(p.y.toFixed(1)+"%",px,py+16);
   });
 }
 
@@ -6750,35 +8059,240 @@ function drawIntradayChart(canvasId,data,title,color,endHour){
   c.fillText(title,pad.l+4,pad.t+10);
 }
 
+// ═══ FX SYNTHETICS: DL vs Futuro, Spot vs Futuro ═══════════════
+function _fxSynthMode(mode){
+  document.getElementById('fxSynthDLF').style.display=mode==='dlf'?'':'none';
+  document.getElementById('fxSynthSF').style.display=mode==='sf'?'':'none';
+  document.getElementById('fxSynthBtnDLF').style.cssText=mode==='dlf'?'background:var(--acd);border-color:var(--acl);color:var(--acl);font-weight:700':'';
+  document.getElementById('fxSynthBtnSF').style.cssText=mode==='sf'?'background:var(--acd);border-color:var(--acl);color:var(--acl);font-weight:700':'';
+  if(mode==='sf') calcFxSynthSpotFut();
+}
+
+function populateFxSynthSelects(){
+  const today=new Date();today.setHours(0,0,0,0);
+  const sd=document.getElementById("settleDate").value;
+  const settle=sd?new Date(sd+"T00:00:00"):ABD(today,1);
+
+  const dlSel=document.getElementById("fxSynthDL");
+  const futSel=document.getElementById("fxSynthFut");
+  const futSel2=document.getElementById("fxSynthFut2");
+  if(!dlSel||!futSel) return;
+
+  // Preserve current selections before overwriting innerHTML
+  const prevDL=dlSel.value;
+  const prevFut=futSel.value;
+  const prevFut2=futSel2?futSel2.value:'';
+
+  let dlHtml='';
+  DL_BONDS.forEach(b=>{
+    const matD=new Date(b.mat+"T00:00:00");
+    const days=DB(settle,matD);
+    if(days>0) dlHtml+=`<option value="${b.id}">${b.ticker} (${days}d)</option>`;
+  });
+  dlSel.innerHTML=dlHtml||'<option>—</option>';
+
+  let futHtml='';
+  ROFEX_FUTURES.forEach(f=>{
+    const expD=new Date(f.exp+"T00:00:00");
+    const days=DB(today,expD);
+    if(days>0) futHtml+=`<option value="${f.id}">${f.ticker.replace("DLR/","")} (${days}d)</option>`;
+  });
+  futSel.innerHTML=futHtml||'<option>—</option>';
+  if(futSel2) futSel2.innerHTML=futHtml||'<option>—</option>';
+
+  // Restore previous selections if still valid options
+  if(prevDL && dlSel.querySelector(`option[value="${prevDL}"]`)) dlSel.value=prevDL;
+  if(prevFut && futSel.querySelector(`option[value="${prevFut}"]`)) futSel.value=prevFut;
+  if(prevFut2 && futSel2 && futSel2.querySelector(`option[value="${prevFut2}"]`)) futSel2.value=prevFut2;
+
+  // Auto-fill spot
+  const spotInput=document.getElementById("fxSynthSpot");
+  if(spotInput){const s=getFxSpot(); if(s) spotInput.value=s.toFixed(2);}
+}
+
+function calcFxSynthetic(){
+  const el=document.getElementById("fxSynthDLFResult");
+  if(!el) return;
+  const today=new Date();today.setHours(0,0,0,0);
+  const sd=document.getElementById("settleDate").value;
+  const settle=sd?new Date(sd+"T00:00:00"):ABD(today,1);
+
+  // Retorno Directo = futPx/dlPx − 1
+  // Px DL = FX implícito hoy; Px Futuro = FX implícito al vencimiento
+  // TNA = Retorno × 365/días ; TIR = (1+Retorno)^(365/días) − 1
+  const tableRows=[];
+  DL_BONDS.forEach(b=>{
+    const dlLp=_livePrices[b.ticker]||{};
+    const dlPx=dlLp.last||0;
+    const bondMat=new Date(b.mat+"T00:00:00");
+    let bestFut=null,bestDiff=Infinity;
+    ROFEX_FUTURES.forEach(f=>{
+      const diff=Math.abs(new Date(f.exp+"T00:00:00")-bondMat);
+      if(diff<bestDiff){bestDiff=diff;bestFut=f;}
+    });
+    const futLp=bestFut?(_livePrices[bestFut.ticker]||{}):{};
+    const futPx=futLp.last||0;
+    const futExp=bestFut?new Date(bestFut.exp+"T00:00:00"):null;
+    const futDays=futExp?DB(settle,futExp):0;
+    const spot=getFxSpot()||0;
+    const ret=(spot&&futPx&&futDays>0)?(futPx/spot-1):null;
+    const tna=ret!==null?ret*365/futDays*100:null;
+    const tir=ret!==null?(Math.pow(1+ret,365/futDays)-1)*100:null;
+    tableRows.push({b,dlPx,futPx,spot,futDays,ret,tna,tir,fut:bestFut,futExp});
+  });
+
+  const na='<span style="color:var(--td)">N/A</span>';
+  let tableHtml='<table class="lt" style="width:100%;margin-bottom:14px"><thead><tr>';
+  tableHtml+='<th>Ticker</th><th class="num">Liq Spot</th><th class="num">Liq Fut</th>';
+  tableHtml+='<th class="num">Días</th><th class="num">Px Fut</th><th class="num">Px DL</th>';
+  tableHtml+='<th class="num">Retorno</th><th class="num" style="color:#22d3ee">TNA</th><th class="num">TIR</th>';
+  tableHtml+='</tr></thead><tbody>';
+  tableRows.forEach(r=>{
+    const fmtPx=v=>v?v.toFixed(2):na;
+    const fmtRet=v=>v!==null?`<span style="color:${v>0?'var(--ac)':'var(--w)'}">${(v*100).toFixed(2)}%</span>`:na;
+    const fmtTna=v=>v!==null?`<span style="color:${v>0?'#22d3ee':'var(--w)'}"><b>${v.toFixed(2)}%</b></span>`:na;
+    const fmtTir=v=>v!==null?`<span style="color:var(--td)">${v.toFixed(2)}%</span>`:na;
+    tableHtml+=`<tr class="fxc-row-clickable" onclick="document.getElementById('fxSynthDL').value='${r.b.id}';${r.fut?`document.getElementById('fxSynthFut').value='${r.fut.id}';`:''}calcFxSyntheticSingle()">`;
+    tableHtml+=`<td style="color:#22d3ee"><b>${r.b.ticker}</b></td>`;
+    tableHtml+=`<td class="num" style="color:var(--td)">${settle.toLocaleDateString('es-AR')}</td>`;
+    tableHtml+=`<td class="num" style="color:var(--td)">${r.futExp?r.futExp.toLocaleDateString('es-AR'):na}</td>`;
+    tableHtml+=`<td class="num">${r.futDays>0?r.futDays:na}</td>`;
+    tableHtml+=`<td class="num">${fmtPx(r.futPx)}</td>`;
+    tableHtml+=`<td class="num">${fmtPx(r.dlPx)}</td>`;
+    tableHtml+=`<td class="num">${fmtRet(r.ret)}</td>`;
+    tableHtml+=`<td class="num">${fmtTna(r.tna)}</td>`;
+    tableHtml+=`<td class="num">${fmtTir(r.tir)}</td>`;
+    tableHtml+='</tr>';
+  });
+  tableHtml+='</tbody></table>';
+  el.innerHTML=tableHtml;
+  calcFxSyntheticSingle();
+}
+
+function calcFxSyntheticSingle(){
+  const el=document.getElementById("fxSynthDLFSingle");
+  if(!el) return;
+  const today=new Date();today.setHours(0,0,0,0);
+  const sd=document.getElementById("settleDate").value;
+  const settle=sd?new Date(sd+"T00:00:00"):ABD(today,1);
+
+  const dlId=document.getElementById("fxSynthDL").value;
+  const futId=document.getElementById("fxSynthFut").value;
+  const tasaPesos=parseFloat(document.getElementById("fxSynthTasaPesos").value)||0;
+  const dlBond=DL_BONDS.find(b=>b.id===dlId);
+  const fut=ROFEX_FUTURES.find(f=>f.id===futId);
+  if(!dlBond||!fut){el.textContent="";return;}
+
+  const dlLp=_livePrices[dlBond.ticker]||{};
+  const futLp=_livePrices[fut.ticker]||{};
+  const dlPx=dlLp.last||0;
+  const futPx=futLp.last||0;
+  const futDays=DB(settle,new Date(fut.exp+"T00:00:00"));
+
+  const spot=getFxSpot()||0;
+  if(!spot||!futPx||futDays<=0){el.innerHTML='<div style="color:var(--td);font-size:11px">Sin precios live o futuro vencido</div>';return;}
+
+  const ret=futPx/spot-1;
+  const tna=ret*365/futDays*100;
+  const tir=(Math.pow(1+ret,365/futDays)-1)*100;
+  const spread=tna-tasaPesos;
+  const col=ret>0?'var(--ac)':'var(--w)';
+
+  let html=`<div class="st" style="color:var(--td);font-size:11px;margin:10px 0 6px">${dlBond.ticker} vs ${fut.ticker.replace("DLR/","")}</div>`;
+  html+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:10px">`;
+  html+=`<div class="metric"><div class="ms" style="color:var(--td)">${dlPx?dlPx.toFixed(2):'—'}</div><div class="ml">Precio DL</div></div>`;
+  html+=`<div class="metric"><div class="ms" style="color:#22d3ee">${spot.toFixed(2)}</div><div class="ml">Spot — FX hoy</div></div>`;
+  html+=`<div class="metric"><div class="ms" style="color:var(--fut)">${futPx.toFixed(2)}</div><div class="ml">Futuro — FX al vto</div></div>`;
+  html+=`<div class="metric"><div class="ms" style="color:${ret>0?'var(--ac)':'var(--w)'}">${(ret*100).toFixed(2)}%</div><div class="ml">Retorno directo (${futDays}d)</div></div>`;
+  html+=`<div class="metric"><div class="mv" style="color:#22d3ee;font-size:16px"><b>${tna.toFixed(2)}%</b></div><div class="ml">TNA sintético</div></div>`;
+  html+=`<div class="metric"><div class="ms" style="color:var(--td)">${tir.toFixed(2)}%</div><div class="ml">TIR (TEA)</div></div>`;
+  if(tasaPesos) html+=`<div class="metric"><div class="mv" style="color:${spread>0?'var(--ac)':'var(--w)'};font-size:16px">${spread>0?'+':''}${spread.toFixed(2)}%</div><div class="ml">Spread vs Pesos</div></div>`;
+  html+=`</div>`;
+  html+=`<div class="beb" style="border-left:3px solid ${col};padding:10px">`;
+  html+=`<div style="color:${col};font-weight:700;font-size:12px">${ret>0?'LONG DL / SHORT FUTURO':'FUTURO > DL'}</div>`;
+  html+=`<div style="font-size:10px;color:var(--td);margin-top:4px;line-height:1.7">`;
+  html+=`1. Comprar ${dlBond.ticker} a $${dlPx.toFixed(2)} (FX implícito hoy)<br>`;
+  html+=`2. Vender ${fut.ticker} a $${futPx.toFixed(2)} (FX implícito a ${futDays}d)<br>`;
+  html+=`<b style="color:${col}">Retorno: ${(ret*100).toFixed(2)}% en ${futDays}d → TNA ${tna.toFixed(2)}% / TIR ${tir.toFixed(2)}%</b>`;
+  if(tasaPesos) html+=`<br><span style="color:${spread>0?'var(--ac)':'var(--w)'}">vs Pesos (${tasaPesos}% TNA): spread ${spread>0?'+':''}${spread.toFixed(2)}%</span>`;
+  html+=`</div></div>`;
+  el.innerHTML=html;
+}
+
+function calcFxSynthSpotFut(){
+  const el=document.getElementById("fxSynthSFResult");
+  if(!el) return;
+  const today=new Date();today.setHours(0,0,0,0);
+  const spot=getFxSpot();
+  const spotInput=document.getElementById("fxSynthSpot");
+  if(spotInput&&spot) spotInput.value=spot.toFixed(2);
+
+  const futId=document.getElementById("fxSynthFut2").value;
+  const tasaPesos=parseFloat(document.getElementById("fxSynthTasaPesos2").value)||0;
+  const fut=ROFEX_FUTURES.find(f=>f.id===futId);
+  if(!fut||!spot){el.textContent="Faltan datos";return;}
+
+  const futLp=_livePrices[fut.ticker]||{};
+  const futPx=futLp.last||0;
+  if(!futPx){el.textContent="Sin precio del futuro";return;}
+
+  const futDays=DB(today,new Date(fut.exp+"T00:00:00"));
+  const futTna=(futPx/spot-1)*365/futDays*100;
+  const futTea=(Math.pow(futPx/spot,365/futDays)-1)*100;
+  const devalPct=(futPx/spot-1)*100;
+
+  const teaPesos=tasaPesos?(Math.pow(1+(tasaPesos/100)*(futDays/365),365/futDays)-1)*100:0;
+  const spreadBps=teaPesos?(teaPesos-futTea)*100:0;
+
+  // Ganancia por contrato 1000 USD
+  const ganancia=tasaPesos?(tasaPesos/100*spot*1000*futDays/365)-(futPx-spot)*1000:0;
+
+  let html=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:12px">`;
+  html+=`<div class="metric"><div class="ms" style="color:#f97316">TNA ${futTna.toFixed(2)}%</div><div class="ml">Implícita ${fut.ticker.replace("DLR/","")} (${futDays}d)</div></div>`;
+  html+=`<div class="metric"><div class="ms" style="color:#f97316">TEA ${futTea.toFixed(2)}%</div><div class="ml">Implícita TEA</div></div>`;
+  html+=`<div class="metric"><div class="ms" style="color:var(--bl)">Devalúa ${devalPct.toFixed(2)}%</div><div class="ml">Implícita en ${futDays}d</div></div>`;
+  if(tasaPesos){
+    html+=`<div class="metric"><div class="ms" style="color:var(--am)">TEA ${teaPesos.toFixed(2)}%</div><div class="ml">Pesos equiv TEA</div></div>`;
+    html+=`<div class="metric"><div class="mv" style="color:${spreadBps>0?'var(--ac)':'var(--w)'};font-size:16px">${spreadBps>0?'+':''}${spreadBps.toFixed(0)} bps</div><div class="ml">Spread (Pesos − Impl)</div></div>`;
+  }
+  html+=`</div>`;
+
+  if(spreadBps>=0){
+    html+=`<div class="beb" style="border-left:3px solid var(--ac);padding:10px">`;
+    html+=`<div style="color:var(--ac);font-weight:700;font-size:12px">SINTÉTICO LARGO — Cash & Carry</div>`;
+    html+=`<div style="font-size:10px;color:var(--td);margin-top:4px;line-height:1.6">`;
+    html+=`1. Colocar pesos a TNA ${tasaPesos}%<br>`;
+    html+=`2. Comprar USD spot a $${spot.toFixed(2)}<br>`;
+    html+=`3. Vender ${fut.ticker} a $${futPx.toFixed(2)}<br>`;
+    if(ganancia) html+=`<b style="color:var(--ac)">Ganancia est: $${ganancia.toFixed(0)} / contrato (1000 USD) en ${futDays}d</b>`;
+    html+=`</div></div>`;
+  } else {
+    html+=`<div class="beb" style="border-left:3px solid var(--w);padding:10px">`;
+    html+=`<div style="color:var(--w);font-weight:700;font-size:12px">SINTÉTICO CORTO — Reverse Cash & Carry</div>`;
+    html+=`<div style="font-size:10px;color:var(--td);margin-top:4px;line-height:1.6">`;
+    html+=`1. Tomar pesos a TNA ${tasaPesos}%<br>`;
+    html+=`2. Vender USD spot a $${spot.toFixed(2)}<br>`;
+    html+=`3. Comprar ${fut.ticker} a $${futPx.toFixed(2)}<br>`;
+    html+=`<b style="color:var(--w)">Tasa implícita del futuro supera pesos en ${Math.abs(spreadBps).toFixed(0)} bps</b>`;
+    html+=`</div></div>`;
+  }
+  el.innerHTML=html;
+}
+
 // Intraday data collection — every 60 seconds
-let _lastResetDate=null;
 function collectIntradayData(){
   const now=new Date();
   const h=now.getHours();
-  const m=now.getMinutes();
-  const today=now.toDateString();
-
-  // Reset charts at 9:50am each day (DB keeps historical data)
-  if(h===9&&m>=50&&_lastResetDate!==today){
-    _intradaySpot=[];
-    _intradayMep=[];
-    _lastResetDate=today;
-    const fxTab=document.getElementById("tab-fx");
-    if(fxTab&&fxTab.style.display!=="none"){
-      drawIntradayChart("fxSpotIntradayChart",[],"DLR/SPOT","#2db8a8",15);
-      drawIntradayChart("fxMepIntradayChart",[],"MEP","#4da6ff",17);
-    }
-    return;
-  }
-
   if(h<10) return;
 
   const spot=getFxSpot();
   const mep=getFxMep();
 
   // SPOT: 10:00-15:00 | MEP: 10:00-17:00
-  if(h<15&&spot>0) _intradaySpot.push({t:new Date(now),v:spot});
-  if(h<17&&mep>0) _intradayMep.push({t:new Date(now),v:mep});
+  let changed=false;
+  if(h<15&&spot>0){ _intradaySpot.push({t:new Date(now),v:spot}); changed=true; }
+  if(h<17&&mep>0){ _intradayMep.push({t:new Date(now),v:mep}); changed=true; }
+  if(changed) _fxSaveIntraday();
 
   // Si estamos en tab FX, redibujar intradiarios
   const fxTab=document.getElementById("tab-fx");
@@ -6786,21 +8300,6 @@ function collectIntradayData(){
     drawIntradayChart("fxSpotIntradayChart",_intradaySpot,"DLR/SPOT","#2db8a8",15);
     drawIntradayChart("fxMepIntradayChart",_intradayMep,"MEP","#4da6ff",17);
   }
-}
-
-// Prefill intraday arrays from server DB on page load
-async function loadIntradayFromDB(){
-  try{
-    const r=await fetch("/api/intraday");
-    if(!r.ok) return;
-    const d=await r.json();
-    if(!d.data) return;
-    d.data.forEach(row=>{
-      const t=new Date(row.ts);
-      if(row.instrument==="DLR/SPOT"&&row.last>0) _intradaySpot.push({t,v:row.last});
-      else if(row.instrument==="MEP"&&row.mid>0)  _intradayMep.push({t,v:row.mid});
-    });
-  }catch(e){}
 }
 
 // Auto-refresh FX tab when price updates come in
@@ -6811,10 +8310,9 @@ fetchPricesFromServer=async function(){
   if(fxTab&&fxTab.style.display!=="none") renderFX();
 };
 
-// Start intraday collection (every 60s), prefill from DB first
-setTimeout(async()=>{
-  await loadIntradayFromDB();
-  collectIntradayData();
+// Start intraday collection (every 60s)
+setTimeout(()=>{
+  collectIntradayData(); // Captura inicial
   _intradayTimer=setInterval(collectIntradayData,60000);
 },1200);
 

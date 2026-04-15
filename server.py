@@ -11,18 +11,17 @@ Deploy:  Railway / Render (auto-detecta PORT env var)
 import os
 import sys
 import json
+import re
 # Fix Unicode output on Windows (cp1252 can't handle emoji)
 if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 import time
 import hashlib
 import secrets
-import sqlite3
 import urllib.request
 import urllib.error
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from http.cookies import SimpleCookie
-from datetime import datetime, timezone
 
 # ══════════════════════════════════════════════════════════════════
 # CONFIG
@@ -74,71 +73,6 @@ def get_session_from_cookie(cookie_header):
     c.load(cookie_header)
     morsel = c.get("cer_session")
     return morsel.value if morsel else None
-
-# ══════════════════════════════════════════════════════════════════
-# INTRADAY SQLite DB
-# ══════════════════════════════════════════════════════════════════
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "intraday_fx.db")
-_FX_INSTRUMENTS = {"DLR/SPOT", "AL30 CI", "AL30D CI"}
-
-def init_intraday_db():
-    con = sqlite3.connect(DB_PATH)
-    con.execute("""
-        CREATE TABLE IF NOT EXISTS intraday_fx (
-            id         INTEGER PRIMARY KEY AUTOINCREMENT,
-            ts         TEXT NOT NULL,
-            instrument TEXT NOT NULL,
-            bid        REAL,
-            ask        REAL,
-            last       REAL,
-            mid        REAL
-        )
-    """)
-    con.execute("CREATE INDEX IF NOT EXISTS idx_ts ON intraday_fx(ts)")
-    con.execute("CREATE INDEX IF NOT EXISTS idx_inst ON intraday_fx(instrument)")
-    con.commit()
-    con.close()
-    print(f"✓ Intraday DB: {DB_PATH}")
-
-def persist_intraday(rows):
-    """Save FX instrument prices to SQLite. Called after each fresh Sheets fetch."""
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
-    fx_rows = [r for r in rows if r["ticker"] in _FX_INSTRUMENTS]
-    if not fx_rows:
-        return
-    # Compute MEP if both AL30 legs available
-    al30  = next((r for r in rows if r["ticker"] == "AL30 CI"),  None)
-    al30d = next((r for r in rows if r["ticker"] == "AL30D CI"), None)
-    if al30 and al30d and al30d["last"] and al30d["last"] > 0:
-        mep_mid = round(al30["last"] / al30d["last"], 4)
-        fx_rows.append({"ticker": "MEP", "bid": 0, "ask": 0, "last": mep_mid, "mid": mep_mid})
-    try:
-        con = sqlite3.connect(DB_PATH)
-        con.executemany(
-            "INSERT INTO intraday_fx(ts,instrument,bid,ask,last,mid) VALUES(?,?,?,?,?,?)",
-            [(ts, r["ticker"], r["bid"], r["ask"], r["last"], r["mid"]) for r in fx_rows]
-        )
-        con.commit()
-        con.close()
-    except Exception as e:
-        print(f"⚠ intraday persist error: {e}")
-
-def query_intraday(date_str=None):
-    """Return intraday rows for a given date (YYYY-MM-DD). Defaults to today."""
-    if not date_str:
-        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    try:
-        con = sqlite3.connect(DB_PATH)
-        con.row_factory = sqlite3.Row
-        rows = con.execute(
-            "SELECT ts,instrument,bid,ask,last,mid FROM intraday_fx WHERE ts LIKE ? ORDER BY ts",
-            (date_str + "%",)
-        ).fetchall()
-        con.close()
-        return [dict(r) for r in rows]
-    except Exception as e:
-        return []
-
 
 # ══════════════════════════════════════════════════════════════════
 # GOOGLE SHEETS
@@ -225,10 +159,20 @@ def fetch_prices():
             is_24hs = "24hs" in lower_inst or "24 hs" in lower_inst
             is_ci = (not is_24hs) and (" ci " in (" " + lower_inst + " ") or "- ci -" in lower_inst or "- ci" == lower_inst[-4:] or " ci-" in lower_inst)
             is_dlr = "dlr" in lower_inst
-            if not (is_24hs or is_ci or is_dlr):
+            # Cauciones XMEV: "MERV - XMEV - PESOS - {N}D"
+            is_caucion = ("xmev" in lower_inst and "pesos" in lower_inst
+                          and bool(re.search(r'\b\d+d$', lower_inst.strip())))
+            # Naked tickers (no " - " separator) — DL bonds, futures, etc.
+            is_naked = " - " not in inst
+            if not (is_24hs or is_ci or is_dlr or is_caucion or is_naked):
                 continue
             parts = [p.strip() for p in inst.split(" - ")]
-            ticker = parts[2] if len(parts) >= 3 else parts[0] if parts else ""
+            if is_caucion:
+                # Extract day number → ticker = "CAUCION-{N}D"
+                m = re.search(r'(\d+)[dD]$', inst.strip())
+                ticker = f"CAUCION-{m.group(1)}D" if m else ""
+            else:
+                ticker = parts[2] if len(parts) >= 3 else parts[0] if parts else ""
             if not ticker:
                 continue
             # CI instruments: suffix ticker to differentiate from 24hs
@@ -248,9 +192,10 @@ def fetch_prices():
             ask_size = parse_num(row[5])
             close = parse_num(row[6])
             volume = parse_num(row[9])
-            # DLR/SPOT: último precio operado está en columna I (índice 8)
-            if ticker == "DLR/SPOT":
-                spot_last = parse_num(row[8]) if len(row) > 8 else 0
+
+            # DLR/SPOT special layout: last price in column I (index 8)
+            if "dlr/spot" in lower_inst and len(row) > 8:
+                spot_last = parse_num(row[8])
                 if spot_last:
                     last = spot_last
 
@@ -263,7 +208,6 @@ def fetch_prices():
                 })
 
         _cached_prices = {"ts": now, "data": rows, "error": None}
-        persist_intraday(rows)
     except Exception as e:
         _cached_prices = {"ts": now, "data": _cached_prices.get("data", []), "error": str(e)}
 
@@ -346,11 +290,6 @@ class Handler(SimpleHTTPRequestHandler):
 
         if self.path == "/api/prices":
             self._send_json(fetch_prices())
-        elif self.path.startswith("/api/intraday"):
-            from urllib.parse import urlparse, parse_qs
-            qs = parse_qs(urlparse(self.path).query)
-            date = qs.get("date", [None])[0]
-            self._send_json({"data": query_intraday(date)})
         elif self.path == "/api/pib":
             self._proxy_pib()
         elif self.path == "/api/health":
@@ -418,7 +357,6 @@ def main():
     else:
         print("⚠ No AUTH_PIN set — running without authentication")
 
-    init_intraday_db()
     sheets_ok = init_sheets()
     if not sheets_ok:
         print("⚠ Starting without Google Sheets. Manual prices only.\n")
