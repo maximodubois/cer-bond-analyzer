@@ -1465,8 +1465,9 @@ async function fetchLatestCER(){
     // Any data beyond that would require the next unknown IPC — exclude it.
     const todayAnchor=getAnchor15(hoy);
     const nextAnchor=getNextAnchor15(todayAnchor);
-    const nextNextAnchor=getNextAnchor15(nextAnchor);
-    const capStr=DS(new Date(nextNextAnchor.getTime()-864e5)); // day before next-next anchor
+    // Cap at 14/M+2: last day before nextAnchor (= last day BCRA publishes using current known IPC).
+    // nextNextAnchor would go one window too far and pick up dates using the next unknown IPC.
+    const capStr=DS(new Date(nextAnchor.getTime()-864e5)); // day before next anchor = 14/M+2
     const latest=detalle.find(d=>d.fecha<=capStr)||detalle[detalle.length-1];
     document.getElementById("baseCER").value=latest.valor;
     document.getElementById("baseCERDate").value=latest.fecha;
