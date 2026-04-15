@@ -1424,6 +1424,19 @@ function buildCER(baseCERVal,baseDateStr,inflMap){
     return c0*Math.pow(1+inf,n/D);
   };
 }
+function getCERObservedOrProjected(getCER,target){
+  if(typeof getCER!=="function") return null;
+  const dt=typeof target==="string"?new Date(target+"T00:00:00"):new Date(target);
+  const ds=DS(dt);
+  if(_bcraHistorico.has(ds)) return _bcraHistorico.get(ds);
+  for(let offset=1;offset<=3;offset++){
+    const prev=new Date(dt);
+    prev.setDate(prev.getDate()-offset);
+    const prevKey=DS(prev);
+    if(_bcraHistorico.has(prevKey)) return _bcraHistorico.get(prevKey);
+  }
+  return getCER(dt);
+}
 
 // ═══ BCRA API ══════════════════════
 const BCRA_BASE="https://api.bcra.gob.ar/estadisticas/v4.0/Monetarias";
@@ -2406,7 +2419,7 @@ function getBondSchedule(b, settle, getCER, cerLiqRef){
   const flows=[];
   const matD=new Date(b.mat+"T00:00:00");
   const ref=SBD(matD,10);
-  const cerPay=getCER(ref);
+  const cerPay=getCERObservedOrProjected(getCER,ref);
   const cerEmRef=getBondEmissionCER(b);
   if(!cerPay||!cerLiqRef||!cerEmRef) return flows;
   const baseFlow=b.vno;
@@ -2523,22 +2536,6 @@ function calculate(){
 
   const rDots=[], scatterPts=[];
 
-  // Wrapper: use actual BCRA data for past dates, projector for future
-  function getCERActual(d){
-    const dt=typeof d==="string"?new Date(d+"T00:00:00"):new Date(d);
-    const ds=DS(dt);
-    // Check exact date in BCRA cache
-    if(_bcraHistorico.has(ds)) return _bcraHistorico.get(ds);
-    // Check nearby dates (±3 days) for weekends/holidays
-    for(let offset=1;offset<=3;offset++){
-      const before=new Date(dt);before.setDate(before.getDate()-offset);
-      const bs=DS(before);
-      if(_bcraHistorico.has(bs)) return _bcraHistorico.get(bs);
-    }
-    // Fall back to projector
-    return getCER(dt);
-  }
-
   BONDS.forEach(b=>{
     const price=parseFloat(document.getElementById("p_"+b.id).value);
     const cerEm=parseFloat(document.getElementById("ce_"+b.id).value);
@@ -2546,7 +2543,7 @@ function calculate(){
     const matD=new Date(b.mat+"T00:00:00");
     const days=DB(settle,matD);
     const refDateMat=SBD(matD,10);
-    const cerRef=getCERActual(refDateMat);
+    const cerRef=getCERObservedOrProjected(getCER,refDateMat);
     const refDateSettle=SBD(settle,10);
     const cerLiqRef=cerLiqInput;
     document.getElementById("d_"+b.id).textContent=days;
@@ -2556,7 +2553,7 @@ function calculate(){
     document.getElementById("cr_"+b.id).textContent=cerRef?(cerRef.toFixed(4)+(cerRefIsBCRA?" ✓":"")):"—";
     document.getElementById("cl_"+b.id).textContent=cerLiqRef?cerLiqRef.toFixed(4):"—";
     document.getElementById("cem_"+b.id).textContent=cerEm?cerEm.toFixed(4):"—";
-    const flows=getBondSchedule(b, settle, getCERActual, cerLiqRef);
+    const flows=getBondSchedule(b, settle, getCER, cerLiqRef);
     if(price&&cerEm&&cerLiqRef&&days>0&&flows.length){
       const vf=flows.reduce((s,f)=>s+f.nominal,0);
       const vt=flows.reduce((s,f)=>s+f.real,0);
@@ -2728,7 +2725,7 @@ function calculate(){
     const matDate=new Date(b.mat+"T00:00:00");
     const days=DB(settle,matDate);
     if(days<=0) return;
-    const flows=getBondSchedule(b,settle,getCERActual,cerLiqInput);
+    const flows=getBondSchedule(b,settle,getCER,cerLiqInput);
     if(!flows.length) return;
     const yReal=xirrFromFlows(closeP,flows,'real');
     if(yReal==null) return;
@@ -3676,7 +3673,7 @@ function openBondCalculator(bondType, bondId){
           </div>
         </div>
         <div class="bc-kpis">
-          <div class="bc-kpi"><div class="bv" id="bck-tir">-</div><div class="bl">TIR (TEA${bondType==='cer'?' real':''})</div></div>
+          <div class="bc-kpi"><div class="bv" id="bck-tir">-</div><div class="bl">${bondType==='cer'?'TIR real (TEA)':'TIR (TEA)'}</div></div>
           <div class="bc-kpi"><div class="bv" id="bck-tna">-</div><div class="bl">TNA equiv.</div></div>
           <div class="bc-kpi"><div class="bv" id="bck-vt" style="font-size:13px">-</div><div class="bl">${bondType==='cer'?'VT Nominal ($)':'VF ($)'}</div></div>
           <div class="bc-kpi"><div class="bv" id="bck-vno" style="font-size:13px">-</div><div class="bl">VN adquirido</div></div>
@@ -3695,7 +3692,7 @@ function openBondCalculator(bondType, bondId){
         <div class="bc-target" style="flex-direction:column;align-items:stretch;gap:10px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div class="ig">
-              <label>TIR objetivo${bondType==='cer'?' (real)':' (TEA)'} %</label>
+              <label>${bondType==='cer'?'TIR real objetivo':'TIR objetivo (TEA)'} %</label>
               <input type="number" id="bci-target-tir" step="0.1" placeholder="${bondType==='cer'?'ej: 8.5':'ej: 52'}"
                 style="font-size:13px;font-weight:600;font-family:'IBM Plex Mono',monospace;text-align:right">
             </div>
@@ -4317,16 +4314,16 @@ function openBondCalculator(bondType, bondId){
       if(bv&&bDate){try{getCER=buildCER(bv,bDate,inflMap)}catch(e){}}
       const cerEm=parseFloat(document.getElementById("ce_"+b.id)?.value)||b.cerEm;
 
-      let tir=null, tna=null;
+      let tirNom=null, tirReal=null, tna=null;
       let flows=[];
       if(getCER&&cerEm&&cerLiqVal){
         flows=getBondSchedule(b, settle, getCER, cerLiqVal);
         if(flows.length&&price>0){
-          const tirRaw=xirrFromFlows(price, flows, 'nominal');
-          if(tirRaw!=null){
-            tir=tirRaw*100;
-            tna=days>0?((Math.pow(1+tir/100,days/365)-1)*(365/days))*100:null;
-          }
+          const tirNomRaw=xirrFromFlows(price, flows, 'nominal');
+          const tirRealRaw=xirrFromFlows(price, flows, 'real');
+          tirNom=tirNomRaw!=null?tirNomRaw*100:null;
+          tirReal=tirRealRaw!=null?tirRealRaw*100:null;
+          tna=tirNom!=null&&days>0?((Math.pow(1+tirNom/100,days/365)-1)*(365/days))*100:null;
         }
       }
 
@@ -4336,8 +4333,8 @@ function openBondCalculator(bondType, bondId){
       const ganancia=totalCobros&&price>0?totalCobros-vnoAmount/100*price:null;
       const vnAdq=price>0?vnoAmount/price*100:null;
 
-      document.getElementById('bck-tir').textContent=tir!=null?tir.toFixed(2)+'%':'—';
-      document.getElementById('bck-tir').style.color=tir!=null?(tir>=0?'var(--acl)':'var(--neg)'):'var(--td)';
+      document.getElementById('bck-tir').textContent=tirReal!=null?tirReal.toFixed(2)+'%':'—';
+      document.getElementById('bck-tir').style.color=tirReal!=null?(tirReal>=0?'var(--acl)':'var(--neg)'):'var(--td)';
       document.getElementById('bck-tna').textContent=tna!=null?tna.toFixed(2)+'%':'—';
       document.getElementById('bck-vt').textContent=vtNom?vtNom.toFixed(4):'—';
       document.getElementById('bck-vno').textContent=vnAdq?vnAdq.toFixed(0)+' VN':'—';
@@ -4384,12 +4381,13 @@ function openBondCalculator(bondType, bondId){
       {
         const targetTirVal=parseFloat(document.getElementById('bci-target-tir').value);
         const targetTnaVal=parseFloat(document.getElementById('bci-target-tna').value);
+        const real=flows.length?flows[0].real:null;
         const nom=flows.length?flows[0].nominal:null;
         const fl=flows.length?flows[0]:null;
         const parts=[];
-        if(!isNaN(targetTirVal)&&nom&&fl){
-          const impliedPx=nom/Math.pow(1+targetTirVal/100,fl.days/365);
-          parts.push(`TIR <strong style="color:var(--acl)">${targetTirVal.toFixed(2)}%</strong> → <strong style="color:var(--acl);font-size:13px">${impliedPx.toFixed(4)}</strong>`);
+        if(!isNaN(targetTirVal)&&real&&fl){
+          const impliedPx=real/Math.pow(1+targetTirVal/100,fl.days/365);
+          parts.push(`TIR real <strong style="color:var(--acl)">${targetTirVal.toFixed(2)}%</strong> → <strong style="color:var(--acl);font-size:13px">${impliedPx.toFixed(4)}</strong>`);
         }
         if(!isNaN(targetTnaVal)&&nom&&fl){
           // TNA TF CER: simple rate (TNA = (VF/P - 1) * 365/days), same as FIXED TNA logic
