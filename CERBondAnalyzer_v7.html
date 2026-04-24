@@ -720,32 +720,37 @@
 
 <!-- BUTTERFLY / RV TRADE BUILDER -->
 <div class="card" style="margin-top:10px">
-  <div class="st">Butterfly & Relative Value Trade Builder</div>
-  <div class="note" style="margin-bottom:10px">Armá trades de 2 o 3 patas DV01-neutral. El builder calcula ratios de hedge, carry neto del package y breakeven en bps. La selección queda persistida y no se resetea con las actualizaciones live.</div>
-  <div style="display:grid;grid-template-columns:auto auto auto 1fr;gap:8px;align-items:end;margin-bottom:10px">
+  <div class="st">Butterfly &amp; Relative Value Trade Builder</div>
+  <div class="note" style="margin-bottom:10px">Armá trades de 2 o 3 patas con hedging DV01 (y opcionalmente cash) neutral. Te devuelve ratios, carry neto, body spread y breakeven en bps + días. Modo 3-leg usa pesos iguales de DV01 en cada wing por default.</div>
+  <div style="display:grid;grid-template-columns:auto auto auto auto 1fr;gap:8px;align-items:end;margin-bottom:10px">
     <div class="ig"><label>Tipo</label><select id="bfType" onchange="toggleBfLegs()"><option value="2leg">2-Leg RV</option><option value="3leg">Butterfly</option></select></div>
+    <div class="ig"><label>Hedging</label><select id="bfMode"><option value="dv01">DV01-neutral</option><option value="dv01cash">DV01 + Cash</option><option value="5050">50/50 wings</option></select></div>
     <div class="ig"><label>Nominal pata larga</label><input type="number" id="bfNom" value="100000000" step="1000000" style="width:130px"></div>
-    <div id="bfPersistHint" style="font-size:9px;color:var(--td);align-self:center">Selección persistente</div>
+    <div id="bfPersistHint" style="font-size:9px;color:var(--td);align-self:center">Selección persistida</div>
     <button class="btn-api" onclick="calcButterfly()">Calcular</button>
   </div>
   <div id="bfLegs">
-    <div class="bf-leg"><div class="bf-label" style="color:var(--ac)">LONG</div><select id="bfLeg1" style="width:100px"></select><div class="ig" style="width:80px"><label>Dir</label><span style="color:var(--ac);font-weight:700">+1</span></div><div></div></div>
-    <div class="bf-leg"><div class="bf-label" style="color:var(--w)">SHORT</div><select id="bfLeg2" style="width:100px"></select><div class="ig" style="width:80px"><label>Dir</label><span style="color:var(--w);font-weight:700">−1</span></div><div></div></div>
-    <div class="bf-leg" id="bfLeg3Row" style="display:none"><div class="bf-label" style="color:var(--am)">BELLY</div><select id="bfLeg3" style="width:100px"></select><div class="ig" style="width:80px"><label>Dir</label><span style="color:var(--w);font-weight:700">−1</span></div><div></div></div>
+    <div class="bf-leg"><div class="bf-label" style="color:var(--ac)">WING 1 / LONG</div><select id="bfLeg1" style="width:100px"></select><div class="ig" style="width:80px"><label>Dir</label><span style="color:var(--ac);font-weight:700">+1</span></div><div></div></div>
+    <div class="bf-leg" id="bfLeg3Row" style="display:none"><div class="bf-label" style="color:var(--w)">BELLY / SHORT</div><select id="bfLeg3" style="width:100px"></select><div class="ig" style="width:80px"><label>Dir</label><span style="color:var(--w);font-weight:700">−1</span></div><div></div></div>
+    <div class="bf-leg"><div class="bf-label" id="bfLeg2Label" style="color:var(--w)">SHORT</div><select id="bfLeg2" style="width:100px"></select><div class="ig" style="width:80px"><label>Dir</label><span id="bfLeg2Dir" style="color:var(--w);font-weight:700">−1</span></div><div></div></div>
   </div>
   <div id="bfResult"></div>
 </div>
 
 <!-- TOTAL RETURN PROJECTOR -->
 <div class="card">
-  <div class="st">Total Return Projector — Neto de Fondeo</div>
-  <div class="note" style="margin-bottom:10px">Descompone carry + rolldown + apreciación CER y le resta costo de spread y fondeo explícito. Si un instrumento vence antes del horizonte, queda afuera del ranking para no mezclar horizontes distintos.</div>
-  <div style="display:grid;grid-template-columns:auto auto auto 1fr;gap:10px;align-items:end;margin-bottom:10px">
+  <div class="st">Total Return Projector — Holding Period Return</div>
+  <div class="note" style="margin-bottom:8px"><b>Qué hace:</b> proyecta P&amp;L total por bono en un horizonte fijo, descomponiendo <b>Carry</b> (devengo a TIR) + <b>Pull-to-par/Rolldown</b> (revaluación por paso del tiempo + bajada por la curva) + <b>CER accrual</b> (solo bonos CER, indexación del principal) − <b>Funding</b> − <b>Bid/Offer</b>. Ordena los bonos por TR% neto sobre precio. <b>Importante:</b> para bonos CER, la TIR real ya descuenta inflación; para evitar double-count, el default ahora considera TIR real + CER accrual como componente separado.</div>
+  <div style="display:grid;grid-template-columns:repeat(6,auto) 1fr;gap:10px;align-items:end;margin-bottom:10px">
     <div class="ig"><label>Horizonte</label><select id="trHorizon" onchange="calcTotalReturn()"><option value="30">30 dias</option><option value="60" selected>60 dias</option><option value="90">90 dias</option><option value="120">120 dias</option><option value="180">180 dias</option><option value="max_common">Max comun</option></select></div>
-    <div class="ig"><label>Fondeo TNA %</label><input type="number" id="trFundingTNA" step="0.01" style="width:110px" oninput="calcTotalReturn()"></div>
-    <div id="trFundingInfo" style="font-size:9px;color:var(--td);align-self:center">—</div>
+    <div class="ig"><label>Universo</label><select id="trUniv" onchange="calcTotalReturn()"><option value="all" selected>Todos</option><option value="cer">Solo CER</option><option value="fx">Solo tasa fija (LECAP/BONCAP)</option><option value="dl">Solo Dollar-Linked</option></select></div>
+    <div class="ig"><label>Max Dur</label><input type="number" id="trMaxDur" step="0.1" min="0" placeholder="ej 2.5" style="width:80px" oninput="calcTotalReturn()"></div>
+    <div class="ig"><label>Min Dur</label><input type="number" id="trMinDur" step="0.1" min="0" placeholder="0" style="width:80px" oninput="calcTotalReturn()"></div>
+    <div class="ig"><label>Fondeo TNA %</label><input type="number" id="trFundingTNA" step="0.01" style="width:100px" oninput="calcTotalReturn()"></div>
+    <div class="ig"><label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="trIncCER" checked onchange="calcTotalReturn()" style="width:auto;margin:0"> CER accrual</label></div>
     <button class="btn-api" onclick="calcTotalReturn()">Proyectar</button>
   </div>
+  <div id="trFundingInfo" style="font-size:9px;color:var(--td);margin-bottom:8px">—</div>
   <div id="trResult" style="overflow-x:auto"></div>
 </div>
 
@@ -766,9 +771,18 @@
 <!-- FORWARD INFLATION TERM STRUCTURE -->
 <div class="card">
   <div class="st">Implied Forward Inflation Term Structure</div>
-  <div class="note" style="margin-bottom:10px">Inflacion mensual implicita por el mercado para cada mes futuro todavía desconocido, derivada de breakeven CER vs LECAP comparable. Barras violeta = forward-forward implícito por mes. X = mes de inflación, Y = TEM implicita. Compara con tu proyección (grilla de inflación).</div>
-  <div class="chart-c" style="height:280px"><canvas id="fwdInflTSChart"></canvas></div>
-  <div class="legend" id="fwdInflTSLegend"></div>
+  <div class="note" style="margin-bottom:8px"><b>Cómo leerlo:</b> el mercado te dice cuánta inflación mensual necesita convalidar cada mes futuro para que sea indiferente comprar CER o LECAP/BONCAP comparable. Barras violeta = <b>TEM forward implícita del mercado</b> (lo que el mercado te está pagando). Línea naranja = <b>tu proyección</b> (grilla de inflación). Puntos de colores = breakeven promedio que cada bono implica. Área sombreada = diferencia acumulada entre tu view y el mercado: si estás arriba del mercado, <span style="color:var(--ac)">conviene CER</span>; si estás abajo, <span style="color:var(--w)">conviene tasa fija</span>.</div>
+  <div style="display:grid;grid-template-columns:auto auto auto 1fr;gap:10px;align-items:end;margin-bottom:10px">
+    <div class="ig"><label>Vista</label><select id="fwdInflView" onchange="drawFwdInflTS()"><option value="tem" selected>TEM forward mensual</option><option value="cumTEA">TEA acumulada (curva BE)</option><option value="yoy">Inflación i.a. implícita</option></select></div>
+    <div class="ig"><label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="fwdInflShowProj" checked onchange="drawFwdInflTS()" style="width:auto;margin:0"> Tu proyección</label></div>
+    <div class="ig"><label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="fwdInflShowDiff" checked onchange="drawFwdInflTS()" style="width:auto;margin:0"> Sombreado diff</label></div>
+    <div class="legend" id="fwdInflTSLegend" style="justify-self:end"></div>
+  </div>
+  <div class="chart-c" style="height:300px;position:relative">
+    <canvas id="fwdInflTSChart"></canvas>
+    <div id="fwdInflTooltip" style="position:absolute;display:none;pointer-events:none;background:rgba(15,23,42,0.95);border:1px solid var(--cb);border-radius:4px;padding:6px 8px;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--t);z-index:10;min-width:160px"></div>
+  </div>
+  <div id="fwdInflSummary" style="margin-top:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px"></div>
 </div>
 
 <div class="card">
@@ -796,6 +810,71 @@
     <button class="btn-api" onclick="calcSyntheticArbitrage()">Calcular</button>
   </div>
   <div id="arbResult" style="margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.8">—</div>
+</div>
+
+<!-- KEY-RATE DURATION -->
+<div class="card">
+  <div class="st">Key-Rate Duration (KRD) — Exposición por Bucket</div>
+  <div class="note" style="margin-bottom:10px"><b>Para qué sirve:</b> rompe la DV01 total de cada bono en buckets de la curva (3M, 6M, 1Y, 2Y, 3Y, 5Y+). A diferencia de la duration agregada, KRD te dice qué parte de la curva mueve a cada bono. Indispensable para cubrir twists (steepener/flattener) sin quedarte sin ver un lado. La suma de las KRDs ≈ DV01 total. $ por 1 bp de shock paralelo en ese bucket solo.</div>
+  <div style="display:grid;grid-template-columns:auto auto 1fr;gap:10px;align-items:end;margin-bottom:10px">
+    <div class="ig"><label>Universo</label><select id="krdUniv" onchange="calcKRD()"><option value="cer">CER</option><option value="fx">Tasa fija</option></select></div>
+    <div class="ig"><label>Shock por bucket (bps)</label><input type="number" id="krdShock" value="25" step="5" style="width:90px" oninput="calcKRD()"></div>
+    <button class="btn-api" onclick="calcKRD()">Recalcular</button>
+  </div>
+  <div id="krdResult" style="overflow-x:auto"></div>
+</div>
+
+<!-- BOND ROTATION / SWITCH PLANNER -->
+<div class="card">
+  <div class="st">Rotation Planner — Switch Trade Breakeven</div>
+  <div class="note" style="margin-bottom:10px"><b>Para qué sirve:</b> planificá rotaciones del tipo "vendo A y compro B". Para cada destino B te devuelve el <b>precio breakeven</b> que necesitás pagar por B para que el switch te deje al menos igual (carry, rolldown, CER si aplica) frente a mantener A. Si el ask de mercado está por <span style="color:var(--ac)">debajo</span> del BE, el switch te <b>mejora</b> en $ por cada 100VN; si está por arriba, te <b>empeora</b>. También te muestra cuánto cambia la DV01 y el carry mensual del book tras la rotación.</div>
+  <div style="display:grid;grid-template-columns:repeat(4,auto) 1fr;gap:10px;align-items:end;margin-bottom:10px">
+    <div class="ig"><label>Vendo (A)</label><select id="swSell" style="width:120px" onchange="calcSwitch()"></select></div>
+    <div class="ig"><label>Nominal VN</label><input type="number" id="swNom" value="100000000" step="1000000" style="width:130px" oninput="calcSwitch()"></div>
+    <div class="ig"><label>Horizonte</label><select id="swHorizon" onchange="calcSwitch()"><option value="30">30d</option><option value="60" selected>60d</option><option value="90">90d</option><option value="180">180d</option></select></div>
+    <div class="ig"><label>Target mejora (bps TR)</label><input type="number" id="swTarget" value="0" step="5" style="width:90px" oninput="calcSwitch()"></div>
+    <button class="btn-api" onclick="calcSwitch()">Calcular</button>
+  </div>
+  <div id="swResult" style="overflow-x:auto"></div>
+</div>
+
+<!-- INFLATION-LINKED SWAP BASIS -->
+<div class="card">
+  <div class="st">Inflation-Linked Swap Basis — CER vs Synthetic</div>
+  <div class="note" style="margin-bottom:10px"><b>Para qué sirve:</b> descompone cada bono CER como "LECAP comparable + swap de inflación implícito". Te muestra la <b>TEM fija que recibirías</b> si sinteticás la pata CER con LECAP del mismo plazo, y el <b>basis en bps</b> contra tu proyección. Basis &gt; 0 = el swap implícito te paga por encima de lo que vos esperás que salga la inflación → convalida comprar CER. Basis &lt; 0 = el mercado te paga menos que tu view → convalida tasa fija.</div>
+  <div id="swapBasisResult" style="overflow-x:auto"></div>
+</div>
+
+<!-- PAR / ZERO / FORWARD CURVE COMPARISON -->
+<div class="card">
+  <div class="st">Curva Fitted — Par / Zero / Forward</div>
+  <div class="note" style="margin-bottom:10px"><b>Para qué sirve:</b> 3 representaciones de la misma curva NSS, cada una útil para algo distinto. <b>Par (yield):</b> TNA al vencimiento que hace que un bono coupón-pagador cotice a la par. <b>Zero (spot):</b> tasa de descuento cero-cupón para cada vencimiento — la que usás para descontar un único flujo. <b>Forward:</b> tasa implícita entre dos fechas futuras (f(t₁,t₂)) — critical para estimar qué espera el mercado para mañana. Cambios entre par y zero indican si la curva tiene mucho cupón; forward inclinado hacia arriba = mercado espera suba de tasas.</div>
+  <div style="display:grid;grid-template-columns:auto auto auto 1fr;gap:10px;align-items:end;margin-bottom:10px">
+    <div class="ig"><label>Universo</label><select id="curveCmpUniv" onchange="drawCurveComparison()"><option value="fx" selected>Tasa fija</option><option value="cer">CER (nominal)</option></select></div>
+    <div class="ig"><label>Tenor fwd (días)</label><input type="number" id="curveFwdTenor" value="90" step="30" min="30" style="width:90px" oninput="drawCurveComparison()"></div>
+    <div class="ig"><label>Vistas</label>
+      <div style="display:flex;gap:8px;font-size:10px">
+        <label style="display:flex;align-items:center;gap:3px"><input type="checkbox" id="curveShowPar" checked onchange="drawCurveComparison()" style="width:auto;margin:0">Par</label>
+        <label style="display:flex;align-items:center;gap:3px"><input type="checkbox" id="curveShowZero" checked onchange="drawCurveComparison()" style="width:auto;margin:0">Zero</label>
+        <label style="display:flex;align-items:center;gap:3px"><input type="checkbox" id="curveShowFwd" checked onchange="drawCurveComparison()" style="width:auto;margin:0">Forward</label>
+      </div>
+    </div>
+  </div>
+  <div class="chart-c" style="height:280px"><canvas id="curveCmpChart"></canvas></div>
+  <div id="curveCmpLegend" class="legend" style="margin-top:6px"></div>
+</div>
+
+<!-- RESIDUAL Z-SCORE HISTORICO -->
+<div class="card">
+  <div class="st">Rich / Cheap Residual Z-Score — Histórico</div>
+  <div class="note" style="margin-bottom:10px"><b>Para qué sirve:</b> no solo mirar el residual vs curva hoy, sino contra su propia historia. Cada vez que entrás a esta pantalla se snapshotea el residual de cada bono en localStorage. Mostramos media, σ y <b>z-score</b> del residual actual vs los últimos N días. <b>|z| &gt; 2</b> = anomalía de valor (bono rico o barato vs su propio promedio); <b>|z| &lt; 1</b> = fair. Usalo como filtro primario para no entrar a un spread que está técnicamente barato pero nunca está otra cosa.</div>
+  <div style="display:grid;grid-template-columns:auto auto auto 1fr;gap:10px;align-items:end;margin-bottom:10px">
+    <div class="ig"><label>Ventana (días)</label><input type="number" id="rzWindow" value="60" step="10" min="10" max="252" style="width:90px" oninput="calcResidualZ()"></div>
+    <div class="ig"><label>Universo</label><select id="rzUniv" onchange="calcResidualZ()"><option value="all">Todos</option><option value="cer">CER</option><option value="fx">Tasa fija</option></select></div>
+    <button class="btn-api" onclick="snapshotResidualsManual()">Snapshotear ahora</button>
+    <div id="rzInfo" style="font-size:9px;color:var(--td);align-self:center"></div>
+  </div>
+  <div id="rzResult" style="overflow-x:auto"></div>
 </div>
 
 </div><!-- end tab-quantplus -->
@@ -5643,6 +5722,11 @@ function refreshQuantPlus(){
   buildRVHeatmap();
   drawFwdInflTS();
   buildForwardInflationMatrix();
+  calcKRD();
+  calcSwitch();
+  calcInflSwapBasis();
+  drawCurveComparison();
+  calcResidualZ();
 }
 
 // ── Helpers ──
@@ -5696,6 +5780,7 @@ function readBfState(){
 function saveBfState(){
   const state={
     type:document.getElementById("bfType")?.value||"2leg",
+    mode:document.getElementById("bfMode")?.value||"dv01",
     nom:document.getElementById("bfNom")?.value||"",
     leg1:document.getElementById("bfLeg1")?.value||"",
     leg2:document.getElementById("bfLeg2")?.value||"",
@@ -5704,7 +5789,7 @@ function saveBfState(){
   try{localStorage.setItem(BF_STATE_KEY,JSON.stringify(state))}catch(_e){}
 }
 function wireBfPersistence(){
-  ["bfType","bfNom","bfLeg1","bfLeg2","bfLeg3"].forEach(id=>{
+  ["bfType","bfMode","bfNom","bfLeg1","bfLeg2","bfLeg3"].forEach(id=>{
     const el=document.getElementById(id);
     if(!el||el.dataset.persistWired==="1") return;
     const evt=el.tagName==="SELECT"?"change":"input";
@@ -5717,11 +5802,14 @@ function populateBfSelects(){
   const saved=readBfState();
   const current={
     type:document.getElementById("bfType")?.value||saved.type||"2leg",
+    mode:document.getElementById("bfMode")?.value||saved.mode||"dv01",
     nom:document.getElementById("bfNom")?.value||saved.nom||"100000000",
     leg1:document.getElementById("bfLeg1")?.value||saved.leg1||"",
     leg2:document.getElementById("bfLeg2")?.value||saved.leg2||"",
     leg3:document.getElementById("bfLeg3")?.value||saved.leg3||""
   };
+  const modeEl=document.getElementById("bfMode");
+  if(modeEl) modeEl.value=current.mode;
   ["bfLeg1","bfLeg2","bfLeg3"].forEach(id=>{
     const sel=document.getElementById(id);
     if(!sel)return;
@@ -5858,7 +5946,24 @@ function buildStressTable(){
 // ══════════════════════════════════════════════════════════════════
 function toggleBfLegs(){
   const type=document.getElementById("bfType").value;
-  document.getElementById("bfLeg3Row").style.display=type==="3leg"?"":"none";
+  const isBfly=type==="3leg";
+  document.getElementById("bfLeg3Row").style.display=isBfly?"":"none";
+  // in butterfly both wings are LONG; belly is SHORT
+  const leg2Label=document.getElementById("bfLeg2Label");
+  const leg2Dir=document.getElementById("bfLeg2Dir");
+  if(leg2Label&&leg2Dir){
+    if(isBfly){
+      leg2Label.textContent="WING 2 / LONG";
+      leg2Label.style.color="var(--ac)";
+      leg2Dir.textContent="+1";
+      leg2Dir.style.color="var(--ac)";
+    } else {
+      leg2Label.textContent="SHORT";
+      leg2Label.style.color="var(--w)";
+      leg2Dir.textContent="−1";
+      leg2Dir.style.color="var(--w)";
+    }
+  }
   saveBfState();
 }
 
@@ -5869,6 +5974,7 @@ function calcButterfly(){
   if(items.length<2){el.innerHTML='<div class="note">Necesitás al menos 2 instrumentos calculados.</div>';return}
 
   const type=document.getElementById("bfType").value;
+  const mode=document.getElementById("bfMode")?.value||"dv01";
   const nom=parseFloat(document.getElementById("bfNom").value)||100000000;
 
   const leg1=items.find(i=>i.id===document.getElementById("bfLeg1").value);
@@ -5877,60 +5983,110 @@ function calcButterfly(){
 
   if(!leg1||!leg2){el.innerHTML='<div class="note">Seleccioná instrumentos válidos.</div>';return}
 
-  const qty1=nom/100; // long leg nominal in bonds
+  const qty1=nom/100; // long leg quantity (bonds per 100VN)
   const dv01_1=leg1.dv01*qty1;
+  const cash1=leg1.px*qty1;
 
   let result='<div class="bf-result">';
 
   if(type==="2leg"){
-    // 2-leg: long leg1, short leg2, DV01 neutral
+    // 2-leg: long leg1, short leg2, DV01 neutral (optionally cash neutral not applicable in 2-leg)
     const hedgeRatio=leg1.dv01/leg2.dv01;
     const qty2=qty1*hedgeRatio;
     const nom2=qty2*100;
     const dv01_2=leg2.dv01*qty2;
+    const cash2=leg2.px*qty2;
+    const netCash=cash1-cash2;
     const netCarry30=(leg1.carry30||0)*qty1-(leg2.carry30||0)*qty2;
+    const netCarryH_yr=(leg1.tna!=null&&leg2.tna!=null)?((leg1.tna/100)*cash1-(leg2.tna/100)*cash2):null;
     const netRolldown=((leg1.rolldown||0)-(leg2.rolldown||0));
     const spreadBps=((leg1.tna||0)-(leg2.tna||0))*100;
     const residualDiff=((leg1.residual||0)-(leg2.residual||0));
 
     result+=`<div class="metric"><div class="mv" style="color:var(--ac)">${hedgeRatio.toFixed(3)}</div><div class="ml">Hedge Ratio (DV01)</div></div>`;
-    result+=`<div class="metric"><div class="mv" style="color:var(--bl)">${spreadBps.toFixed(1)} bps</div><div class="ml">Spread TNA</div></div>`;
+    result+=`<div class="metric"><div class="mv" style="color:var(--bl)">${spreadBps.toFixed(1)} bps</div><div class="ml">Spread TNA (L − S)</div></div>`;
     result+=`<div class="metric"><div class="mv" style="color:${netCarry30>=0?'var(--ac)':'var(--w)'}">$${(netCarry30/1000).toFixed(1)}k</div><div class="ml">Carry neto 30d</div></div>`;
     result+=`<div class="metric"><div class="mv" style="color:var(--am)">${netRolldown>=0?"+":""}${netRolldown.toFixed(1)} bps</div><div class="ml">Rolldown neto 30d</div></div>`;
     result+=`<div class="metric"><div class="mv" style="color:var(--fx)">${residualDiff>=0?"+":""}${residualDiff.toFixed(1)} bps</div><div class="ml">Residual diff vs curva</div></div>`;
-    result+=`<div class="metric"><div class="ms">L: ${leg1.ticker} ${nom.toLocaleString("es-AR")} VN</div><div class="ml">S: ${leg2.ticker} ${Math.round(nom2).toLocaleString("es-AR")} VN</div></div>`;
-    result+=`<div class="metric"><div class="ms">DV01 net: ${(dv01_1-dv01_2).toFixed(0)}</div><div class="ml">DV01 gross: ${(dv01_1+dv01_2).toFixed(0)}</div></div>`;
+    result+=`<div class="metric"><div class="ms" style="color:var(--ac)">L: ${leg1.ticker}</div><div class="ml">${nom.toLocaleString("es-AR")} VN · $${(cash1/1e6).toFixed(1)}M</div></div>`;
+    result+=`<div class="metric"><div class="ms" style="color:var(--w)">S: ${leg2.ticker}</div><div class="ml">${Math.round(nom2).toLocaleString("es-AR")} VN · $${(cash2/1e6).toFixed(1)}M</div></div>`;
+    result+=`<div class="metric"><div class="mv" style="color:var(--acl)">$${(netCash/1e6).toFixed(2)}M</div><div class="ml">Net cash (L − S)</div></div>`;
+    result+=`<div class="metric"><div class="ms">DV01 L: ${dv01_1.toFixed(0)}</div><div class="ml">DV01 S: ${dv01_2.toFixed(0)} · Net: ${(dv01_1-dv01_2).toFixed(0)}</div></div>`;
 
-    // Breakeven: how many bps spread compression wipes out carry
-    if(netCarry30!==0&&leg1.dur){
-      const be30=Math.abs(netCarry30/(leg1.px*qty1*leg1.dur/10000-leg2.px*qty2*leg2.dur/10000)*10000);
-      result+=`<div class="metric"><div class="mv" style="color:var(--w)">${be30.toFixed(1)} bps</div><div class="ml">BE spread move 30d</div></div>`;
+    // Breakeven: how many bps spread compression wipes out carry (spread move against you)
+    if(netCarry30!==0){
+      const dv01Diff=Math.abs(dv01_1-dv01_2);
+      // spread move impact ≈ (dv01_1 + dv01_2)/2 per bp if both legs move equal-and-opposite
+      const spreadDV01=(dv01_1+dv01_2)/2;
+      if(spreadDV01>0){
+        const be30=Math.abs(netCarry30/spreadDV01);
+        result+=`<div class="metric"><div class="mv" style="color:var(--w)">${be30.toFixed(1)} bps</div><div class="ml">BE spread move 30d</div></div>`;
+        // days until carry wipeout assuming 1 bp/day adverse drift
+        const daysWipe=be30>0?(be30/(Math.abs(netCarry30)/30)).toFixed(0):"—";
+      }
     }
   } else {
-    // 3-leg butterfly: long wings, short belly
+    // 3-leg butterfly: long wings (leg1, leg2), short belly (leg3)
     if(!leg3){el.innerHTML='<div class="note">Seleccioná 3 instrumentos.</div>';return}
-    // Wing1 = leg1, Belly = leg3, Wing2 = leg2
-    // Constraints: net DV01 = 0, net $ = 0 (approx)
-    const w1=leg1, belly=leg3, w2=leg2;
-    // DV01 neutral: dv01_w1*q1 + dv01_w2*q2 = dv01_belly*qb
-    // Assume q1 = qty1 (given nominal)
-    // Solve: qb and q2 such that net DV01=0 and we split belly proportionally
-    // Simple approach: equal DV01 weight on wings
-    const qb_target_dv01=dv01_1; // belly DV01 = long leg DV01
-    const qb=qb_target_dv01/belly.dv01;
-    // Wing2 takes remaining DV01
+    const w1=leg1, w2=leg2, belly=leg3;
+    // Constraints:
+    //   DV01 neutral: q1·DV01₁ + q2·DV01₂ = qb·DV01_b
+    //   Mode "dv01": split wings 50/50 by DV01 so q1·DV01₁ = q2·DV01₂
+    //   Mode "dv01cash": also cash-neutral q1·px1 + q2·px2 = qb·pxb
+    //   Mode "5050": q2 = q1 (equal nominal)
+    let q2=0, qb=0;
+    if(mode==="5050"){
+      q2=qty1; // same nominal both wings
+      qb=(qty1*w1.dv01+q2*w2.dv01)/belly.dv01;
+    } else if(mode==="dv01cash"){
+      // Solve 2x2: [DV01₁ DV01₂; px1 px2] · [q1;q2] = [DV01_b; px_b]·qb, with q1 fixed
+      // Two unknowns (q2, qb), two equations:
+      //   q1·DV01₁ + q2·DV01₂ − qb·DV01_b = 0
+      //   q1·px1   + q2·px2   − qb·px_b   = 0
+      const a11=w2.dv01, a12=-belly.dv01, b1=-qty1*w1.dv01;
+      const a21=w2.px,   a22=-belly.px,   b2=-qty1*w1.px;
+      const det=a11*a22-a12*a21;
+      if(Math.abs(det)<1e-9){
+        el.innerHTML='<div class="note">Bonos co-lineales, no se puede armar cash+DV01 neutral. Cambiá un wing.</div>';return;
+      }
+      q2=(b1*a22-b2*a12)/det;
+      qb=(a11*b2-a21*b1)/det;
+    } else {
+      // dv01 50/50 wings
+      q2=(qty1*w1.dv01)/w2.dv01;
+      qb=(qty1*w1.dv01+q2*w2.dv01)/belly.dv01;
+    }
+
+    const dv01_w1=w1.dv01*qty1;
+    const dv01_w2=w2.dv01*q2;
     const dv01_belly=belly.dv01*qb;
-    const q2=(dv01_belly-dv01_1)/w2.dv01;
+    const netDV01=dv01_w1+dv01_w2-dv01_belly;
+    const cash_w1=w1.px*qty1;
+    const cash_w2=w2.px*q2;
+    const cash_belly=belly.px*qb;
+    const netCash=cash_w1+cash_w2-cash_belly;
+    const netCarry30=(w1.carry30||0)*qty1+(w2.carry30||0)*q2-(belly.carry30||0)*qb;
+    const bodySpreadBps=(((w1.tna||0)*qty1*w1.dur+(w2.tna||0)*q2*w2.dur)/((qty1*w1.dur)+(q2*w2.dur)||1)-(belly.tna||0))*100;
+    const residualBody=(((w1.residual||0)*qty1*w1.dur+(w2.residual||0)*q2*w2.dur)/((qty1*w1.dur)+(q2*w2.dur)||1)-(belly.residual||0));
 
-    const netCarry=((w1.carry30||0)*qty1+(w2.carry30||0)*Math.abs(q2)-(belly.carry30||0)*qb);
+    result+=`<div class="metric"><div class="ms" style="color:var(--ac)">W1 L: ${w1.ticker}</div><div class="ml">${Math.round(qty1*100).toLocaleString("es-AR")} VN · $${(cash_w1/1e6).toFixed(2)}M · DV01 ${dv01_w1.toFixed(0)}</div></div>`;
+    result+=`<div class="metric"><div class="ms" style="color:var(--ac)">W2 L: ${w2.ticker}</div><div class="ml">${Math.round(q2*100).toLocaleString("es-AR")} VN · $${(cash_w2/1e6).toFixed(2)}M · DV01 ${dv01_w2.toFixed(0)}</div></div>`;
+    result+=`<div class="metric"><div class="ms" style="color:var(--w)">B S: ${belly.ticker}</div><div class="ml">${Math.round(qb*100).toLocaleString("es-AR")} VN · $${(cash_belly/1e6).toFixed(2)}M · DV01 ${dv01_belly.toFixed(0)}</div></div>`;
+    result+=`<div class="metric"><div class="mv" style="color:${Math.abs(netDV01)<1?'var(--ac)':'var(--w)'}">${netDV01.toFixed(1)}</div><div class="ml">Net DV01 ($/bp)</div></div>`;
+    result+=`<div class="metric"><div class="mv" style="color:${Math.abs(netCash)<cash_w1*0.05?'var(--ac)':'var(--am)'}">$${(netCash/1e6).toFixed(2)}M</div><div class="ml">Net cash</div></div>`;
+    result+=`<div class="metric"><div class="mv" style="color:${netCarry30>=0?'var(--ac)':'var(--w)'}">$${(netCarry30/1000).toFixed(1)}k</div><div class="ml">Net Carry 30d</div></div>`;
+    result+=`<div class="metric"><div class="mv" style="color:var(--am)">${bodySpreadBps.toFixed(1)} bps</div><div class="ml">Body spread (wings − belly)</div></div>`;
+    result+=`<div class="metric"><div class="mv" style="color:var(--fx)">${residualBody>=0?"+":""}${residualBody.toFixed(1)} bps</div><div class="ml">Residual wings − belly</div></div>`;
 
-    result+=`<div class="metric"><div class="ms" style="color:var(--ac)">W1: ${w1.ticker}</div><div class="ml">${Math.round(qty1*100).toLocaleString("es-AR")} VN (LONG)</div></div>`;
-    result+=`<div class="metric"><div class="ms" style="color:var(--w)">B: ${belly.ticker}</div><div class="ml">${Math.round(qb*100).toLocaleString("es-AR")} VN (SHORT)</div></div>`;
-    result+=`<div class="metric"><div class="ms" style="color:var(--ac)">W2: ${w2.ticker}</div><div class="ml">${Math.round(Math.abs(q2)*100).toLocaleString("es-AR")} VN (LONG)</div></div>`;
-    result+=`<div class="metric"><div class="mv" style="color:var(--bl)">${(dv01_1+w2.dv01*Math.abs(q2)-dv01_belly).toFixed(0)}</div><div class="ml">Net DV01</div></div>`;
-    result+=`<div class="metric"><div class="mv" style="color:${netCarry>=0?'var(--ac)':'var(--w)'}">$${(netCarry/1000).toFixed(1)}k</div><div class="ml">Net Carry 30d</div></div>`;
-    const bodySpread=((w1.tna||0)+(w2.tna||0))/2-(belly.tna||0);
-    result+=`<div class="metric"><div class="mv" style="color:var(--am)">${(bodySpread*100).toFixed(1)} bps</div><div class="ml">Body spread</div></div>`;
+    // BE move for body spread (bps move that wipes out 30d carry)
+    if(netCarry30!==0){
+      const spreadDV01=(dv01_w1+dv01_w2+dv01_belly)/2; // approx body spread sensitivity
+      if(spreadDV01>0){
+        const be30=Math.abs(netCarry30/spreadDV01);
+        result+=`<div class="metric"><div class="mv" style="color:var(--w)">${be30.toFixed(1)} bps</div><div class="ml">BE body spread 30d</div></div>`;
+      }
+    }
+    result+=`<div class="metric" style="grid-column:span 2"><div class="ms">Modo: <b>${mode==="dv01cash"?"DV01 + Cash neutral":mode==="5050"?"50/50 wings":"DV01 neutral"}</b></div><div class="ml" style="line-height:1.5">${mode==="dv01cash"?"Sistema 2×2 (DV01 y cash netos = 0).":mode==="5050"?"Igual VN en ambos wings; belly absorbe DV01 total.":"Wings con igual DV01 (q₁·DV01₁ = q₂·DV01₂)."}</div></div>`;
   }
 
   result+='</div>';
@@ -5972,65 +6128,92 @@ function calcTotalReturn(){
   const maxCommon=items.length?Math.max(1,Math.min(...items.map(it=>it.days))):0;
   const horizon=horizonSel==="max_common"?maxCommon:(parseInt(horizonSel,10)||60);
   const fundingTNA=ensureTRFundingInput();
-  const inflMap={};
-  IM.forEach(m=>{inflMap[m.k]=parseFloat(document.getElementById("i_"+m.k).value)||0});
-  const eligible=items.filter(it=>it.days>=horizon);
+  const univ=document.getElementById("trUniv")?.value||"all";
+  const maxDurEl=document.getElementById("trMaxDur");
+  const minDurEl=document.getElementById("trMinDur");
+  const maxDur=maxDurEl&&maxDurEl.value!==""?parseFloat(maxDurEl.value):null;
+  const minDur=minDurEl&&minDurEl.value!==""?parseFloat(minDurEl.value):null;
+  const includeCER=document.getElementById("trIncCER")?.checked!==false;
+
+  let eligible=items.filter(it=>it.days>=horizon);
+  if(univ==="cer") eligible=eligible.filter(it=>it.isCER);
+  else if(univ==="fx") eligible=eligible.filter(it=>!it.isCER && (it.type==="LECAP"||it.type==="BONCAP"||it.type==="TF"||it.type==="FIJA"||it.type==="Lecap"));
+  else if(univ==="dl") eligible=eligible.filter(it=>!it.isCER && /dl|dollar|DL/i.test(it.type));
+  if(isFinite(maxDur)&&maxDur>0) eligible=eligible.filter(it=>it.dur<=maxDur);
+  if(isFinite(minDur)&&minDur>0) eligible=eligible.filter(it=>it.dur>=minDur);
+
   if(!eligible.length){
-    el.innerHTML='<div class="note">No hay instrumentos con suficiente vida remanente para ese horizonte.</div>';
+    el.innerHTML='<div class="note">No hay instrumentos con esos filtros. Ajustá duration, universo u horizonte.</div>';
     return;
   }
 
+  // Use TIR REAL for CER bonds (already accounts for CER accrual baseline); TNA nominal for rest.
+  // Carry component = yield × px × H/365. For CER: if includeCER, carry uses REAL TIR and we add CER accrual; else carry uses nominal TIR (TNA) and we skip CER.
   const results=eligible.map(it=>{
-    // Carry = TNA/100 * px * horizon/365
-    const carry=it.tna!=null?it.tna/100*it.px*horizon/365:0;
+    const H=horizon;
+    const yieldUsed=it.isCER
+      ? (includeCER ? (it.tnaReal!=null?it.tnaReal:it.tna) : it.tna)
+      : it.tna;
+    const carry=yieldUsed!=null?yieldUsed/100*it.px*H/365:0;
 
-    // Rolldown: duration in H days = (days-H)/365/(1+tea)
+    // Rolldown: change in theoretical price as bond moves down the curve
     const curve=it.isCER?(_fittedCurves.comboNSS||_fittedCurves.comboLog):(_fittedCurves.fxNSS||_fittedCurves.fxLog);
-    let rolldownPx=0;
+    let rolldownPx=0, tnaNow=null, tnaH=null;
     if(curve&&it.dur>0){
       const durNow=it.dur;
-      const durH=Math.max(0,(it.days-horizon)/365/(1+(it.tea||0)/100));
-      const tnaNow=curve.predict(durNow);
-      const tnaH=durH>0.01?curve.predict(durH):null;
+      const durH=Math.max(0,(it.days-H)/365/(1+(it.tea||0)/100));
+      tnaNow=curve.predict(durNow);
+      tnaH=durH>0.01?curve.predict(durH):null;
       if(tnaNow!=null&&tnaH!=null&&isFinite(tnaNow)&&isFinite(tnaH)){
+        // Δy = tnaH - tnaNow (curve slides: shorter bond has lower yield usually → price up)
         rolldownPx=it.px*it.dur*(tnaNow-tnaH)/100;
       }
     }
 
-    // CER appreciation: for CER bonds, CER goes up by projected inflation
+    // CER accrual: principal indexes by projected inflation over horizon. Correct: price × (1+cerGrowth) − price ≈ price × cerGrowth. No duration amplification.
     let cerAppreciation=0;
-    if(it.isCER){
-      const monthsCovered=horizon/30;
+    if(it.isCER && includeCER){
+      const monthsCovered=H/30;
       const avgInfl=getProjectedInflationAverage(document.getElementById("baseCERDate")?.value);
       const avgInflUse=avgInfl!=null?avgInfl:0;
       const cerGrowth=Math.pow(1+avgInflUse/100,monthsCovered)-1;
-      cerAppreciation=it.px*cerGrowth*it.dur; // rough: CER growth feeds through duration
+      // If using TNA nominal, CER is already baked in, don't add. If using TIR real, add accrual.
+      const usingReal=(it.tnaReal!=null);
+      cerAppreciation=usingReal?it.px*cerGrowth:0;
     }
 
-    // Spread cost (round trip = full spread)
     const spreadCost=it.spreadHalf!=null?(it.spreadHalf*2/10000*it.px):0;
-    const fundingCost=fundingTNA>0?fundingTNA/100*it.px*horizon/365:0;
+    const fundingCost=fundingTNA>0?fundingTNA/100*it.px*H/365:0;
 
     const totalReturn=carry+rolldownPx+cerAppreciation-fundingCost-spreadCost;
     const totalReturnPct=it.px>0?(totalReturn/it.px*100):0;
+    const trAnnPct=H>0?(Math.pow(1+totalReturnPct/100,365/H)-1)*100:0;
 
-    return {...it,carry,rolldownPx,cerAppreciation,spreadCost,fundingCost,totalReturn,totalReturnPct,horizon};
+    return {...it,yieldUsed,carry,rolldownPx,cerAppreciation,spreadCost,fundingCost,totalReturn,totalReturnPct,trAnnPct,horizon:H,tnaNow,tnaH};
   });
 
   results.sort((a,b)=>b.totalReturnPct-a.totalReturnPct);
   const maxTR=Math.max(...results.map(r=>Math.abs(r.totalReturnPct)),1);
 
-  let html=`<div style="display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:8px;margin-bottom:10px">`;
-  html+=`<div class="beb"><div class="il" style="color:var(--td)">Horizonte usado</div><div style="font-size:20px;font-weight:700;color:var(--acl)">${horizon}d</div></div>`;
+  let html=`<div style="display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:8px;margin-bottom:10px">`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Horizonte</div><div style="font-size:20px;font-weight:700;color:var(--acl)">${horizon}d</div></div>`;
   html+=`<div class="beb"><div class="il" style="color:var(--td)">Fondeo</div><div style="font-size:20px;font-weight:700;color:var(--fx)">${fundingTNA.toFixed(2)}%</div><div style="font-size:8px;color:var(--tm)">TNA explícita</div></div>`;
-  html+=`<div class="beb"><div class="il" style="color:var(--td)">Instrumentos elegibles</div><div style="font-size:20px;font-weight:700;color:var(--t)">${results.length}</div><div style="font-size:8px;color:var(--tm)">viven ≥ horizonte</div></div>`;
-  html+=`<div class="beb"><div class="il" style="color:var(--td)">Top idea</div><div style="font-size:20px;font-weight:700;color:${results[0].color}">${results[0].ticker}</div><div style="font-size:8px;color:var(--tm)">${results[0].totalReturnPct.toFixed(2)}% neto</div></div>`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Universo</div><div style="font-size:20px;font-weight:700;color:var(--t)">${results.length}</div><div style="font-size:8px;color:var(--tm)">bonos viven ≥ ${horizon}d</div></div>`;
+  const durRange=`${Math.min(...results.map(r=>r.dur)).toFixed(2)} – ${Math.max(...results.map(r=>r.dur)).toFixed(2)}`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Rango Dur</div><div style="font-size:16px;font-weight:700;color:var(--am)">${durRange}</div><div style="font-size:8px;color:var(--tm)">en años</div></div>`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Top idea</div><div style="font-size:20px;font-weight:700;color:${results[0].color}">${results[0].ticker}</div><div style="font-size:8px;color:var(--tm)">+${results[0].totalReturnPct.toFixed(2)}% neto · ${results[0].trAnnPct.toFixed(1)}% ann</div></div>`;
   html+=`</div>`;
-  html+=`<div style="font-size:9px;color:var(--td);margin-bottom:6px">Ranking por total return neto de fondeo y costo de spread. Si elegís <b>Max común</b>, toma automáticamente el mayor plazo comparable entre todos los instrumentos vivos.</div>`;
+  html+=`<div style="font-size:9px;color:var(--td);margin-bottom:6px">Ranking por total return neto (% sobre precio). <b>Carry</b>: devengo a la TIR. Para CER con "CER accrual" activado, usa TIR real y suma el accrual del principal aparte; si lo desactivás, usa TNA nominal (que ya incluye CER esperado). <b>Rolldown</b>: revaluación por bajada en la curva NSS. <b>Spread cost</b> = bid-ask round-trip. <b>TR%</b> = total/price × 100 · <b>TR ann</b> = annualizado.</div>`;
   html+='<table class="lt"><thead><tr>';
-  html+='<th>Ticker</th><th>Tipo</th><th class="num">Px</th><th class="num">Carry</th>';
-  html+='<th class="num">Rolldown</th><th class="num">CER Appr</th><th class="num" style="color:var(--fx)">Fondeo</th><th class="num" style="color:var(--w)">Spread Cost</th>';
-  html+='<th class="num" style="color:var(--ac)">Total Return</th><th class="num" style="color:var(--ac)">TR %</th>';
+  html+='<th>Ticker</th><th>Tipo</th><th class="num">Dur</th><th class="num">Px</th><th class="num">Yield usado</th>';
+  html+='<th class="num" title="Devengo a yield × px × H/365">Carry</th>';
+  html+='<th class="num" title="px × dur × (tnaNow − tnaH)">Rolldown</th>';
+  html+='<th class="num" title="Indexación CER del principal">CER Accr</th>';
+  html+='<th class="num" style="color:var(--fx)" title="Funding TNA × px × H/365">Fondeo</th>';
+  html+='<th class="num" style="color:var(--w)" title="Bid-ask round trip">Spread</th>';
+  html+='<th class="num" style="color:var(--ac)" title="Carry+Rolldown+CER−Fondeo−Spread">TR $</th>';
+  html+='<th class="num" style="color:var(--ac)">TR %</th>';
+  html+='<th class="num" title="(1+TR%)^(365/H) − 1">TR ann %</th>';
   html+='<th style="min-width:120px">Bar</th>';
   html+='</tr></thead><tbody>';
 
@@ -6040,14 +6223,17 @@ function calcTotalReturn(){
     html+=`<tr style="border-left:3px solid ${r.color}">`;
     html+=`<td class="tk" style="color:${r.color}">${r.ticker}</td>`;
     html+=`<td>${r.type}</td>`;
+    html+=`<td class="num">${r.dur.toFixed(3)}</td>`;
     html+=`<td class="num">${r.px.toFixed(2)}</td>`;
+    html+=`<td class="num">${r.yieldUsed!=null?r.yieldUsed.toFixed(2)+"%":"—"}</td>`;
     html+=`<td class="num">${r.carry.toFixed(3)}</td>`;
     html+=`<td class="num">${r.rolldownPx.toFixed(3)}</td>`;
-    html+=`<td class="num">${r.cerAppreciation.toFixed(3)}</td>`;
+    html+=`<td class="num">${r.isCER?r.cerAppreciation.toFixed(3):"—"}</td>`;
     html+=`<td class="num" style="color:var(--fx)">${r.fundingCost.toFixed(3)}</td>`;
     html+=`<td class="num" style="color:var(--w)">${r.spreadCost.toFixed(3)}</td>`;
     html+=`<td class="num" style="color:${r.totalReturn>=0?'var(--ac)':'var(--w)'};font-weight:700">${r.totalReturn.toFixed(3)}</td>`;
     html+=`<td class="num" style="color:${r.totalReturnPct>=0?'var(--ac)':'var(--w)'};font-weight:700">${r.totalReturnPct>=0?"+":""}${r.totalReturnPct.toFixed(3)}%</td>`;
+    html+=`<td class="num" style="color:${r.trAnnPct>=0?'var(--acl)':'var(--w)'}">${r.trAnnPct>=0?"+":""}${r.trAnnPct.toFixed(2)}%</td>`;
     html+=`<td><div class="tr-bar" style="width:${barW}%;background:${barColor}"></div></td>`;
     html+='</tr>';
   });
@@ -6440,50 +6626,84 @@ function buildRVHeatmap(){
 }
 
 let _fwdInflTSChartObj=null;
+let _fwdInflHitMap=[]; // {x,y,type,data} for tooltip hit-testing
+
 function drawFwdInflTS(){
   const cv=document.getElementById("fwdInflTSChart");
   if(!cv)return;
   const ctx=cv.getContext("2d");
-  const W=cv.parentElement.clientWidth||700, H=280;
+  const W=cv.parentElement.clientWidth||700, H=300;
   cv.width=W;cv.height=H;
   ctx.clearRect(0,0,W,H);
+  _fwdInflHitMap=[];
 
   const results=(_implInflResults||[]).slice().sort((a,b)=>a.lastMonth.key.localeCompare(b.lastMonth.key));
   const monthlyCurve=buildMonthlyBEForwardCurve();
-  if(!results.length||!monthlyCurve.length)return;
+  if(!results.length||!monthlyCurve.length){
+    ctx.fillStyle="#64748b";ctx.font="11px 'IBM Plex Mono'";ctx.textAlign="center";
+    ctx.fillText("Calcula primero breakevens CER vs LECAP",W/2,H/2);
+    return;
+  }
+
+  const view=document.getElementById("fwdInflView")?.value||"tem";
+  const showProj=document.getElementById("fwdInflShowProj")?.checked!==false;
+  const showDiff=document.getElementById("fwdInflShowDiff")?.checked!==false;
 
   const months=monthlyCurve.map(r=>r.month).filter(Boolean);
   if(!months.length)return;
-
   const monthIdx=new Map(months.map((m,i)=>[m.key,i]));
+
+  // Build market series (per view)
+  const marketTEM=monthlyCurve.map(r=>r.tem);
+  const projTEM=months.map(m=>getInflInputValue(m.k??m.key));
+  let yMarket=[], yProj=[], yLabel="", viewHint="";
+  if(view==="tem"){
+    yMarket=marketTEM.slice();
+    yProj=projTEM.slice();
+    yLabel="TEM implícita %";
+    viewHint="forward mensual (lo que el mercado te paga cada mes)";
+  } else if(view==="cumTEA"){
+    // cumulative TEA from month 1 to n
+    let cumM=1, cumP=1;
+    yMarket=marketTEM.map((v,i)=>{cumM*=(1+v/100);return (Math.pow(cumM,12/(i+1))-1)*100;});
+    cumP=1;
+    yProj=projTEM.map((v,i)=>{if(v==null)return null; cumP*=(1+v/100); return (Math.pow(cumP,12/(i+1))-1)*100;});
+    yLabel="TEA acumulada %";
+    viewHint="TEA annualizada hasta cada mes (curva breakeven)";
+  } else { // yoy
+    // rolling 12-month: if we have <12 months, show cum to date annualized
+    let cumM=1, cumP=1;
+    yMarket=marketTEM.map((v,i)=>{cumM*=(1+v/100);const k=Math.min(i+1,12);return (Math.pow(cumM,12/k)-1)*100;});
+    cumP=1;
+    yProj=projTEM.map((v,i)=>{if(v==null)return null; cumP*=(1+v/100); const k=Math.min(i+1,12); return (Math.pow(cumP,12/k)-1)*100;});
+    yLabel="Inflación i.a. implícita %";
+    viewHint="anualizada con ventana hasta 12 meses";
+  }
+
   const points=results.map(r=>{
     const idx=monthIdx.get(r.lastMonth.key);
-    if(idx==null)return null;
-    return {idx,y:r.implPi,ticker:r.ticker,color:r.color,comp:r.comp};
-  }).filter(Boolean);
-  const fwdBars=monthlyCurve.map(r=>{
-    const idx=monthIdx.get(r.month.key);
-    if(idx==null)return null;
-    return {idx,y:r.tem,label:r.month.label};
-  }).filter(Boolean);
-  const projPoints=months.map((m,idx)=>{
-    const v=getInflInputValue(m.key);
-    return v==null?null:{idx,y:v,label:m.label};
+    if(idx==null||idx<0)return null;
+    return {idx,y:r.implPi,ticker:r.ticker,color:r.color,comp:r.comp,nMonths:r.nMonths};
   }).filter(Boolean);
 
-  const allY=points.map(p=>p.y).concat(fwdBars.map(p=>p.y)).concat(projPoints.map(p=>p.y));
+  const projCurve=yProj.map((v,idx)=>v==null?null:{idx,y:v,label:months[idx].label,temRaw:projTEM[idx]}).filter(Boolean);
+  const marketCurve=yMarket.map((v,idx)=>({idx,y:v,label:months[idx].label,temRaw:marketTEM[idx]}));
+
+  const allY=marketCurve.map(p=>p.y).concat(projCurve.map(p=>p.y));
+  if(view==="tem") points.forEach(p=>allY.push(p.y));
   if(!allY.length)return;
 
-  const pad={l:54,r:18,t:20,b:46};
+  const pad={l:58,r:20,t:24,b:52};
   const gw=W-pad.l-pad.r, gh=H-pad.t-pad.b;
   const rawMin=Math.min(...allY), rawMax=Math.max(...allY);
-  const yPad=Math.max((rawMax-rawMin)*0.18,0.25);
-  const yMin=rawMin-yPad, yMax=rawMax+yPad, ySpan=Math.max(0.25,yMax-yMin);
+  const yPad=Math.max((rawMax-rawMin)*0.2,0.3);
+  const yMin=rawMin-yPad, yMax=rawMax+yPad, ySpan=Math.max(0.3,yMax-yMin);
   const colW=gw/Math.max(1,months.length);
   const sx=i=>pad.l+i*colW+colW/2;
   const sy=y=>pad.t+gh-(y-yMin)/ySpan*gh;
   const baseY=rawMin>=0?(pad.t+gh):sy(0);
 
+  // Grid
   ctx.strokeStyle="#1a2233";ctx.lineWidth=0.5;
   for(let i=0;i<=5;i++){
     const y=yMin+ySpan*i/5;
@@ -6500,45 +6720,160 @@ function drawFwdInflTS(){
     ctx.fillText(m.label,x,H-pad.b+15);
   });
 
-  fwdBars.forEach(b=>{
-    const x=sx(b.idx);
-    const y=sy(b.y);
-    const bw=Math.max(10,colW*0.58);
-    const top=Math.min(y,baseY);
-    const bh=Math.max(2,Math.abs(baseY-y));
-    ctx.fillStyle="rgba(139,92,246,0.22)";
-    ctx.fillRect(x-bw/2,top,bw,bh);
-    ctx.strokeStyle="rgba(139,92,246,0.65)";
-    ctx.lineWidth=1;
-    ctx.strokeRect(x-bw/2,top,bw,bh);
-  });
-
-  if(projPoints.length){
-    ctx.beginPath();ctx.strokeStyle="#ffb84d";ctx.lineWidth=2;ctx.setLineDash([4,4]);
-    projPoints.forEach((p,i)=>{i===0?ctx.moveTo(sx(p.idx),sy(p.y)):ctx.lineTo(sx(p.idx),sy(p.y))});
-    ctx.stroke();ctx.setLineDash([]);
-    projPoints.forEach(p=>{
-      ctx.beginPath();ctx.arc(sx(p.idx),sy(p.y),3,0,Math.PI*2);ctx.fillStyle="#ffb84d";ctx.fill();
+  // Shaded diff area (proj - market)
+  if(showDiff&&showProj&&projCurve.length>=1){
+    // Build polygon for each continuous stretch where projCurve has data
+    // For each idx with projCurve, take market at same idx
+    const segs=[];
+    let seg=[];
+    projCurve.forEach(p=>{
+      const mk=marketCurve.find(mm=>mm.idx===p.idx);
+      if(mk){seg.push({idx:p.idx,proj:p.y,mk:mk.y})}
+      else {if(seg.length)segs.push(seg);seg=[]}
+    });
+    if(seg.length) segs.push(seg);
+    segs.forEach(s=>{
+      if(s.length<1) return;
+      // compute net sign (above or below) for fill color; color per point below
+      // Build path: proj top -> market bottom reversed
+      ctx.beginPath();
+      s.forEach((p,i)=>{const x=sx(p.idx), y=sy(p.proj); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});
+      for(let i=s.length-1;i>=0;i--){const x=sx(s[i].idx), y=sy(s[i].mk); ctx.lineTo(x,y)}
+      ctx.closePath();
+      const avgDiff=s.reduce((a,p)=>a+(p.proj-p.mk),0)/s.length;
+      ctx.fillStyle=avgDiff>=0?"rgba(16,185,129,0.14)":"rgba(240,112,64,0.14)";
+      ctx.fill();
     });
   }
 
-  points.forEach(p=>{
-    const x=sx(p.idx), y=sy(p.y);
-    ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);
-    ctx.fillStyle=p.color;ctx.fill();
-    ctx.strokeStyle="rgba(255,255,255,0.3)";ctx.lineWidth=1;ctx.stroke();
-    ctx.fillStyle=p.color;ctx.font="bold 8px 'IBM Plex Mono'";ctx.textAlign="center";
-    ctx.fillText(p.ticker,x,y-9);
-    ctx.fillStyle="#64748b";ctx.font="8px 'IBM Plex Mono'";
-    ctx.fillText(p.y.toFixed(2)+"%",x,y+14);
-  });
+  // Market bars (TEM view only) or line (cum views)
+  if(view==="tem"){
+    marketCurve.forEach(b=>{
+      const x=sx(b.idx);
+      const y=sy(b.y);
+      const bw=Math.max(10,colW*0.58);
+      const top=Math.min(y,baseY);
+      const bh=Math.max(2,Math.abs(baseY-y));
+      ctx.fillStyle="rgba(139,92,246,0.25)";
+      ctx.fillRect(x-bw/2,top,bw,bh);
+      ctx.strokeStyle="rgba(139,92,246,0.75)";
+      ctx.lineWidth=1;
+      ctx.strokeRect(x-bw/2,top,bw,bh);
+      // label on top of bar
+      ctx.fillStyle="#c4b5fd";ctx.font="bold 8px 'IBM Plex Mono'";ctx.textAlign="center";
+      ctx.fillText(b.y.toFixed(2),x,top-3);
+      _fwdInflHitMap.push({x,y:(top+baseY)/2,r:Math.max(bw/2,10),type:"market",data:b});
+    });
+  } else {
+    // curve line for cum views
+    ctx.beginPath();ctx.strokeStyle="#8b5cf6";ctx.lineWidth=2;
+    marketCurve.forEach((p,i)=>{i===0?ctx.moveTo(sx(p.idx),sy(p.y)):ctx.lineTo(sx(p.idx),sy(p.y))});
+    ctx.stroke();
+    marketCurve.forEach(p=>{
+      const x=sx(p.idx), y=sy(p.y);
+      ctx.beginPath();ctx.arc(x,y,3.5,0,Math.PI*2);ctx.fillStyle="#8b5cf6";ctx.fill();
+      _fwdInflHitMap.push({x,y,r:8,type:"market",data:p});
+    });
+  }
 
-  ctx.fillStyle="#64748b";ctx.font="10px 'IBM Plex Mono'";ctx.textAlign="center";
-  ctx.fillText("Mes de inflación aún desconocido",W/2,H-4);
-  ctx.save();ctx.translate(12,H/2);ctx.rotate(-Math.PI/2);ctx.fillText("TEM implicita %",0,0);ctx.restore();
+  // Projection line
+  if(showProj&&projCurve.length){
+    ctx.beginPath();ctx.strokeStyle="#ffb84d";ctx.lineWidth=2;ctx.setLineDash([5,4]);
+    projCurve.forEach((p,i)=>{i===0?ctx.moveTo(sx(p.idx),sy(p.y)):ctx.lineTo(sx(p.idx),sy(p.y))});
+    ctx.stroke();ctx.setLineDash([]);
+    projCurve.forEach(p=>{
+      const x=sx(p.idx), y=sy(p.y);
+      ctx.beginPath();ctx.arc(x,y,3.5,0,Math.PI*2);ctx.fillStyle="#ffb84d";ctx.fill();
+      _fwdInflHitMap.push({x,y,r:8,type:"proj",data:p});
+    });
+  }
 
+  // Bond-implied points (only in TEM view)
+  if(view==="tem"){
+    points.forEach(p=>{
+      const x=sx(p.idx), y=sy(p.y);
+      ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);
+      ctx.fillStyle=p.color;ctx.fill();
+      ctx.strokeStyle="rgba(255,255,255,0.3)";ctx.lineWidth=1;ctx.stroke();
+      ctx.fillStyle=p.color;ctx.font="bold 8px 'IBM Plex Mono'";ctx.textAlign="center";
+      ctx.fillText(p.ticker,x,y-9);
+      _fwdInflHitMap.push({x,y,r:10,type:"bond",data:p});
+    });
+  }
+
+  // Axis labels
+  ctx.fillStyle="#94a3b8";ctx.font="10px 'IBM Plex Mono'";ctx.textAlign="center";
+  ctx.fillText(`Mes de inflación · ${viewHint}`,W/2,H-4);
+  ctx.save();ctx.translate(12,H/2);ctx.rotate(-Math.PI/2);ctx.fillText(yLabel,0,0);ctx.restore();
+
+  // Legend
   const leg=document.getElementById("fwdInflTSLegend");
-  if(leg) leg.innerHTML='<span><span class="ldot" style="background:var(--ac)"></span>Breakeven promedio por bono</span> <span><span class="ldot" style="background:#8b5cf6"></span>Forward mensual implícito</span> <span><span class="ldot" style="background:var(--am)"></span>Tu proyección</span> <span style="color:var(--td)">· sólo meses todavía desconocidos</span>';
+  if(leg) leg.innerHTML=`<span><span class="ldot" style="background:#8b5cf6"></span>Mercado (forward)</span> <span><span class="ldot" style="background:#ffb84d"></span>Tu proyección</span> ${view==="tem"?'<span><span class="ldot" style="background:var(--ac)"></span>BE por bono</span> ':''}<span style="color:var(--td)">· hover para detalle</span>`;
+
+  // Wire tooltip
+  cv.onmousemove=e=>{
+    const rect=cv.getBoundingClientRect();
+    const mx=(e.clientX-rect.left)*(cv.width/rect.width);
+    const my=(e.clientY-rect.top)*(cv.height/rect.height);
+    let best=null, bestD=Infinity;
+    _fwdInflHitMap.forEach(h=>{
+      const d=Math.hypot(mx-h.x,my-h.y);
+      if(d<h.r*2&&d<bestD){best=h;bestD=d}
+    });
+    const tt=document.getElementById("fwdInflTooltip");
+    if(!tt) return;
+    if(best){
+      let html="";
+      if(best.type==="market"){
+        const d=best.data;
+        const mkt=marketCurve.find(mm=>mm.idx===d.idx);
+        const pj=projCurve.find(pp=>pp.idx===d.idx);
+        const diff=pj?(pj.y-mkt.y):null;
+        html=`<div style="color:#8b5cf6;font-weight:700">${d.label||months[d.idx].label} · Mercado</div>
+              <div>${yLabel.replace(" %","")}: <b>${mkt.y.toFixed(2)}%</b></div>
+              ${view==="tem"?`<div style="color:var(--td)">TEM forward: ${mkt.temRaw.toFixed(3)}%</div>`:''}
+              ${pj?`<div style="color:#ffb84d">Tu view: <b>${pj.y.toFixed(2)}%</b></div><div style="color:${diff>=0?'var(--ac)':'var(--w)'}">Diff: ${diff>=0?"+":""}${diff.toFixed(2)}bp · ${diff>=0?"conviene CER":"conviene fija"}</div>`:''}`;
+      } else if(best.type==="proj"){
+        const d=best.data;
+        const mkt=marketCurve.find(mm=>mm.idx===d.idx);
+        const diff=mkt?(d.y-mkt.y):null;
+        html=`<div style="color:#ffb84d;font-weight:700">${d.label} · Tu proyección</div>
+              <div>${yLabel.replace(" %","")}: <b>${d.y.toFixed(2)}%</b></div>
+              ${mkt?`<div style="color:#8b5cf6">Mercado: ${mkt.y.toFixed(2)}%</div><div style="color:${diff>=0?'var(--ac)':'var(--w)'}">Diff: ${diff>=0?"+":""}${diff.toFixed(2)}bp</div>`:''}`;
+      } else if(best.type==="bond"){
+        const d=best.data;
+        html=`<div style="color:${d.color};font-weight:700">${d.ticker}</div>
+              <div>BE promedio: <b>${d.y.toFixed(2)}%</b></div>
+              <div style="color:var(--td)">Comparable: ${d.comp||"—"}</div>
+              <div style="color:var(--td)">Plazo: ${d.nMonths} meses</div>`;
+      }
+      tt.innerHTML=html;
+      tt.style.display="block";
+      const rw=rect.width, rh=rect.height;
+      const cx=(best.x*(rw/cv.width));
+      const cy=(best.y*(rh/cv.height));
+      tt.style.left=(Math.min(cx+12,rw-tt.offsetWidth-6))+"px";
+      tt.style.top=(Math.max(cy-tt.offsetHeight-6,4))+"px";
+    } else {
+      tt.style.display="none";
+    }
+  };
+  cv.onmouseleave=()=>{const tt=document.getElementById("fwdInflTooltip"); if(tt) tt.style.display="none";};
+
+  // Summary cards below chart
+  const sumEl=document.getElementById("fwdInflSummary");
+  if(sumEl){
+    const avgMkt=marketCurve.reduce((s,p)=>s+p.y,0)/marketCurve.length;
+    const projOnly=projCurve.length;
+    const avgProj=projOnly?projCurve.reduce((s,p)=>s+p.y,0)/projOnly:null;
+    const diffAvg=(avgProj!=null)?(avgProj-avgMkt):null;
+    const diffSignal=diffAvg==null?"sin proyección":diffAvg>0.1?"tu view > mercado → <b style='color:var(--ac)'>convalida CER</b>":diffAvg<-0.1?"tu view < mercado → <b style='color:var(--w)'>convalida tasa fija</b>":"alineado";
+    sumEl.innerHTML=
+      `<div class="beb"><div class="il" style="color:var(--td)">Promedio mercado</div><div style="font-size:18px;font-weight:700;color:#8b5cf6">${avgMkt.toFixed(2)}%</div></div>`+
+      `<div class="beb"><div class="il" style="color:var(--td)">Promedio tu view</div><div style="font-size:18px;font-weight:700;color:#ffb84d">${avgProj!=null?avgProj.toFixed(2)+"%":"—"}</div></div>`+
+      `<div class="beb"><div class="il" style="color:var(--td)">Diff promedio</div><div style="font-size:18px;font-weight:700;color:${diffAvg==null?'var(--tm)':diffAvg>=0?'var(--ac)':'var(--w)'}">${diffAvg!=null?(diffAvg>=0?"+":"")+diffAvg.toFixed(2)+"pp":"—"}</div></div>`+
+      `<div class="beb" style="grid-column:span 2"><div class="il" style="color:var(--td)">Señal</div><div style="font-size:11px;line-height:1.5">${diffSignal}</div></div>`;
+  }
 }
 
 function buildMonthlyBEForwardCurve(){
@@ -6773,6 +7108,471 @@ function buildForwardInflationMatrix(){
 
   html+='</tbody></table></div>';
   html+=`<div class="note" style="margin-top:8px">Lectura: fijas el <b>mes shock</b> y cada fila muestra que inflacion deberia convalidar el resto de la curva para que el breakeven acumulado siga siendo el mismo. El numero grande es la <b>TEM requerida</b>; el chico, el <b>desvio vs la curva BE base</b>. Solo aparecen meses todavia no publicados por INDEC.</div>`;
+  el.innerHTML=html;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// NEW QUANT TOOLS: KRD, Rotation, Infl Swap Basis, Curve Cmp, Z-Score
+// ══════════════════════════════════════════════════════════════════
+
+// ── Key-Rate Duration ────────────────────────────────────────────
+// KRD_i = −(1/P) · ∂P/∂y_i where y_i is the key-rate at bucket i.
+// We approximate by shifting the NSS curve at bucket t_i by ±shock and repricing
+// the bond with its cashflows. Buckets: 0.25, 0.5, 1, 2, 3, 5 years.
+function calcKRD(){
+  const el=document.getElementById("krdResult");
+  if(!el)return;
+  const univ=document.getElementById("krdUniv")?.value||"cer";
+  const shock=parseFloat(document.getElementById("krdShock")?.value)||25;
+  const items=getAllCalculatedItems().filter(it=>univ==="cer"?it.isCER:!it.isCER);
+  if(!items.length){el.innerHTML='<div class="note">Sin instrumentos en ese universo.</div>';return}
+
+  const curve=univ==="cer"?(_fittedCurves.comboNSS||_fittedCurves.comboLog):(_fittedCurves.fxNSS||_fittedCurves.fxLog);
+  if(!curve){el.innerHTML='<div class="note">Curva NSS no está fitteada todavía.</div>';return}
+
+  const buckets=[0.25,0.5,1,2,3,5];
+  const bucketLbls=["3M","6M","1Y","2Y","3Y","5Y+"];
+  const sd=document.getElementById("settleDate").value;
+  const settle=new Date(sd+"T00:00:00");
+  const cerLiqVal=parseFloat(document.getElementById("cerLiq").value);
+  const bv=parseFloat(document.getElementById("baseCER").value);
+  const bd=document.getElementById("baseCERDate").value;
+  const inflMap={};IM.forEach(m=>{inflMap[m.k]=parseFloat(document.getElementById("i_"+m.k).value)||0});
+  const getCER=univ==="cer"?buildCER(bv,bd,inflMap):null;
+
+  // Gaussian tent function: weight to bucket i decays with distance from t_i
+  function bucketWeights(t){
+    // triangular kernel between adjacent buckets
+    const w=buckets.map(()=>0);
+    if(t<=buckets[0]){w[0]=1;return w}
+    if(t>=buckets[buckets.length-1]){w[w.length-1]=1;return w}
+    for(let i=0;i<buckets.length-1;i++){
+      if(t>=buckets[i]&&t<=buckets[i+1]){
+        const span=buckets[i+1]-buckets[i];
+        w[i]=(buckets[i+1]-t)/span;
+        w[i+1]=(t-buckets[i])/span;
+        return w;
+      }
+    }
+    return w;
+  }
+
+  // Price bond under a curve-shift function shiftFn(t) in bps
+  function priceWithShift(flows,shiftFn){
+    return flows.reduce((pv,f)=>{
+      const t=f.days/365;
+      const y=curve.predict(Math.max(0.02,t))/100 + shiftFn(t)/10000;
+      return pv + f.nominal/Math.pow(1+y,t);
+    },0);
+  }
+
+  const rows=items.map(it=>{
+    let flows=null;
+    if(it.isCER){
+      const bond=BONDS.find(b=>b.id===it.id);
+      if(bond&&getCER&&cerLiqVal) flows=getBondSchedule(bond,settle,getCER,cerLiqVal);
+    } else {
+      const fx=FIXED.find(f=>f.id===it.id);
+      if(fx&&fx._vf){
+        const days=DB(settle,new Date(fx.mat+"T00:00:00"));
+        flows=[{days,nominal:fx._vf}];
+      }
+    }
+    if(!flows||!flows.length) return null;
+
+    const krd=buckets.map((tb,i)=>{
+      // shock only this bucket with tent centered at tb
+      const pUp=priceWithShift(flows,t=>bucketWeights(t)[i]*(+shock));
+      const pDn=priceWithShift(flows,t=>bucketWeights(t)[i]*(-shock));
+      const p0=priceWithShift(flows,()=>0);
+      // KRD in $ per 1bp of shock in this bucket for 100 nominal
+      // price change per shock bps ≈ (pUp-pDn)/2, scale to 1bp
+      const dv01_i=(pDn-pUp)/(2*shock); // $/bp for 100 face
+      return {bucket:tb,lbl:bucketLbls[i],dv01:dv01_i};
+    });
+    const totalDV01=krd.reduce((s,k)=>s+k.dv01,0);
+    return {...it,krd,totalDV01};
+  }).filter(Boolean);
+
+  if(!rows.length){el.innerHTML='<div class="note">No pude rearmar flujos para este universo.</div>';return}
+
+  const maxAbs=Math.max(...rows.flatMap(r=>r.krd.map(k=>Math.abs(k.dv01))),0.001);
+
+  let html='<table class="lt"><thead><tr>';
+  html+='<th>Ticker</th><th class="num">Dur</th><th class="num">DV01 total</th>';
+  bucketLbls.forEach(lb=>{html+=`<th class="num">${lb}</th>`});
+  html+='<th style="min-width:180px">Distribución</th>';
+  html+='</tr></thead><tbody>';
+  rows.forEach(r=>{
+    html+=`<tr style="border-left:3px solid ${r.color}">`;
+    html+=`<td class="tk" style="color:${r.color}">${r.ticker}</td>`;
+    html+=`<td class="num">${r.dur.toFixed(3)}</td>`;
+    html+=`<td class="num">${r.totalDV01.toFixed(2)}</td>`;
+    r.krd.forEach(k=>{
+      const pct=r.totalDV01!==0?(k.dv01/r.totalDV01*100):0;
+      const color=Math.abs(pct)>30?"var(--acl)":Math.abs(pct)>10?"var(--t)":"var(--td)";
+      html+=`<td class="num" style="color:${color}" title="${pct.toFixed(0)}% del DV01">${k.dv01.toFixed(2)}</td>`;
+    });
+    // stacked bar
+    html+=`<td><div style="display:flex;height:10px;gap:1px">`;
+    r.krd.forEach((k,i)=>{
+      const w=Math.abs(k.dv01)/maxAbs*100;
+      const colors=["#06b6d4","#8b5cf6","#10b981","#ffb84d","#f43f5e","#94a3b8"];
+      html+=`<div style="width:${w.toFixed(1)}%;background:${colors[i]};min-width:${k.dv01!==0?'2px':'0'}" title="${bucketLbls[i]}: ${k.dv01.toFixed(2)}"></div>`;
+    });
+    html+='</div></td></tr>';
+  });
+  html+='</tbody></table>';
+  html+=`<div class="note" style="margin-top:6px">$ por 1 bp de shock <b>aislado</b> en ese bucket (lo demás de la curva queda quieto). Usalo para armar hedges de twist: si tu butterfly tiene exposición concentrada en 2Y pero el belly cubre 1Y, estás sin cubrir un flattener.</div>`;
+  el.innerHTML=html;
+}
+
+// ── Bond Rotation / Switch Planner ───────────────────────────────
+// Dado A (venta), para cada destino B calcular el precio BE que dejaría el TR del switch ≥ TR(hold A) + target_bps.
+// TR por 100VN a horizonte H: yield·px·H/365 + rolldown$ + cerAccrual − fundingCost.
+// Si B cotiza a px_mkt:
+//   TR_B(px_mkt) = yield_B·px_mkt·H/365 + rolldown_B + cerAccr_B (donde yield_B se recalcula desde px_mkt con aproximación DV01)
+// Aproximamos yield de B a un px dado como: y_B(p) ≈ y_B* + (p_B*-p)/(p_B*·dur_B/100) (con p_B*=px actual)
+// BE: buscar p_B tal que TR_B(p_B) − TR_A = target.
+function calcSwitch(){
+  const el=document.getElementById("swResult");
+  if(!el)return;
+  const items=getAllCalculatedItems();
+  if(items.length<2){el.innerHTML='<div class="note">Necesitás al menos 2 instrumentos.</div>';return}
+
+  // Populate sell select if empty
+  const sellSel=document.getElementById("swSell");
+  if(sellSel&&sellSel.options.length!==items.length){
+    const prev=sellSel.value;
+    sellSel.innerHTML=items.map(it=>`<option value="${it.id}">${it.ticker}</option>`).join("");
+    if(items.some(it=>it.id===prev)) sellSel.value=prev;
+  }
+  const sellId=sellSel?.value||items[0].id;
+  const A=items.find(it=>it.id===sellId);
+  if(!A){el.innerHTML='<div class="note">Seleccioná un bono a vender.</div>';return}
+
+  const nom=parseFloat(document.getElementById("swNom")?.value)||100000000;
+  const qtyA=nom/100;
+  const H=parseInt(document.getElementById("swHorizon")?.value,10)||60;
+  const targetBps=parseFloat(document.getElementById("swTarget")?.value)||0;
+  const fundingTNA=ensureTRFundingInput();
+
+  function trFor(it, px){
+    const H_=H;
+    const dyr=(it.tna!=null?it.tna:0)/100;
+    // Approximate yield at alt price using DV01 / duration
+    const pxStar=it.px, yStar=it.tna!=null?it.tna:0;
+    // Δy bps ≈ (p* − p) / (p* · dur/100) converted to % points
+    const dyApprox=(pxStar-px)/(Math.max(0.01,pxStar*it.dur/100))*100; // bps
+    const yAtPx=yStar + dyApprox/100; // in %
+    const carry=yAtPx/100*px*H_/365;
+    // rolldown at alt price: same bps swing on curve; use approximate it.rolldown which is 30-day bps; scale
+    const rolldown30=it.rolldown||0; // bps move approximation
+    const rollPx=px*it.dur*(rolldown30/10000)*(H_/30);
+    let cerAccr=0;
+    if(it.isCER){
+      const avgInfl=getProjectedInflationAverage(document.getElementById("baseCERDate")?.value)||0;
+      const cerGrowth=Math.pow(1+avgInfl/100,H_/30)-1;
+      cerAccr=px*cerGrowth;
+    }
+    const funding=fundingTNA/100*px*H_/365;
+    const spread=it.spreadHalf!=null?(it.spreadHalf*2/10000*px):0;
+    return carry+rollPx+cerAccr-funding-spread;
+  }
+
+  const trA=trFor(A,A.px);
+  const trAPct=trA/A.px*100;
+
+  const dests=items.filter(it=>it.id!==A.id);
+  const rows=dests.map(B=>{
+    const trBCur=trFor(B,B.px);
+    const trBCurPct=trBCur/B.px*100;
+    const diffPct=trBCurPct-trAPct; // positive = B better at market
+    // BE price: find px such that trFor(B,px)/px*100 = trAPct + targetBps/100
+    const tgtPct=trAPct + targetBps/100;
+    // Since tr is nonlinear in px, use Newton-like bisection between 0.3·px and 3·px
+    let lo=B.px*0.3, hi=B.px*3;
+    function f(px){return trFor(B,px)/px*100 - tgtPct}
+    let fLo=f(lo), fHi=f(hi);
+    let pBE=null;
+    if(fLo*fHi<0){
+      for(let k=0;k<40;k++){
+        const mid=(lo+hi)/2, fm=f(mid);
+        if(!isFinite(fm)) break;
+        if(fLo*fm<=0){hi=mid;fHi=fm}else{lo=mid;fLo=fm}
+      }
+      pBE=(lo+hi)/2;
+    }
+    const askRef=B.px; // best guess: actual market
+    const edgePx=pBE!=null?(pBE-askRef):null;
+    const edgeBps=pBE!=null&&B.dur>0?(edgePx/askRef*100)/(B.dur)*100*(-1):null; // pseudo-bps move needed
+    const rec=pBE!=null?(askRef<=pBE?"COMPRAR":"PASAR"):"—";
+    const recColor=rec==="COMPRAR"?"var(--ac)":rec==="PASAR"?"var(--w)":"var(--td)";
+
+    // DV01 change (selling A, buying same notional VN of B)
+    const qtyB=nom/100;
+    const dv01Delta=B.dv01*qtyB - A.dv01*qtyA;
+    const carryDelta=(B.carry30||0)*qtyB - (A.carry30||0)*qtyA;
+
+    return {B,trBCurPct,diffPct,pBE,edgePx,rec,recColor,dv01Delta,carryDelta};
+  }).sort((a,b)=>b.diffPct-a.diffPct);
+
+  let html=`<div style="display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:8px;margin-bottom:10px">`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Vendo</div><div style="font-size:18px;font-weight:700;color:${A.color}">${A.ticker}</div><div style="font-size:8px;color:var(--tm)">${nom.toLocaleString("es-AR")} VN</div></div>`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">TR ${H}d actual A</div><div style="font-size:18px;font-weight:700;color:var(--acl)">${trAPct.toFixed(3)}%</div></div>`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Target mejora</div><div style="font-size:18px;font-weight:700;color:var(--am)">${targetBps.toFixed(0)} bps</div></div>`;
+  html+=`<div class="beb"><div class="il" style="color:var(--td)">Destinos</div><div style="font-size:18px;font-weight:700;color:var(--t)">${rows.length}</div></div>`;
+  html+=`</div>`;
+  html+='<table class="lt"><thead><tr>';
+  html+='<th>Destino B</th><th>Tipo</th><th class="num">Dur</th><th class="num">Px mkt</th>';
+  html+='<th class="num">TR ${H}d B</th><th class="num">Diff vs A</th>'.replace("${H}",H);
+  html+='<th class="num" title="Precio máximo que podés pagar por B para lograr target">Px BE</th>';
+  html+='<th class="num" title="Edge = Px BE − Px mercado">Edge</th>';
+  html+='<th class="num" title="Cambio neto de DV01 del book">ΔDV01</th>';
+  html+='<th class="num" title="Cambio neto de carry 30d">ΔCarry30</th>';
+  html+='<th>Signal</th>';
+  html+='</tr></thead><tbody>';
+  rows.forEach(r=>{
+    html+=`<tr style="border-left:3px solid ${r.B.color}">`;
+    html+=`<td class="tk" style="color:${r.B.color}">${r.B.ticker}</td>`;
+    html+=`<td>${r.B.type}</td>`;
+    html+=`<td class="num">${r.B.dur.toFixed(3)}</td>`;
+    html+=`<td class="num">${r.B.px.toFixed(2)}</td>`;
+    html+=`<td class="num">${r.trBCurPct.toFixed(3)}%</td>`;
+    html+=`<td class="num" style="color:${r.diffPct>=0?'var(--ac)':'var(--w)'};font-weight:700">${r.diffPct>=0?"+":""}${(r.diffPct*100).toFixed(0)}bp</td>`;
+    html+=`<td class="num">${r.pBE!=null?r.pBE.toFixed(2):"—"}</td>`;
+    html+=`<td class="num" style="color:${r.edgePx!=null&&r.edgePx>=0?'var(--ac)':'var(--w)'}">${r.edgePx!=null?(r.edgePx>=0?"+":"")+r.edgePx.toFixed(2):"—"}</td>`;
+    html+=`<td class="num" style="color:${r.dv01Delta>=0?'var(--am)':'var(--bl)'}">${r.dv01Delta>=0?"+":""}${r.dv01Delta.toFixed(0)}</td>`;
+    html+=`<td class="num" style="color:${r.carryDelta>=0?'var(--ac)':'var(--w)'}">${r.carryDelta>=0?"+":""}$${(r.carryDelta/1000).toFixed(1)}k</td>`;
+    html+=`<td style="color:${r.recColor};font-weight:700">${r.rec}</td>`;
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  html+=`<div class="note" style="margin-top:6px">El <b>Px BE</b> es el precio máximo que podés pagar por B para quedar al menos igual de bien que si te quedabas con A (más el target extra). Si el mercado ofrece B por debajo del BE → el switch te <b>mejora</b>. El yield de B a otros precios se aproxima con DV01 lineal, válido para movimientos chicos; para switches fuertemente off-market revalidalo con los flujos exactos.</div>`;
+  el.innerHTML=html;
+}
+
+// ── Inflation-Linked Swap Basis ─────────────────────────────────
+// Para cada bono CER, basis = TEM breakeven implicita − TEM proyectada por el trader.
+// Positive basis → swap implícito paga arriba de tu view → convalida CER.
+function calcInflSwapBasis(){
+  const el=document.getElementById("swapBasisResult");
+  if(!el)return;
+  const items=getAllCalculatedItems().filter(it=>it.isCER);
+  if(!items.length){el.innerHTML='<div class="note">Sin CER calculados.</div>';return}
+
+  // Use _implInflResults for per-bond implPi (monthly breakeven geometric mean)
+  const byTicker=new Map((_implInflResults||[]).map(r=>[r.ticker,r]));
+  const avgProj=getProjectedInflationAverage(document.getElementById("baseCERDate")?.value)||0;
+
+  const rows=items.map(it=>{
+    const be=byTicker.get(it.ticker);
+    const implPi=be?be.implPi:null;
+    const comp=be?be.comp:"—";
+    const nM=be?be.nMonths:null;
+    const basisBps=implPi!=null?(implPi-avgProj)*100:null;
+    // Synthetic: "LECAP comparable + fixed inflation swap paying implPi, receiving floating CER".
+    const syntheticTEM=implPi;
+    return {...it,implPi,comp,nM,basisBps,syntheticTEM};
+  }).filter(r=>r.implPi!=null);
+
+  if(!rows.length){el.innerHTML='<div class="note">Necesitás que haya breakevens CER vs LECAP calculados.</div>';return}
+  rows.sort((a,b)=>(b.basisBps||0)-(a.basisBps||0));
+
+  let html='<table class="lt"><thead><tr>';
+  html+='<th>CER</th><th>Comparable fija</th><th class="num">Plazo (m)</th>';
+  html+='<th class="num">BE TEM mercado</th><th class="num">TEM tu view</th>';
+  html+='<th class="num" style="color:var(--am)">Basis (bps)</th>';
+  html+='<th class="num" title="TEM fija que recibirías sinteticando la pata CER con LECAP del mismo plazo">Swap fijo implícito</th>';
+  html+='<th>Signal</th>';
+  html+='</tr></thead><tbody>';
+  rows.forEach(r=>{
+    const sig=r.basisBps>15?"COMPRAR CER":r.basisBps<-15?"COMPRAR FIJA":"NEUTRAL";
+    const sigColor=sig==="COMPRAR CER"?"var(--ac)":sig==="COMPRAR FIJA"?"var(--w)":"var(--td)";
+    html+=`<tr style="border-left:3px solid ${r.color}">`;
+    html+=`<td class="tk" style="color:${r.color}">${r.ticker}</td>`;
+    html+=`<td>${r.comp}</td>`;
+    html+=`<td class="num">${r.nM||"—"}</td>`;
+    html+=`<td class="num">${r.implPi.toFixed(2)}%</td>`;
+    html+=`<td class="num">${avgProj.toFixed(2)}%</td>`;
+    html+=`<td class="num" style="color:${r.basisBps>=0?'var(--ac)':'var(--w)'};font-weight:700">${r.basisBps>=0?"+":""}${r.basisBps.toFixed(1)}</td>`;
+    html+=`<td class="num">${r.syntheticTEM.toFixed(2)}%</td>`;
+    html+=`<td style="color:${sigColor};font-weight:700">${sig}</td>`;
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  html+=`<div class="note" style="margin-top:6px">Basis = (TEM implícita BE − TEM tu proyección) × 100. La "TEM tu view" es el promedio simple de tu grilla de inflación. Si querés comparar contra tu path exacto mes a mes, usá la matriz de Forward Inflation con tu proyección marcada.</div>`;
+  el.innerHTML=html;
+}
+
+// ── Par / Zero / Forward Curve Comparison ────────────────────────
+function drawCurveComparison(){
+  const cv=document.getElementById("curveCmpChart");
+  if(!cv) return;
+  const ctx=cv.getContext("2d");
+  const W=cv.parentElement.clientWidth||700, H=280;
+  cv.width=W;cv.height=H;
+  ctx.clearRect(0,0,W,H);
+
+  const univ=document.getElementById("curveCmpUniv")?.value||"fx";
+  const fwdTenorDays=parseFloat(document.getElementById("curveFwdTenor")?.value)||90;
+  const showPar=document.getElementById("curveShowPar")?.checked!==false;
+  const showZero=document.getElementById("curveShowZero")?.checked!==false;
+  const showFwd=document.getElementById("curveShowFwd")?.checked!==false;
+
+  const curve=univ==="cer"?(_fittedCurves.comboNSS||_fittedCurves.comboLog):(_fittedCurves.fxNSS||_fittedCurves.fxLog);
+  if(!curve){
+    ctx.fillStyle="#64748b";ctx.font="11px 'IBM Plex Mono'";ctx.textAlign="center";
+    ctx.fillText("Curva NSS no fitteada. Calcula primero un set de bonos.",W/2,H/2);
+    return;
+  }
+
+  // Build sampled grid in years up to 5Y
+  const ts=[];
+  for(let t=0.1;t<=5.0;t+=0.05) ts.push(t);
+  // Par curve = curve.predict (treated as TNA)
+  const par=ts.map(t=>curve.predict(t));
+  // Zero: assume par ≈ zero for zero-coupon-ish bonds (LECAP bullets); for cer/coupon bonds it's an approximation
+  // We'll compute zero from par assuming bullet-zero equivalence (same thing in LECAP universe)
+  const zero=par.slice();
+  // Forward: f(t, t+Δ) = ((1+y_{t+Δ})^{t+Δ} / (1+y_t)^t)^{1/Δ} − 1
+  const dT=fwdTenorDays/365;
+  const fwd=ts.map((t,i)=>{
+    const t2=t+dT;
+    const y1=curve.predict(t)/100, y2=curve.predict(t2)/100;
+    if(y1<=-1||y2<=-1) return null;
+    const r=Math.pow(Math.pow(1+y2,t2)/Math.pow(1+y1,t),1/dT)-1;
+    return r*100;
+  });
+
+  const series=[];
+  if(showPar) series.push({name:"Par (yield to mat)",color:"#06b6d4",ys:par});
+  if(showZero) series.push({name:"Zero (spot)",color:"#10b981",ys:zero});
+  if(showFwd) series.push({name:`Forward ${fwdTenorDays}d`,color:"#ffb84d",ys:fwd});
+  if(!series.length) return;
+
+  const allY=series.flatMap(s=>s.ys).filter(v=>v!=null&&isFinite(v));
+  if(!allY.length)return;
+  const pad={l:54,r:18,t:16,b:40};
+  const gw=W-pad.l-pad.r, gh=H-pad.t-pad.b;
+  const yMin=Math.min(...allY)-1, yMax=Math.max(...allY)+1, ySpan=Math.max(0.5,yMax-yMin);
+  const sx=t=>pad.l+t/5*gw;
+  const sy=y=>pad.t+gh-(y-yMin)/ySpan*gh;
+
+  // grid
+  ctx.strokeStyle="#1a2233";ctx.lineWidth=0.5;
+  for(let i=0;i<=5;i++){
+    const y=yMin+ySpan*i/5, py=sy(y);
+    ctx.beginPath();ctx.moveTo(pad.l,py);ctx.lineTo(W-pad.r,py);ctx.stroke();
+    ctx.fillStyle="#64748b";ctx.font="9px 'IBM Plex Mono'";ctx.textAlign="right";
+    ctx.fillText(y.toFixed(1)+"%",pad.l-4,py+3);
+  }
+  [0.25,0.5,1,2,3,4,5].forEach(t=>{
+    const x=sx(t);
+    ctx.strokeStyle="#1a223344";ctx.lineWidth=0.5;
+    ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,pad.t+gh);ctx.stroke();
+    ctx.fillStyle="#64748b";ctx.font="9px 'IBM Plex Mono'";ctx.textAlign="center";
+    ctx.fillText(t<1?(t*12).toFixed(0)+"M":t+"Y",x,H-pad.b+15);
+  });
+
+  series.forEach(s=>{
+    ctx.beginPath();ctx.strokeStyle=s.color;ctx.lineWidth=2;
+    let started=false;
+    ts.forEach((t,i)=>{
+      const y=s.ys[i];
+      if(y==null||!isFinite(y)){started=false;return}
+      const x=sx(t), py=sy(y);
+      if(!started){ctx.moveTo(x,py);started=true}else{ctx.lineTo(x,py)}
+    });
+    ctx.stroke();
+  });
+
+  ctx.fillStyle="#94a3b8";ctx.font="10px 'IBM Plex Mono'";ctx.textAlign="center";
+  ctx.fillText("Tenor (años)",W/2,H-4);
+  ctx.save();ctx.translate(12,H/2);ctx.rotate(-Math.PI/2);ctx.fillText("TNA %",0,0);ctx.restore();
+
+  const leg=document.getElementById("curveCmpLegend");
+  if(leg) leg.innerHTML=series.map(s=>`<span><span class="ldot" style="background:${s.color}"></span>${s.name}</span>`).join(" ");
+}
+
+// ── Residual Z-Score (histórico) ─────────────────────────────────
+const RZ_KEY="cer_residual_history_v1";
+function readResidualHistory(){
+  try{return JSON.parse(localStorage.getItem(RZ_KEY)||"{}")||{}}catch(_e){return {}}
+}
+function writeResidualHistory(h){
+  try{localStorage.setItem(RZ_KEY,JSON.stringify(h))}catch(_e){}
+}
+function snapshotResiduals(){
+  const items=getAllCalculatedItems();
+  if(!items.length) return;
+  const h=readResidualHistory();
+  const today=new Date().toISOString().slice(0,10);
+  items.forEach(it=>{
+    if(it.residual==null||!isFinite(it.residual))return;
+    if(!h[it.ticker]) h[it.ticker]=[];
+    // replace today's snapshot if exists
+    const last=h[it.ticker][h[it.ticker].length-1];
+    if(last&&last.d===today){last.r=it.residual}
+    else h[it.ticker].push({d:today,r:it.residual});
+    // cap to 252 entries
+    if(h[it.ticker].length>252) h[it.ticker]=h[it.ticker].slice(-252);
+  });
+  writeResidualHistory(h);
+}
+function snapshotResidualsManual(){
+  snapshotResiduals();
+  calcResidualZ();
+  const info=document.getElementById("rzInfo");
+  if(info) info.textContent=`Snapshot guardado: ${new Date().toLocaleTimeString("es-AR")}`;
+}
+function calcResidualZ(){
+  const el=document.getElementById("rzResult");
+  if(!el)return;
+  snapshotResiduals(); // auto-snapshot each render
+  const window=parseInt(document.getElementById("rzWindow")?.value,10)||60;
+  const univ=document.getElementById("rzUniv")?.value||"all";
+  const items=getAllCalculatedItems().filter(it=>univ==="all"?true:univ==="cer"?it.isCER:!it.isCER);
+  if(!items.length){el.innerHTML='<div class="note">Sin instrumentos.</div>';return}
+  const h=readResidualHistory();
+  const rows=items.map(it=>{
+    const hist=(h[it.ticker]||[]).slice(-window);
+    if(hist.length<5) return {...it,nHist:hist.length,mean:null,sd:null,z:null,minR:null,maxR:null};
+    const rs=hist.map(x=>x.r);
+    const mean=rs.reduce((s,v)=>s+v,0)/rs.length;
+    const sd=Math.sqrt(rs.reduce((s,v)=>s+(v-mean)*(v-mean),0)/rs.length);
+    const z=sd>0?((it.residual-mean)/sd):null;
+    return {...it,nHist:hist.length,mean,sd,z,minR:Math.min(...rs),maxR:Math.max(...rs)};
+  });
+  rows.sort((a,b)=>(b.z||-99)-(a.z||-99));
+  const info=document.getElementById("rzInfo");
+  if(info){
+    const maxHist=Math.max(...rows.map(r=>r.nHist));
+    info.textContent=`${rows.filter(r=>r.nHist>=5).length}/${rows.length} con historia ≥ 5 · max ${maxHist} snapshots`;
+  }
+  let html='<table class="lt"><thead><tr>';
+  html+='<th>Ticker</th><th>Tipo</th><th class="num">Dur</th>';
+  html+='<th class="num">Residual hoy</th><th class="num">Media</th><th class="num">σ</th>';
+  html+='<th class="num" style="color:var(--am)">Z-score</th><th class="num">Rango</th><th class="num">N</th><th>Signal</th>';
+  html+='</tr></thead><tbody>';
+  rows.forEach(r=>{
+    const sig=r.z==null?"—":r.z>2?"MUY BARATO":r.z>1?"Barato":r.z<-2?"MUY CARO":r.z<-1?"Caro":"Fair";
+    const sigColor=r.z==null?"var(--td)":r.z>2?"var(--ac)":r.z>1?"var(--acl)":r.z<-2?"var(--w)":r.z<-1?"#f97316":"var(--td)";
+    html+=`<tr style="border-left:3px solid ${r.color}">`;
+    html+=`<td class="tk" style="color:${r.color}">${r.ticker}</td>`;
+    html+=`<td>${r.type}</td>`;
+    html+=`<td class="num">${r.dur.toFixed(3)}</td>`;
+    html+=`<td class="num">${r.residual!=null?(r.residual>=0?"+":"")+r.residual.toFixed(1):"—"}</td>`;
+    html+=`<td class="num">${r.mean!=null?(r.mean>=0?"+":"")+r.mean.toFixed(1):"—"}</td>`;
+    html+=`<td class="num">${r.sd!=null?r.sd.toFixed(1):"—"}</td>`;
+    html+=`<td class="num" style="color:${sigColor};font-weight:700">${r.z!=null?(r.z>=0?"+":"")+r.z.toFixed(2):"—"}</td>`;
+    html+=`<td class="num">${r.minR!=null?r.minR.toFixed(0)+" / "+r.maxR.toFixed(0):"—"}</td>`;
+    html+=`<td class="num">${r.nHist}</td>`;
+    html+=`<td style="color:${sigColor};font-weight:700">${sig}</td>`;
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  html+=`<div class="note" style="margin-top:6px">Residual = TNA mercado − TNA curva NSS (bps). <b>Z = (residual hoy − media) / σ</b>. El snapshot se toma automáticamente cada vez que entrás a la pestaña y cuando apretás "Snapshotear ahora". La media es simple (no EWMA). Para bonos sin historia suficiente la señal aparece vacía.</div>`;
   el.innerHTML=html;
 }
 
