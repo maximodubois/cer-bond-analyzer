@@ -20,6 +20,7 @@ import hashlib
 import secrets
 import urllib.request
 import urllib.error
+import urllib.parse
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from http.cookies import SimpleCookie
 
@@ -40,6 +41,15 @@ KEY_PATHS = [
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "pythonon-450915-c108a4e2426e.json"),
     os.getenv("GOOGLE_SHEETS_KEY_PATH", ""),
 ]
+
+# Primary API (Matba/Rofex) — depth-5 market data
+PRIMARY_USERNAME = os.getenv("PRIMARY_USERNAME", "")
+PRIMARY_PASSWORD = os.getenv("PRIMARY_PASSWORD", "")
+PRIMARY_BASE_URL = os.getenv("PRIMARY_BASE_URL", "https://api.remarkets.primary.com.ar").rstrip("/")
+PRIMARY_MARKET_ID = os.getenv("PRIMARY_MARKET_ID", "ROFX")
+# Symbol prefix used by MERVAL bonds via Primary. Default works for the
+# remarkets/cocos/eco/etc. brokers that route MERVAL through ROFX.
+PRIMARY_MERV_PREFIX = os.getenv("PRIMARY_MERV_PREFIX", "MERV - XMEV")
 
 # ══════════════════════════════════════════════════════════════════
 # AUTH — Simple PIN-based sessions
@@ -215,6 +225,137 @@ def fetch_prices():
 
 
 # ══════════════════════════════════════════════════════════════════
+# PRIMARY API — Token auth + depth-5 market data
+# ══════════════════════════════════════════════════════════════════
+_primary_token = {"value": None, "expiry": 0}
+_depth_cache = {}            # symbol -> {"ts": float, "data": dict}
+_DEPTH_CACHE_TTL = 1.5       # seconds — book moves fast, cache short
+
+
+def primary_enabled():
+    return bool(PRIMARY_USERNAME and PRIMARY_PASSWORD)
+
+
+def get_primary_token(force_refresh=False):
+    """Return a valid X-Auth-Token, refreshing if expired (24h TTL per docs)."""
+    global _primary_token
+    now = time.time()
+    if (not force_refresh) and _primary_token["value"] and now < _primary_token["expiry"]:
+        return _primary_token["value"]
+    if not primary_enabled():
+        raise RuntimeError("PRIMARY_USERNAME / PRIMARY_PASSWORD env vars not set")
+
+    url = f"{PRIMARY_BASE_URL}/auth/getToken"
+    req = urllib.request.Request(
+        url,
+        method="POST",
+        headers={
+            "X-Username": PRIMARY_USERNAME,
+            "X-Password": PRIMARY_PASSWORD,
+            "User-Agent": "CERBondAnalyzer/2.0",
+        },
+        data=b"",
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        token = resp.headers.get("X-Auth-Token")
+    if not token:
+        raise RuntimeError("Primary API: no X-Auth-Token in response headers")
+    # Token vive 24h, renovamos a las 23h por margen.
+    _primary_token = {"value": token, "expiry": now + 23 * 3600}
+    return token
+
+
+def _primary_get(path, params):
+    """GET against Primary REST. Auto-refreshes token on 401."""
+    qs = urllib.parse.urlencode(params, safe=",/-: ")
+    url = f"{PRIMARY_BASE_URL}{path}?{qs}"
+    for attempt in (0, 1):
+        token = get_primary_token(force_refresh=(attempt == 1))
+        req = urllib.request.Request(url, headers={
+            "X-Auth-Token": token,
+            "User-Agent": "CERBondAnalyzer/2.0",
+            "Accept": "application/json",
+        })
+        try:
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403) and attempt == 0:
+                continue
+            body = e.read().decode("utf-8", errors="replace") if hasattr(e, "read") else ""
+            raise RuntimeError(f"Primary API HTTP {e.code}: {body[:300]}")
+    raise RuntimeError("Primary API: auth failed after retry")
+
+
+def fetch_primary_depth(symbol, depth=5, entries=("BI", "OF", "LA", "CL", "OP")):
+    """Return {bids:[{price,size}...], offers:[...], last, close, open, raw}."""
+    cache_key = f"{symbol}|{depth}|{','.join(entries)}"
+    now = time.time()
+    cached = _depth_cache.get(cache_key)
+    if cached and now - cached["ts"] < _DEPTH_CACHE_TTL:
+        return cached["data"]
+
+    data = _primary_get("/rest/marketdata/get", {
+        "marketId": PRIMARY_MARKET_ID,
+        "symbol": symbol,
+        "entries": ",".join(entries),
+        "depth": int(depth),
+    })
+    md = data.get("marketData") or {}
+
+    def _to_levels(node):
+        # API devuelve list para depth>1, dict {price,size} para depth=1
+        if node is None:
+            return []
+        if isinstance(node, list):
+            return [{"price": x.get("price"), "size": x.get("size")}
+                    for x in node if isinstance(x, dict) and x.get("price") is not None]
+        if isinstance(node, dict) and node.get("price") is not None:
+            return [{"price": node.get("price"), "size": node.get("size")}]
+        return []
+
+    def _scalar(node):
+        if isinstance(node, dict):
+            return node.get("price")
+        if isinstance(node, (int, float)):
+            return node
+        return None
+
+    out = {
+        "status": data.get("status"),
+        "symbol": symbol,
+        "marketId": PRIMARY_MARKET_ID,
+        "depth": data.get("depth"),
+        "bids": _to_levels(md.get("BI")),
+        "offers": _to_levels(md.get("OF")),
+        "last": _scalar(md.get("LA")),
+        "close": _scalar(md.get("CL")),
+        "open": _scalar(md.get("OP")),
+        "ts": int(now * 1000),
+    }
+    _depth_cache[cache_key] = {"ts": now, "data": out}
+    return out
+
+
+def build_primary_symbol(ticker, settle):
+    """Construye 'MERV - XMEV - {ticker} - {settle}'. Acepta ya-formateado."""
+    if not ticker:
+        return ""
+    t = ticker.strip()
+    # Si el caller ya mandó símbolo completo, respetar.
+    if " - " in t:
+        return t
+    s = (settle or "24hs").strip()
+    # Normalizar shortcuts
+    s_upper = s.upper()
+    if s_upper in ("CI", "T0", "0", "HOY"):
+        s = "CI"
+    elif s_upper in ("24HS", "T1", "1", "T+1", "24"):
+        s = "24hs"
+    return f"{PRIMARY_MERV_PREFIX} - {t} - {s}"
+
+
+# ══════════════════════════════════════════════════════════════════
 # HTTP SERVER
 # ══════════════════════════════════════════════════════════════════
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -290,10 +431,17 @@ class Handler(SimpleHTTPRequestHandler):
 
         if self.path == "/api/prices":
             self._send_json(fetch_prices())
+        elif self.path.startswith("/api/depth"):
+            self._proxy_depth()
         elif self.path == "/api/pib":
             self._proxy_pib()
         elif self.path == "/api/health":
-            self._send_json({"status": "ok", "sheets": _sheet_service is not None})
+            self._send_json({
+                "status": "ok",
+                "sheets": _sheet_service is not None,
+                "primary": primary_enabled(),
+                "primaryBase": PRIMARY_BASE_URL if primary_enabled() else None,
+            })
         elif self.path == "/login":
             self._send_html(LOGIN_HTML.replace("__ERR__", ""))
         elif self.path in ("/", "/index.html"):
@@ -330,6 +478,40 @@ class Handler(SimpleHTTPRequestHandler):
         except Exception as e:
             self._send_json({"error": str(e)}, 500)
 
+    def _proxy_depth(self):
+        """GET /api/depth?ticker=X15Y6&settle=24hs|CI&depth=5&symbol=...
+
+        Si `symbol` viene completo (e.g. 'MERV - XMEV - X15Y6 - 24hs') lo usa tal cual.
+        Si no, construye el símbolo desde ticker + settle.
+        """
+        if not primary_enabled():
+            self._send_json({
+                "error": "Primary API no configurada",
+                "detail": "Definí PRIMARY_USERNAME y PRIMARY_PASSWORD como env vars (ver Primary-API.pdf, página 9).",
+            }, 503)
+            return
+        try:
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            ticker = (qs.get("ticker") or [""])[0].strip()
+            settle = (qs.get("settle") or ["24hs"])[0].strip()
+            symbol_override = (qs.get("symbol") or [""])[0].strip()
+            try:
+                depth = max(1, min(5, int((qs.get("depth") or ["5"])[0])))
+            except ValueError:
+                depth = 5
+
+            symbol = symbol_override or build_primary_symbol(ticker, settle)
+            if not symbol:
+                self._send_json({"error": "missing ticker or symbol"}, 400)
+                return
+
+            data = fetch_primary_depth(symbol, depth=depth)
+            data["ticker"] = ticker
+            data["settle"] = settle
+            self._send_json(data)
+        except Exception as e:
+            self._send_json({"error": str(e)}, 500)
+
     def _send_dashboard(self):
         if not HTML_FILE or not os.path.isfile(HTML_FILE):
             self.send_error(404, "Dashboard HTML not found. Place CERBondAnalyzer_v7.html in server directory.")
@@ -360,6 +542,13 @@ def main():
     sheets_ok = init_sheets()
     if not sheets_ok:
         print("⚠ Starting without Google Sheets. Manual prices only.\n")
+
+    if primary_enabled():
+        print(f"✓ Primary API configurada → {PRIMARY_BASE_URL}")
+        print(f"  /api/depth?ticker=X15Y6&settle=24hs&depth=5")
+    else:
+        print("⚠ Primary API NO configurada — depth-5 deshabilitado.")
+        print("  Setea PRIMARY_USERNAME y PRIMARY_PASSWORD para activar /api/depth.")
 
     if HTML_FILE:
         print(f"✓ Dashboard: {os.path.basename(HTML_FILE)}")

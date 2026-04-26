@@ -250,6 +250,30 @@
   .bc-inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
   .bc-target{background:var(--bg);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
   .bc-prices{font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;display:flex;gap:16px;margin-bottom:12px;padding:8px 10px;background:var(--bg);border-radius:6px;flex-wrap:wrap}
+  /* ── Book / Depth de mercado (Primary API) ─────────────────────── */
+  .bc-book{margin-bottom:14px;background:var(--bg);border-radius:8px;padding:10px 12px;border:1px solid var(--cb)}
+  .bc-book-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--td)}
+  .bc-book-hd .bc-book-title{font-weight:700;color:var(--acl);font-size:10px}
+  .bc-book-hd .bc-book-status{font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace}
+  .bc-book-hd .bc-book-status.ok{color:var(--pos)}
+  .bc-book-hd .bc-book-status.err{color:var(--neg)}
+  .bc-book-hd .bc-book-refresh{background:none;border:1px solid var(--cb);color:var(--td);font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer;font-family:'IBM Plex Mono',monospace}
+  .bc-book-hd .bc-book-refresh:hover{border-color:var(--acl);color:var(--acl)}
+  .bc-book table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:10.5px;table-layout:fixed}
+  .bc-book th{text-align:right;padding:4px 6px;border-bottom:1px solid var(--cb);color:var(--td);font-size:8.5px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600}
+  .bc-book th.lside{text-align:left}
+  .bc-book td{padding:4px 6px;text-align:right;border-bottom:1px solid rgba(31,41,55,0.35);cursor:pointer;transition:background 0.1s}
+  .bc-book td.lside{text-align:left}
+  .bc-book tr.bid-row td{color:var(--pos)}
+  .bc-book tr.ofr-row td{color:var(--neg)}
+  .bc-book tr.bid-row:hover td,.bc-book tr.ofr-row:hover td{background:rgba(255,255,255,0.04)}
+  .bc-book tr.spread-row td{background:var(--card);border-top:1px solid var(--cb);border-bottom:1px solid var(--cb);color:var(--acl);font-size:9.5px;letter-spacing:0.04em;text-transform:uppercase;cursor:default;padding:5px 6px}
+  .bc-book tr.spread-row:hover td{background:var(--card)}
+  .bc-book .bk-yld{color:var(--am);font-size:9.5px}
+  .bc-book .bk-yld2{color:var(--fx);font-size:9.5px}
+  .bc-book .bk-vol{color:var(--ac)}
+  .bc-book .bk-empty td{color:var(--td);text-align:center;padding:10px;cursor:default;font-style:italic;background:transparent}
+  .bc-book .bk-empty:hover td{background:transparent}
   .bc-flows table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:10px}
   .bc-flows th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--cb);color:var(--td);font-size:9px;text-transform:uppercase;letter-spacing:0.06em}
   .bc-flows td{padding:5px 8px;border-bottom:1px solid rgba(31,41,55,0.4)}
@@ -3679,6 +3703,8 @@ function clearAllManual(){
 // ═══ LIVE TABLE ══════════════════════════════════════════════════
 function openBondCalculator(bondType, bondId){
   document.getElementById('bondCalcModal')?.remove();
+  // Clear any depth-book polling left from a previous modal instance.
+  if(window._bcBookTimerId){ clearInterval(window._bcBookTimerId); window._bcBookTimerId=null; }
   const b = bondType==='cer' ? BONDS.find(x=>x.id===bondId)
           : bondType==='tamar' ? TAMAR_BONDS.find(x=>x.id===bondId)
           : FIXED.find(x=>x.id===bondId);
@@ -3763,13 +3789,41 @@ function openBondCalculator(bondType, bondId){
           <div class="bc-kpi"><div class="bv" id="bck-ganancia" style="font-size:13px">-</div><div class="bl">Ganancia</div></div>
         </div>
         <div class="bc-prices">
-          <span>BID: <strong style="color:var(--t)">${lp.bid||'-'}</strong></span>
-          <span>LAST: <strong style="color:var(--acl)">${lp.last||'-'}</strong></span>
-          <span>OFFER: <strong style="color:var(--t)">${lp.ask||'-'}</strong></span>
-          <span>Cierre: <strong style="color:var(--t)">${lp.close||'-'}</strong></span>
+          <span>BID: <strong style="color:var(--t)" id="bcq-bid">${lp.bid||'-'}</strong></span>
+          <span>LAST: <strong style="color:var(--acl)" id="bcq-last">${lp.last||'-'}</strong></span>
+          <span>OFFER: <strong style="color:var(--t)" id="bcq-ask">${lp.ask||'-'}</strong></span>
+          <span>Cierre: <strong style="color:var(--t)" id="bcq-close">${lp.close||'-'}</strong></span>
           <span style="cursor:pointer;color:var(--acl)" onclick="document.getElementById('bci-price').value=${lp.bid||0};document.getElementById('bci-price').dispatchEvent(new Event('input'))">usar BID</span>
           <span style="cursor:pointer;color:var(--acl)" onclick="document.getElementById('bci-price').value=${lp.last||0};document.getElementById('bci-price').dispatchEvent(new Event('input'))">usar LAST</span>
           <span style="cursor:pointer;color:var(--acl)" onclick="document.getElementById('bci-price').value=${lp.ask||0};document.getElementById('bci-price').dispatchEvent(new Event('input'))">usar OFFER</span>
+        </div>
+        <!-- ── Depth-5 book (Primary API) ───────────────────────── -->
+        <div class="bc-book" id="bc-book-wrap">
+          <div class="bc-book-hd">
+            <div>
+              <span class="bc-book-title">PROFUNDIDAD x5</span>
+              <span style="margin-left:8px;color:var(--td);font-size:9px">— Primary API · click en una fila para usar ese precio</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span class="bc-book-status" id="bc-book-status">…</span>
+              <button class="bc-book-refresh" id="bc-book-refresh" type="button">↻ refrescar</button>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th class="lside" style="width:14%">Lado</th>
+                <th style="width:18%">Volumen</th>
+                <th style="width:22%">Precio</th>
+                ${bondType==='cer'
+                  ? `<th style="width:23%">TIR Real</th><th style="width:23%">TNA TF CER</th>`
+                  : `<th style="width:46%" colspan="2">TNA</th>`}
+              </tr>
+            </thead>
+            <tbody id="bc-book-body">
+              <tr class="bk-empty"><td colspan="5">Cargando book…</td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="bc-target" style="flex-direction:column;align-items:stretch;gap:10px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -4655,6 +4709,228 @@ function openBondCalculator(bondType, bondId){
     if(projEl) projEl.addEventListener('input', recalc);
   }
   recalc();
+
+  // ── Depth-5 book wiring ─────────────────────────────────────────
+  // Cierra el bcSetSettle original y lo wrappea para refrescar el book al toggle CI/T+1
+  const _origSetSettle=window._bcSetSettle;
+  window._bcSetSettle=function(mode){
+    if(typeof _origSetSettle==='function') _origSetSettle(mode);
+    _bcRefreshBook();
+  };
+
+  // Yield helper: given a price, returns the per-level rendimiento string.
+  // CER → {tirReal, tnaTF}. FIXED/TAMAR → {tna}.
+  function _bcYieldAt(price){
+    if(!(price>0)) return null;
+    const days=DB(settle,matD);
+    if(days<=0) return null;
+    if(bondType==='cer'){
+      const cerLiqVal=parseFloat(document.getElementById("cerLiq").value);
+      const bv=parseFloat(document.getElementById("baseCER").value);
+      const bDate=document.getElementById("baseCERDate").value;
+      const inflMap={};
+      IM.forEach(m=>{inflMap[m.k]=parseFloat(document.getElementById("i_"+m.k).value)||0});
+      let getCER=null;
+      if(bv&&bDate){try{getCER=buildCER(bv,bDate,inflMap)}catch(e){}}
+      if(!getCER||!cerLiqVal) return null;
+      const flows=getBondSchedule(b, settle, getCER, cerLiqVal);
+      if(!flows.length) return null;
+      const tirRealRaw=xirrFromFlows(price, flows, 'real');
+      const tirReal=tirRealRaw!=null?tirRealRaw*100:null;
+      // TNA TF CER: simple sobre VT nominal acumulado (consistente con el cálculo del modal)
+      const vtNom=flows.reduce((s,f)=>s+(f.nominal||0),0);
+      const tnaTF=vtNom>0?((vtNom/price-1)*365/days)*100:null;
+      return {tirReal, tnaTF};
+    } else if(bondType==='tamar'){
+      const projInput=document.getElementById('bci-tamar-proj');
+      const projTNA=projInput?parseFloat(projInput.value):NaN;
+      const tamarMap=getTamarMap();
+      const tamarData=calcTamarValueData(b, tamarMap, !isNaN(projTNA)&&projTNA>0?projTNA:null);
+      const vf=tamarData?tamarData.vf:null;
+      if(!vf) return null;
+      const tir=(Math.pow(vf/price, 365/days)-1)*100;
+      const tna=((Math.pow(1+tir/100,days/365)-1)*(365/days))*100;
+      return {tna};
+    } else {
+      // FIXED (LECAP/BONCAP)
+      const emD2=new Date(b.emDate+"T00:00:00");
+      let vf=null;
+      if(b.temIssue>=0){
+        const months360=days360US(emD2,matD)/30;
+        vf=100*Math.pow(1+b.temIssue,months360);
+      }
+      if(!vf) return null;
+      return {tna: calcTNAFromPrice(price, vf, days)};
+    }
+  }
+
+  function _bcSettleParam(){
+    // settle === today → CI; sino, T+1 (24hs)
+    const today=new Date(); today.setHours(0,0,0,0);
+    return settle.getTime()===today.getTime() ? 'CI' : '24hs';
+  }
+
+  function _renderBookRows(bids, offers){
+    const tbody=document.getElementById('bc-book-body');
+    if(!tbody) return;
+    const yldCols = bondType==='cer' ? 2 : 2; // (TIR/TNA TF) o (TNA colspan=2)
+    const cols = 3 + yldCols;
+
+    const fmtSize = s => (s==null||s==='')?'—':Number(s).toLocaleString('es-AR');
+    const fmtPx = p => (p==null)?'—':Number(p).toFixed(2);
+    const fmtPct = v => (v==null||!isFinite(v))?'—':v.toFixed(2)+'%';
+
+    const renderYldCells = price => {
+      const y=_bcYieldAt(price);
+      if(bondType==='cer'){
+        const a=y?fmtPct(y.tirReal):'—', c=y?fmtPct(y.tnaTF):'—';
+        return `<td class="bk-yld">${a}</td><td class="bk-yld2">${c}</td>`;
+      }
+      return `<td class="bk-yld" colspan="2">${y?fmtPct(y.tna):'—'}</td>`;
+    };
+
+    // OFFERS: peor (más alto) arriba, mejor (más bajo) abajo
+    const ofs = (offers||[]).slice(0,5).slice().sort((a,b)=>(b.price||0)-(a.price||0));
+    const bds = (bids  ||[]).slice(0,5).slice().sort((a,b)=>(b.price||0)-(a.price||0));
+
+    let html='';
+    if(!ofs.length){
+      html+=`<tr class="bk-empty"><td colspan="${cols}">— sin ofertas —</td></tr>`;
+    } else {
+      // Si hay menos de 5, padear arriba para que el mejor ask quede pegado al spread
+      const pad=5-ofs.length;
+      for(let i=0;i<pad;i++){
+        html+=`<tr class="bk-empty"><td colspan="${cols}">·</td></tr>`;
+      }
+      ofs.forEach((lvl,i)=>{
+        const isBest = i===ofs.length-1; // mejor ask (más bajo) está al final tras sort desc
+        const lbl=`OFR ${ofs.length-i}`;
+        html+=`<tr class="ofr-row" data-px="${lvl.price||0}" title="Click para usar este precio">
+          <td class="lside" style="${isBest?'font-weight:700':''}">${lbl}</td>
+          <td class="bk-vol">${fmtSize(lvl.size)}</td>
+          <td style="${isBest?'font-weight:700':''}">${fmtPx(lvl.price)}</td>
+          ${renderYldCells(lvl.price)}
+        </tr>`;
+      });
+    }
+
+    // Spread row
+    const bestBid = bds.length?Math.max(...bds.map(x=>x.price||0)):null;
+    const bestOfr = ofs.length?Math.min(...ofs.filter(x=>x.price>0).map(x=>x.price)):null;
+    let spreadTxt='—';
+    if(bestBid&&bestOfr){
+      const sp=bestOfr-bestBid;
+      const spPct=bestBid?(sp/bestBid*100):0;
+      spreadTxt=`Spread <strong>${sp.toFixed(2)}</strong> (${spPct.toFixed(3)}%) · Mid <strong>${((bestBid+bestOfr)/2).toFixed(2)}</strong>`;
+    }
+    html+=`<tr class="spread-row"><td colspan="${cols}" style="text-align:center">${spreadTxt}</td></tr>`;
+
+    if(!bds.length){
+      html+=`<tr class="bk-empty"><td colspan="${cols}">— sin bids —</td></tr>`;
+    } else {
+      bds.forEach((lvl,i)=>{
+        const isBest = i===0; // mejor bid (más alto) está al inicio tras sort desc
+        const lbl=`BID ${i+1}`;
+        html+=`<tr class="bid-row" data-px="${lvl.price||0}" title="Click para usar este precio">
+          <td class="lside" style="${isBest?'font-weight:700':''}">${lbl}</td>
+          <td class="bk-vol">${fmtSize(lvl.size)}</td>
+          <td style="${isBest?'font-weight:700':''}">${fmtPx(lvl.price)}</td>
+          ${renderYldCells(lvl.price)}
+        </tr>`;
+      });
+      const padB=5-bds.length;
+      for(let i=0;i<padB;i++){
+        html+=`<tr class="bk-empty"><td colspan="${cols}">·</td></tr>`;
+      }
+    }
+
+    tbody.innerHTML=html;
+    // Wire click → set price input
+    tbody.querySelectorAll('tr[data-px]').forEach(tr=>{
+      tr.addEventListener('click', ()=>{
+        const px=parseFloat(tr.getAttribute('data-px'))||0;
+        if(px>0){
+          const inp=document.getElementById('bci-price');
+          if(inp){
+            inp.value=px;
+            const auto=document.getElementById('bci-price-auto-live');
+            if(auto) auto.checked=false;
+            inp.dispatchEvent(new Event('input'));
+          }
+        }
+      });
+    });
+  }
+
+  let _bcBookSeq=0;
+  async function _bcRefreshBook(){
+    const statusEl=document.getElementById('bc-book-status');
+    if(!_bondCalcCtx || _bondCalcCtx.bondId!==b.id){ // modal cerrado o cambió de bono
+      if(window._bcBookTimerId){clearInterval(window._bcBookTimerId);window._bcBookTimerId=null;}
+      return;
+    }
+    const settleParam=_bcSettleParam();
+    const url=`/api/depth?ticker=${encodeURIComponent(b.ticker)}&settle=${settleParam}&depth=5`;
+    const seq=++_bcBookSeq;
+    if(statusEl){ statusEl.className='bc-book-status'; statusEl.textContent='consultando…'; }
+    try{
+      const r=await fetch(url);
+      const data=await r.json();
+      if(seq!==_bcBookSeq) return; // hubo otra llamada posterior, descartar
+      if(!r.ok || data.error){
+        const msg=(data && (data.error||data.detail))||('HTTP '+r.status);
+        if(statusEl){ statusEl.className='bc-book-status err'; statusEl.textContent=msg.slice(0,80); }
+        const tbody=document.getElementById('bc-book-body');
+        if(tbody) tbody.innerHTML=`<tr class="bk-empty"><td colspan="5" style="color:var(--neg)">Sin datos · ${msg.slice(0,200)}</td></tr>`;
+        // Header summary se mantiene con la data de Google Sheets (lp).
+        return;
+      }
+      _renderBookRows(data.bids||[], data.offers||[]);
+      // Actualizar header summary con datos del API si llegaron
+      const hd=document.getElementById('bcq-bid');
+      if(hd && data.bids && data.bids.length){
+        const bestB=Math.max(...data.bids.map(x=>x.price||0));
+        if(bestB>0) hd.textContent=bestB.toFixed(2);
+      }
+      const ha=document.getElementById('bcq-ask');
+      if(ha && data.offers && data.offers.length){
+        const bestA=Math.min(...data.offers.filter(x=>x.price>0).map(x=>x.price));
+        if(bestA>0) ha.textContent=bestA.toFixed(2);
+      }
+      const hl=document.getElementById('bcq-last');
+      if(hl && data.last!=null) hl.textContent=Number(data.last).toFixed(2);
+      const hc=document.getElementById('bcq-close');
+      if(hc && data.close!=null) hc.textContent=Number(data.close).toFixed(2);
+      if(statusEl){
+        const ts=new Date().toLocaleTimeString('es-AR');
+        statusEl.className='bc-book-status ok';
+        statusEl.textContent=`LIVE · ${settleParam} · ${ts}`;
+      }
+    }catch(e){
+      if(statusEl){ statusEl.className='bc-book-status err'; statusEl.textContent=String(e).slice(0,80); }
+    }
+  }
+
+  // Refrescar yields del book cuando cambia algo del cálculo (CER inflación, base, etc.)
+  // sin re-pedir a la API: solo recomputamos celdas a partir del último data.
+  // Aprovechamos el listener de bci-price para refrescar yields tras typing.
+  // Para evitar over-fetching, sólo re-fetcheamos cada 5s o por click en ↻.
+
+  const refreshBtn=document.getElementById('bc-book-refresh');
+  if(refreshBtn) refreshBtn.addEventListener('click', _bcRefreshBook);
+
+  // Trigger inicial + polling
+  _bcRefreshBook();
+  if(window._bcBookTimerId) clearInterval(window._bcBookTimerId);
+  window._bcBookTimerId=setInterval(()=>{
+    if(!_bondCalcCtx || _bondCalcCtx.bondId!==b.id){
+      clearInterval(window._bcBookTimerId); window._bcBookTimerId=null; return;
+    }
+    _bcRefreshBook();
+  }, 5000);
+
+  // Cleanup: al cerrar el modal el bcClose listener pone _bondCalcCtx=null
+  // y el polling se auto-limpia en el siguiente tick.
 }
 
 function calcTIRFromPrice(price,vf,days){
