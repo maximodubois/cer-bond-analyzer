@@ -992,7 +992,7 @@
       <div>
         <div class="st" style="margin-bottom:0">BLOTTER · Trades del día</div>
         <div style="font-size:9px;color:var(--td);margin-top:2px;font-family:'IBM Plex Mono',monospace">
-          Atajos: <kbd style="background:var(--bg);padding:1px 5px;border-radius:3px;border:1px solid var(--cb)">Ctrl+N</kbd> nuevo ·
+          Atajos: <kbd style="background:var(--bg);padding:1px 5px;border-radius:3px;border:1px solid var(--cb)">Alt+N</kbd> nuevo (o solo <kbd style="background:var(--bg);padding:1px 5px;border-radius:3px;border:1px solid var(--cb)">N</kbd> sin tipear) ·
           <kbd style="background:var(--bg);padding:1px 5px;border-radius:3px;border:1px solid var(--cb)">B</kbd>/<kbd style="background:var(--bg);padding:1px 5px;border-radius:3px;border:1px solid var(--cb)">S</kbd> lado ·
           <kbd style="background:var(--bg);padding:1px 5px;border-radius:3px;border:1px solid var(--cb)">Tab</kbd> avanzar ·
           <kbd style="background:var(--bg);padding:1px 5px;border-radius:3px;border:1px solid var(--cb)">Enter</kbd> confirmar ·
@@ -1000,7 +1000,7 @@
         </div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn-api" onclick="openTradeModal()" id="bltAddBtn">＋ Nuevo Trade <span style="opacity:0.6;font-size:9px;margin-left:4px">Ctrl+N</span></button>
+        <button class="btn-api" onclick="openTradeModal()" id="bltAddBtn">＋ Nuevo Trade <span style="opacity:0.6;font-size:9px;margin-left:4px">Alt+N</span></button>
         <select id="bltDateFilter" class="btn-api btn-sm" style="font-size:11px;padding:4px 8px" onchange="renderBlotter()">
           <option value="today" selected>Hoy</option>
           <option value="week">Esta semana</option>
@@ -6529,11 +6529,21 @@ try{
       // Modal abierto?
       const modalOpen=!!document.getElementById('tradeModal');
 
-      // Ctrl+N → abrir modal nuevo
-      if((e.ctrlKey||e.metaKey) && (e.key==='n'||e.key==='N') && !modalOpen){
-        e.preventDefault();
-        openTradeModal();
-        return;
+      // Alt+N (o solo N cuando no estamos tipeando) → abrir modal nuevo
+      const inFieldOuter = ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName) || e.target.isContentEditable;
+      if(!modalOpen && (e.key==='n'||e.key==='N')){
+        // Alt+N siempre dispara (no choca con Ctrl+N de Chrome)
+        if(e.altKey){
+          e.preventDefault();
+          openTradeModal();
+          return;
+        }
+        // N solo, sólo si no estamos en un input
+        if(!inFieldOuter && !e.ctrlKey && !e.metaKey && !e.shiftKey){
+          e.preventDefault();
+          openTradeModal();
+          return;
+        }
       }
 
       // Solo dentro del modal
