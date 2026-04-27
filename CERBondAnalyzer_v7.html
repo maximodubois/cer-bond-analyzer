@@ -237,6 +237,61 @@
   /* Bond Calculator Modal */
   .bc-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px}
   .bc-modal{background:var(--card);border:1px solid var(--cb);border-radius:12px;width:100%;max-width:660px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.7)}
+  /* ── Quick-entry trade modal ───────────────────────────────────── */
+  .tm-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:2100;display:flex;align-items:flex-start;justify-content:center;padding:60px 16px 16px}
+  .tm-modal{background:var(--card);border:1px solid var(--cb);border-radius:12px;width:100%;max-width:560px;box-shadow:0 24px 64px rgba(0,0,0,0.7)}
+  .tm-hd{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--cb)}
+  .tm-hd h3{font-size:14px;font-weight:700;color:var(--acl);letter-spacing:-0.01em;margin:0}
+  .tm-hd .tm-close{background:none;border:none;color:var(--td);font-size:22px;cursor:pointer;line-height:1;padding:0}
+  .tm-hd .tm-close:hover{color:var(--t)}
+  .tm-body{padding:16px 18px;display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+  .tm-body .tm-full{grid-column:1/-1}
+  .tm-body .ig label{font-size:9px;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);font-weight:600;margin-bottom:3px;display:block}
+  .tm-body .ig input,.tm-body .ig select,.tm-body .ig textarea{width:100%;background:var(--bg);border:1px solid var(--cb);color:var(--t);padding:7px 9px;border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:12px;outline:none;box-sizing:border-box}
+  .tm-body .ig input:focus,.tm-body .ig select:focus,.tm-body .ig textarea:focus{border-color:var(--acl)}
+  .tm-body .ig textarea{resize:vertical;min-height:50px;font-family:'Inter',sans-serif}
+  .tm-side-toggle{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .tm-side-toggle button{padding:9px;border-radius:6px;border:1px solid var(--cb);background:var(--bg);color:var(--td);font-weight:700;font-size:13px;cursor:pointer;font-family:'IBM Plex Mono',monospace;transition:all 0.1s}
+  .tm-side-toggle button.active.buy{background:rgba(74,222,128,0.15);border-color:var(--pos);color:var(--pos)}
+  .tm-side-toggle button.active.sell{background:rgba(248,113,113,0.15);border-color:var(--neg);color:var(--neg)}
+  .tm-settle-toggle,.tm-aprob-toggle{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .tm-settle-toggle button,.tm-aprob-toggle button{padding:7px;border-radius:5px;border:1px solid var(--cb);background:var(--bg);color:var(--td);font-weight:600;font-size:11px;cursor:pointer;font-family:'IBM Plex Mono',monospace}
+  .tm-settle-toggle button.active{background:var(--acd);border-color:var(--acl);color:var(--acl)}
+  .tm-aprob-toggle button.active.yes{background:rgba(74,222,128,0.15);border-color:var(--pos);color:var(--pos)}
+  .tm-aprob-toggle button.active.no{background:rgba(248,113,113,0.15);border-color:var(--am);color:var(--am)}
+  .tm-preview{grid-column:1/-1;background:var(--bg);border:1px dashed var(--cb);border-radius:6px;padding:10px;font-size:10.5px;color:var(--td);font-family:'IBM Plex Mono',monospace;min-height:40px}
+  .tm-preview .tm-pv-row{display:flex;justify-content:space-between;padding:2px 0}
+  .tm-preview .tm-pv-row strong{color:var(--acl)}
+  .tm-ft{padding:12px 18px;border-top:1px solid var(--cb);display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .tm-ft .tm-hint{font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace}
+  .tm-ft .tm-actions{display:flex;gap:6px}
+  .tm-ft button{padding:8px 14px;border-radius:6px;border:1px solid var(--cb);background:var(--bg);color:var(--t);cursor:pointer;font-size:11px;font-weight:600;font-family:'Inter',sans-serif}
+  .tm-ft .tm-save{background:var(--gnd);border-color:var(--gn);color:var(--gn);font-weight:700}
+  .tm-ft .tm-save:hover{background:rgba(74,222,128,0.25)}
+  /* ── Blotter table ─────────────────────────────────────────────── */
+  #blotterTable td,#blotterTable th{font-size:10.5px;padding:5px 7px}
+  #blotterTable tr.bl-row{transition:background 0.1s}
+  #blotterTable tr.bl-row:hover{background:rgba(255,255,255,0.025)}
+  #blotterTable tr.bl-row.bl-buy{border-left:3px solid var(--pos)}
+  #blotterTable tr.bl-row.bl-sell{border-left:3px solid var(--neg)}
+  #blotterTable .bl-pill{display:inline-block;padding:2px 7px;border-radius:10px;font-size:9px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;font-family:'IBM Plex Mono',monospace}
+  #blotterTable .bl-pill.yes{background:rgba(74,222,128,0.15);color:var(--pos);border:1px solid var(--pos)}
+  #blotterTable .bl-pill.no{background:rgba(248,113,113,0.15);color:var(--am);border:1px solid var(--am)}
+  #blotterTable .bl-pill.rej{background:rgba(248,113,113,0.25);color:var(--neg);border:1px solid var(--neg)}
+  #blotterTable td.bl-side-b{color:var(--pos);font-weight:700}
+  #blotterTable td.bl-side-s{color:var(--neg);font-weight:700}
+  #blotterTable td.bl-edit{cursor:pointer;border-bottom:1px dashed transparent}
+  #blotterTable td.bl-edit:hover{border-bottom-color:var(--acl);background:rgba(226,232,240,0.04)}
+  /* ── Axes table inline edit ────────────────────────────────────── */
+  #axesTable td,#axesTable th{font-size:10.5px;padding:5px 7px}
+  #axesTable input.ax-in{background:transparent;border:none;border-bottom:1px solid transparent;color:var(--t);font-family:'IBM Plex Mono',monospace;font-size:11px;text-align:right;width:100%;padding:2px 4px;box-sizing:border-box;outline:none}
+  #axesTable input.ax-in:hover{border-bottom-color:var(--cb)}
+  #axesTable input.ax-in:focus{border-bottom-color:var(--acl);background:rgba(226,232,240,0.04)}
+  #axesTable input.ax-in.bid{color:var(--pos)}
+  #axesTable input.ax-in.ofr{color:var(--neg)}
+  #axesTable td.ax-spread{color:var(--am);font-weight:600}
+  #axesTable td.ax-vs-rich{color:var(--neg)}
+  #axesTable td.ax-vs-cheap{color:var(--pos)}
   .bc-header{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 20px;border-bottom:1px solid var(--cb)}
   .bc-title{font-size:17px;font-weight:700;letter-spacing:-0.01em}
   .bc-sub{font-size:10px;color:var(--td);margin-top:3px;font-family:'IBM Plex Mono',monospace}
@@ -928,6 +983,172 @@
 
 <!-- TAB: POSITIONS -->
 <div id="tab-positions" style="display:none">
+
+  <!-- ════════════════════════════════════════════════════════════════
+       BLOTTER — Trade book diario con quick-entry modal
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="card" style="margin-top:10px" id="blotter-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="st" style="margin-bottom:0">BLOTTER · Trades del día</div>
+        <div style="font-size:9px;color:var(--td);margin-top:2px;font-family:'IBM Plex Mono',monospace">
+          Atajos: <kbd style="background:var(--bg);padding:1px 5px;border-radius:3px;border:1px solid var(--cb)">Ctrl+N</kbd> nuevo ·
+          <kbd style="background:var(--bg);padding:1px 5px;border-radius:3px;border:1px solid var(--cb)">B</kbd>/<kbd style="background:var(--bg);padding:1px 5px;border-radius:3px;border:1px solid var(--cb)">S</kbd> lado ·
+          <kbd style="background:var(--bg);padding:1px 5px;border-radius:3px;border:1px solid var(--cb)">Tab</kbd> avanzar ·
+          <kbd style="background:var(--bg);padding:1px 5px;border-radius:3px;border:1px solid var(--cb)">Enter</kbd> confirmar ·
+          <kbd style="background:var(--bg);padding:1px 5px;border-radius:3px;border:1px solid var(--cb)">Esc</kbd> cerrar
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn-api" onclick="openTradeModal()" id="bltAddBtn">＋ Nuevo Trade <span style="opacity:0.6;font-size:9px;margin-left:4px">Ctrl+N</span></button>
+        <select id="bltDateFilter" class="btn-api btn-sm" style="font-size:11px;padding:4px 8px" onchange="renderBlotter()">
+          <option value="today" selected>Hoy</option>
+          <option value="week">Esta semana</option>
+          <option value="all">Todos</option>
+        </select>
+        <select id="bltStatusFilter" class="btn-api btn-sm" style="font-size:11px;padding:4px 8px" onchange="renderBlotter()">
+          <option value="all" selected>Todos los estados</option>
+          <option value="approved">Aprobados</option>
+          <option value="pending">Pendientes</option>
+          <option value="rejected">Rechazados</option>
+        </select>
+        <button class="btn-api btn-sm" onclick="exportBlotterXLSX()" title="Exportar todo a Excel">⬇ Excel</button>
+        <button class="btn-api btn-sm" style="color:var(--w);border-color:var(--w)" onclick="if(confirm('Borrar TODOS los trades del blotter? (no afecta el PPP legacy)')){_blotter=[];saveBlotter();renderBlotter()}">Limpiar</button>
+      </div>
+    </div>
+
+    <!-- Sticky summary -->
+    <div id="bltSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:12px;margin-bottom:12px;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--cb)">
+      <div><div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:0.07em">Trades hoy</div><div id="bltCntAll" style="font-size:18px;font-weight:700;color:var(--acl);font-family:'IBM Plex Mono',monospace">0</div></div>
+      <div><div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:0.07em">Compras / Ventas</div><div style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace"><span id="bltCntB" style="color:var(--pos)">0</span> <span style="color:var(--td)">/</span> <span id="bltCntS" style="color:var(--neg)">0</span></div></div>
+      <div><div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:0.07em">Notional Total</div><div id="bltNotional" style="font-size:13px;font-weight:700;color:var(--t);font-family:'IBM Plex Mono',monospace">$0</div></div>
+      <div><div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:0.07em">Aprobadas</div><div style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace"><span id="bltCntApproved" style="color:var(--pos)">0</span> <span style="color:var(--td)">/</span> <span id="bltCntPending" style="color:var(--am)">0</span> pend</div></div>
+    </div>
+
+    <!-- Trade table -->
+    <div style="overflow-x:auto">
+      <table class="lt" id="blotterTable">
+        <thead>
+          <tr>
+            <th style="width:60px">Hora</th>
+            <th style="width:55px">Tkt#</th>
+            <th style="width:60px">Liq</th>
+            <th style="width:90px">Contraparte</th>
+            <th>Ticker</th>
+            <th style="width:50px">B/S</th>
+            <th class="num" style="width:90px">VN</th>
+            <th class="num" style="width:75px">Precio</th>
+            <th class="num" style="width:105px">Notional</th>
+            <th class="num" style="width:75px">TIR/TNA</th>
+            <th style="width:90px">Aprob.</th>
+            <th>Notas</th>
+            <th style="width:30px"></th>
+          </tr>
+        </thead>
+        <tbody id="blotterBody"><tr><td colspan="13" style="text-align:center;color:var(--tm);padding:18px">Sin trades · <button class="btn-api btn-sm" onclick="openTradeModal()" style="margin-left:8px">＋ Agregar primer trade</button></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       CASH PROJECTION — Entradas/Salidas CI vs 24hs
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="card" style="margin-top:10px" id="cashProjCard">
+    <div class="st">CASH PROJECTION · Movimientos por liquidación</div>
+    <div style="font-size:10px;color:var(--td);margin-bottom:10px">Compras = sale cash (rojo) · Ventas = entra cash (verde) · Calculado sobre todos los trades aprobados.</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <!-- CI -->
+      <div style="background:var(--bg);border:1px solid var(--cb);border-radius:8px;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <div style="font-size:11px;font-weight:700;color:var(--acl);text-transform:uppercase;letter-spacing:0.06em">CI · Hoy</div>
+          <div style="font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace" id="cashCIDate">—</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div>
+            <div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:0.07em">Entra (ventas)</div>
+            <div id="cashCIIn" style="font-size:14px;font-weight:700;color:var(--pos);font-family:'IBM Plex Mono',monospace">$0</div>
+          </div>
+          <div>
+            <div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:0.07em">Sale (compras)</div>
+            <div id="cashCIOut" style="font-size:14px;font-weight:700;color:var(--neg);font-family:'IBM Plex Mono',monospace">$0</div>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--cb);padding-top:8px">
+          <div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:0.07em">Neto CI</div>
+          <div id="cashCINet" style="font-size:18px;font-weight:700;color:var(--acl);font-family:'IBM Plex Mono',monospace">$0</div>
+        </div>
+        <div id="cashCIDetail" style="font-size:9.5px;color:var(--td);margin-top:8px;font-family:'IBM Plex Mono',monospace;line-height:1.6">—</div>
+      </div>
+      <!-- 24hs -->
+      <div style="background:var(--bg);border:1px solid var(--cb);border-radius:8px;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <div style="font-size:11px;font-weight:700;color:var(--fx);text-transform:uppercase;letter-spacing:0.06em">24hs · T+1 hábil</div>
+          <div style="font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace" id="cash24Date">—</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div>
+            <div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:0.07em">Entra (ventas)</div>
+            <div id="cash24In" style="font-size:14px;font-weight:700;color:var(--pos);font-family:'IBM Plex Mono',monospace">$0</div>
+          </div>
+          <div>
+            <div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:0.07em">Sale (compras)</div>
+            <div id="cash24Out" style="font-size:14px;font-weight:700;color:var(--neg);font-family:'IBM Plex Mono',monospace">$0</div>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--cb);padding-top:8px">
+          <div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:0.07em">Neto 24hs</div>
+          <div id="cash24Net" style="font-size:18px;font-weight:700;color:var(--fx);font-family:'IBM Plex Mono',monospace">$0</div>
+        </div>
+        <div id="cash24Detail" style="font-size:9.5px;color:var(--td);margin-top:8px;font-family:'IBM Plex Mono',monospace;line-height:1.6">—</div>
+      </div>
+    </div>
+
+    <!-- Total combined -->
+    <div style="margin-top:10px;padding:10px;background:var(--bg);border:1px dashed var(--cb);border-radius:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div style="font-size:10px;color:var(--td);text-transform:uppercase;letter-spacing:0.06em">Acumulado CI + 24hs</div>
+      <div id="cashTotalNet" style="font-size:20px;font-weight:700;font-family:'IBM Plex Mono',monospace">$0</div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       AXES / Trading Book — Activos que estoy mostrando
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="card" style="margin-top:10px" id="axesCard">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="st" style="margin-bottom:0">AXES · Trading Book</div>
+        <div style="font-size:9.5px;color:var(--td);margin-top:2px">Activos que estoy mostrando hoy. Click en cualquier campo para editar.</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn-api btn-sm" onclick="addAxe()">＋ Agregar axe</button>
+        <button class="btn-api btn-sm" style="color:var(--w);border-color:var(--w)" onclick="if(confirm('Borrar todos los axes?')){_axes=[];saveAxes();renderAxes()}">Limpiar</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;margin-top:10px">
+      <table class="lt" id="axesTable">
+        <thead>
+          <tr>
+            <th style="width:90px">Ticker</th>
+            <th class="num" style="width:90px">BID</th>
+            <th class="num" style="width:90px">x SIZE</th>
+            <th class="num" style="width:90px">OFFER</th>
+            <th class="num" style="width:90px">x SIZE</th>
+            <th class="num" style="width:75px">Spread</th>
+            <th class="num" style="width:85px">Mid LIVE</th>
+            <th class="num" style="width:85px">Vs LIVE</th>
+            <th>Notas / Cliente</th>
+            <th style="width:30px"></th>
+          </tr>
+        </thead>
+        <tbody id="axesBody"><tr><td colspan="10" style="text-align:center;color:var(--tm);padding:18px">Sin axes · <button class="btn-api btn-sm" onclick="addAxe()" style="margin-left:8px">＋ Agregar primero</button></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       LEGACY: PPP / Posiciones original
+       ════════════════════════════════════════════════════════════════ -->
   <div class="card" style="margin-top:10px">
     <div class="st">Book de Posiciones — Compra / Venta / PPP</div>
     <div style="display:grid;grid-template-columns:160px 80px 100px 90px auto;gap:8px;align-items:end;margin-bottom:10px">
@@ -1215,6 +1436,8 @@
   </div>
 </div>
 
+<!-- SheetJS para exportar a Excel multi-hoja -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 // ═══ FERIADOS BURSÁTILES AR ════════
 const FER=new Set([
@@ -3219,7 +3442,7 @@ function switchTab(tab){
   });
   if(tab==="resumen") renderResumen();
   if(tab==="livescreen") buildLiveTable();
-  if(tab==="positions") renderPositions();
+  if(tab==="positions"){ renderPositions(); renderBlotter(); renderAxes(); }
   if(tab==="pases") buildPaseSelect();
   if(tab==="quantplus") refreshQuantPlus();
   if(tab==="fx") renderFX();
@@ -5214,6 +5437,10 @@ async function fetchPricesFromServer(){
     _syncCaucionRateToInputs();
     syncFxCalcModal();
     syncBondCalcModal();
+    // Hook para callbacks externos que dependen de _livePrices (axes, etc.)
+    if(Array.isArray(window._postPriceUpdate)){
+      window._postPriceUpdate.forEach(fn=>{ try{fn()}catch(e){} });
+    }
   }catch(e){
     const ts=new Date().toLocaleTimeString("es-AR");
     log.innerHTML=`<span class="api-err">✗ ${e.message} · ${ts}</span> — Verificá que <code style="color:var(--ac)">python server.py</code> esté corriendo`;
@@ -5571,6 +5798,774 @@ function importPositions(event){
     for(let i=1;i<lines.length;i++){const p=lines[i].split(",");if(p.length<5)continue;const ticker=p[0].trim(),side=p[2].trim()||"C";const qty=parseFloat(p[3])||100,pxEntry=parseFloat(p[4]);const date=p[5]?p[5].trim():"";if(!ticker||!pxEntry)continue;const asset=allA.find(a=>a.ticker===ticker);if(!asset)continue;_positions.push({id:asset.id,ticker:asset.ticker,type:asset.type,color:asset.color,side,pxEntry,qty,date:date||new Date().toISOString().slice(0,10)});imp++}
     savePositions();renderPositions();alert(imp+" ops importadas");};reader.readAsText(file);event.target.value="";
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// BLOTTER + CASH + AXES — Trade book diario para mesa AR fixed income
+// ═══════════════════════════════════════════════════════════════════
+//
+// Trade structure:
+// {
+//   id:"T-2025-001", ts:"2025-04-26T10:30:15", ticker:"X15Y6",
+//   side:"B"|"S", qty:50000, price:105.40, settle:"CI"|"24hs",
+//   cpty:"Cocos", approved:"yes"|"no"|"rej", notes:""
+// }
+let _blotter   = JSON.parse(localStorage.getItem("cer_blotter_v1")||"[]");
+let _axes      = JSON.parse(localStorage.getItem("cer_axes_v1")||"[]");
+let _bltLastCpty = localStorage.getItem("cer_blt_lastCpty")||"Mesa";
+let _bltLastSettle = localStorage.getItem("cer_blt_lastSettle")||"24hs";
+let _bltLastQty = parseFloat(localStorage.getItem("cer_blt_lastQty"))||100000;
+let _tmEditingId = null;     // si hay un trade en edición
+let _tmDraft = null;         // estado in-flight del modal
+
+const BLT_CPTYS_DEFAULT = ["Mesa","Cocos","IOL","Veta","Eco","Bull Market","IEB","Allaria","Adcap","ICAP","TPCG","BACS","Macro","Galicia","BBVA","Santander","ICBC","Otro"];
+
+function saveBlotter(){ localStorage.setItem("cer_blotter_v1", JSON.stringify(_blotter)); }
+function saveAxes(){ localStorage.setItem("cer_axes_v1", JSON.stringify(_axes)); }
+
+function _bltAllTickers(){
+  const out=[];
+  if(typeof BONDS!=='undefined')   BONDS.forEach(b=>out.push({ticker:b.ticker, type:'CER',  color:b.color, id:b.id}));
+  if(typeof FIXED!=='undefined')   FIXED.forEach(f=>out.push({ticker:f.ticker, type:f.type, color:f.color, id:f.id}));
+  if(typeof TAMAR_BONDS!=='undefined') TAMAR_BONDS.forEach(t=>out.push({ticker:t.ticker, type:t.type, color:t.color, id:t.id}));
+  if(typeof DL_BONDS!=='undefined' && Array.isArray(DL_BONDS)) DL_BONDS.forEach(d=>out.push({ticker:d.ticker, type:'DL', color:d.color, id:d.id}));
+  return out;
+}
+function _bltFindAsset(ticker){
+  if(!ticker) return null;
+  const t=String(ticker).trim().toUpperCase();
+  return _bltAllTickers().find(a=>a.ticker.toUpperCase()===t)||null;
+}
+
+function _bltNextTicket(){
+  const today=new Date().toISOString().slice(0,10);
+  const todayCount=_blotter.filter(t=>t.ts && t.ts.startsWith(today)).length;
+  const ymd=today.replace(/-/g,'').slice(2); // YYMMDD
+  return `T${ymd}-${String(todayCount+1).padStart(3,'0')}`;
+}
+
+// ── Cash impact: B = sale cash (negativo); S = entra cash (positivo).
+// Para bonos cotizados como % VT: notional = qty * price / 100.
+function _bltNotional(t){
+  const px=parseFloat(t.price)||0, q=parseFloat(t.qty)||0;
+  return q * px / 100;
+}
+function _bltCashFlow(t){
+  // Solo trades aprobados impactan caja (los rechazados no, los pendientes los marcamos como tentativos).
+  if(t.approved!=='yes') return 0;
+  const sign = (t.side==='B')? -1 : +1;
+  return sign * _bltNotional(t);
+}
+
+// ── Yield helper: usa misma lógica que el modal calc para coherencia
+function _bltYieldFor(ticker, price){
+  if(!(price>0)) return null;
+  const a=_bltFindAsset(ticker);
+  if(!a) return null;
+  // Settle: si el trade es CI, usá hoy; sino T+1 hábil
+  const today=new Date(); today.setHours(0,0,0,0);
+  const sd=document.getElementById("settleDate")?.value;
+  const t1=sd?new Date(sd+"T00:00:00"):(typeof ABD==='function'?ABD(today,1):today);
+  // Para resumen del blotter, usamos T+1 (mismo que LiveScreen)
+  const settle=t1;
+  // Asset lookup detallado
+  const bondCer = (typeof BONDS!=='undefined') ? BONDS.find(x=>x.ticker===ticker) : null;
+  const bondFix = (typeof FIXED!=='undefined') ? FIXED.find(x=>x.ticker===ticker) : null;
+  const bondTam = (typeof TAMAR_BONDS!=='undefined') ? TAMAR_BONDS.find(x=>x.ticker===ticker) : null;
+  if(bondCer){
+    const matD=new Date(bondCer.mat+"T00:00:00");
+    const days=(typeof DB==='function')?DB(settle,matD):Math.round((matD-settle)/86400000);
+    if(days<=0) return null;
+    const cerLiqVal=parseFloat(document.getElementById("cerLiq")?.value||0);
+    const bv=parseFloat(document.getElementById("baseCER")?.value||0);
+    const bDate=document.getElementById("baseCERDate")?.value;
+    let getCER=null;
+    if(bv&&bDate&&typeof IM!=='undefined'&&typeof buildCER==='function'){
+      const inflMap={};
+      IM.forEach(m=>{const el=document.getElementById("i_"+m.k);if(el)inflMap[m.k]=parseFloat(el.value)||0});
+      try{getCER=buildCER(bv,bDate,inflMap)}catch(e){}
+    }
+    if(!getCER||!cerLiqVal||typeof getBondSchedule!=='function'||typeof xirrFromFlows!=='function') return null;
+    const flows=getBondSchedule(bondCer, settle, getCER, cerLiqVal);
+    if(!flows.length) return null;
+    const tirRealRaw=xirrFromFlows(price, flows, 'real');
+    const tirReal=tirRealRaw!=null?tirRealRaw*100:null;
+    const vtNom=flows.reduce((s,f)=>s+(f.nominal||0),0);
+    const tnaTF=vtNom>0&&days>0?((vtNom/price-1)*365/days)*100:null;
+    return {label:'TIR Real', primary:tirReal, secondary:tnaTF, secondaryLabel:'TNA TF'};
+  }
+  if(bondFix){
+    const matD=new Date(bondFix.mat+"T00:00:00");
+    const emD=new Date(bondFix.emDate+"T00:00:00");
+    const days=(typeof DB==='function')?DB(settle,matD):Math.round((matD-settle)/86400000);
+    if(days<=0||!(bondFix.temIssue>=0)) return null;
+    const months360=(typeof days360US==='function')?days360US(emD,matD)/30:days/30;
+    const vf=100*Math.pow(1+bondFix.temIssue, months360);
+    const tna=(vf/price - 1)*365/days*100;
+    return {label:'TNA', primary:tna, secondary:null};
+  }
+  if(bondTam && typeof calcTamarValueData==='function' && typeof getTamarMap==='function'){
+    const matD=new Date(bondTam.mat+"T00:00:00");
+    const days=(typeof DB==='function')?DB(settle,matD):Math.round((matD-settle)/86400000);
+    if(days<=0) return null;
+    const tamarData=calcTamarValueData(bondTam, getTamarMap(), null);
+    const vf=tamarData?tamarData.vf:null;
+    if(!vf) return null;
+    const tir=(Math.pow(vf/price, 365/days)-1)*100;
+    const tna=((Math.pow(1+tir/100,days/365)-1)*(365/days))*100;
+    return {label:'TNA', primary:tna, secondary:null};
+  }
+  return null;
+}
+
+function _fmtMoney(n){
+  if(n==null||!isFinite(n)) return '$0';
+  const sign=n<0?'-':'';
+  const abs=Math.abs(n);
+  if(abs>=1e9) return sign+'$'+(abs/1e9).toFixed(2)+'B';
+  if(abs>=1e6) return sign+'$'+(abs/1e6).toFixed(2)+'M';
+  if(abs>=1e3) return sign+'$'+(abs/1e3).toFixed(1)+'k';
+  return sign+'$'+abs.toFixed(0);
+}
+function _fmtMoneyFull(n){
+  if(n==null||!isFinite(n)) return '$0';
+  return (n<0?'-':'')+'$'+Math.abs(n).toLocaleString('es-AR',{maximumFractionDigits:0});
+}
+
+// ───────────────────────────────────────────────────────────
+// Quick-entry trade modal
+// ───────────────────────────────────────────────────────────
+function openTradeModal(prefilled){
+  closeTradeModal();
+  const tickers=_bltAllTickers().map(a=>a.ticker).sort();
+  const tickerOpts=tickers.map(t=>`<option value="${t}">`).join('');
+  const cptyOpts=BLT_CPTYS_DEFAULT.map(c=>`<option value="${c}">`).join('');
+
+  _tmDraft = prefilled ? {...prefilled} : {
+    side:'B', settle:_bltLastSettle, cpty:_bltLastCpty,
+    qty:_bltLastQty, ticker:'', price:'', approved:'no', notes:''
+  };
+
+  const overlay=document.createElement('div');
+  overlay.className='tm-overlay';
+  overlay.id='tradeModal';
+  overlay.innerHTML=`
+    <div class="tm-modal" role="dialog">
+      <div class="tm-hd">
+        <h3>${_tmEditingId?'Editar trade '+_tmEditingId:'Nuevo Trade · '+_bltNextTicket()}</h3>
+        <button class="tm-close" type="button" id="tmClose" title="Esc">&times;</button>
+      </div>
+      <div class="tm-body">
+        <div class="ig" style="grid-column:1/-1">
+          <label>Lado · <span style="color:var(--td);font-weight:400;text-transform:none;letter-spacing:0">teclas B / S</span></label>
+          <div class="tm-side-toggle">
+            <button type="button" class="tm-side-b ${_tmDraft.side==='B'?'active buy':''}" onclick="_tmSetSide('B')">B · COMPRA</button>
+            <button type="button" class="tm-side-s ${_tmDraft.side==='S'?'active sell':''}" onclick="_tmSetSide('S')">S · VENTA</button>
+          </div>
+        </div>
+        <div class="ig">
+          <label>Plazo Liquidación</label>
+          <div class="tm-settle-toggle">
+            <button type="button" class="tm-settle-ci ${_tmDraft.settle==='CI'?'active':''}" onclick="_tmSetSettle('CI')">CI · hoy</button>
+            <button type="button" class="tm-settle-24 ${_tmDraft.settle==='24hs'?'active':''}" onclick="_tmSetSettle('24hs')">24hs</button>
+          </div>
+        </div>
+        <div class="ig">
+          <label>Aprobada</label>
+          <div class="tm-aprob-toggle">
+            <button type="button" class="tm-aprob-yes ${_tmDraft.approved==='yes'?'active yes':''}" onclick="_tmSetApr('yes')">✓ Sí</button>
+            <button type="button" class="tm-aprob-no ${_tmDraft.approved==='no'?'active no':''}" onclick="_tmSetApr('no')">⏳ No</button>
+          </div>
+        </div>
+        <div class="ig">
+          <label>Contraparte</label>
+          <input type="text" id="tmCpty" value="${_tmDraft.cpty||''}" list="tmCptyList" autocomplete="off" placeholder="Mesa / Cocos / IOL...">
+          <datalist id="tmCptyList">${cptyOpts}</datalist>
+        </div>
+        <div class="ig">
+          <label>Ticker</label>
+          <input type="text" id="tmTicker" value="${_tmDraft.ticker||''}" list="tmTickerList" autocomplete="off" placeholder="X15Y6 / S30J6 / TZX26..." style="text-transform:uppercase">
+          <datalist id="tmTickerList">${tickerOpts}</datalist>
+        </div>
+        <div class="ig">
+          <label>VN (nominales)</label>
+          <input type="number" id="tmQty" value="${_tmDraft.qty||''}" step="1000" placeholder="100000">
+        </div>
+        <div class="ig">
+          <label>Precio (% VT)</label>
+          <input type="number" id="tmPrice" value="${_tmDraft.price||''}" step="0.01" placeholder="105.40">
+        </div>
+        <div class="ig" style="grid-column:1/-1">
+          <label>Notas (opcional)</label>
+          <textarea id="tmNotes" rows="2" placeholder="vs S31L6, pedido cliente Pérez, switch...">${_tmDraft.notes||''}</textarea>
+        </div>
+        <div class="tm-preview" id="tmPreview">
+          <div style="color:var(--td)">Completá ticker + VN + precio para ver el preview</div>
+        </div>
+      </div>
+      <div class="tm-ft">
+        <div class="tm-hint">Enter = guardar · Esc = cancelar</div>
+        <div class="tm-actions">
+          <button type="button" id="tmCancel">Cancelar</button>
+          <button type="button" class="tm-save" id="tmSave">${_tmEditingId?'Actualizar':'Guardar'} Trade</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  // Wire inputs to draft
+  const $=id=>document.getElementById(id);
+  ['tmCpty','tmTicker','tmQty','tmPrice','tmNotes'].forEach(id=>{
+    const el=$(id);
+    if(!el) return;
+    el.addEventListener('input', ()=>{
+      const map={tmCpty:'cpty',tmTicker:'ticker',tmQty:'qty',tmPrice:'price',tmNotes:'notes'};
+      let v=el.value;
+      if(id==='tmTicker') v=v.toUpperCase();
+      if(id==='tmQty'||id==='tmPrice') v=v===''?'':parseFloat(v);
+      _tmDraft[map[id]]=v;
+      _tmRenderPreview();
+    });
+  });
+
+  $('tmClose').addEventListener('click', closeTradeModal);
+  $('tmCancel').addEventListener('click', closeTradeModal);
+  $('tmSave').addEventListener('click', saveTradeFromModal);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) closeTradeModal(); });
+
+  // Focus ticker (most variable field)
+  setTimeout(()=>{ const tk=$('tmTicker'); if(tk){ tk.focus(); tk.select(); }}, 50);
+
+  _tmRenderPreview();
+}
+
+function closeTradeModal(){
+  document.getElementById('tradeModal')?.remove();
+  _tmEditingId=null; _tmDraft=null;
+}
+
+function _tmSetSide(s){
+  if(!_tmDraft) return;
+  _tmDraft.side=s;
+  document.querySelector('.tm-side-b')?.classList.toggle('active', s==='B');
+  document.querySelector('.tm-side-b')?.classList.toggle('buy', s==='B');
+  document.querySelector('.tm-side-s')?.classList.toggle('active', s==='S');
+  document.querySelector('.tm-side-s')?.classList.toggle('sell', s==='S');
+  _tmRenderPreview();
+}
+function _tmSetSettle(s){
+  if(!_tmDraft) return;
+  _tmDraft.settle=s;
+  document.querySelector('.tm-settle-ci')?.classList.toggle('active', s==='CI');
+  document.querySelector('.tm-settle-24')?.classList.toggle('active', s==='24hs');
+  _tmRenderPreview();
+}
+function _tmSetApr(v){
+  if(!_tmDraft) return;
+  _tmDraft.approved=v;
+  const y=document.querySelector('.tm-aprob-yes');
+  const n=document.querySelector('.tm-aprob-no');
+  y?.classList.toggle('active', v==='yes'); y?.classList.toggle('yes', v==='yes');
+  n?.classList.toggle('active', v==='no');  n?.classList.toggle('no',  v==='no');
+}
+
+function _tmRenderPreview(){
+  const el=document.getElementById('tmPreview');
+  if(!el||!_tmDraft) return;
+  const t=_tmDraft;
+  if(!t.ticker || !(parseFloat(t.qty)>0) || !(parseFloat(t.price)>0)){
+    el.innerHTML='<div style="color:var(--td)">Completá ticker + VN + precio para ver el preview</div>';
+    return;
+  }
+  const notional=_bltNotional({qty:t.qty, price:t.price});
+  const cashSign=t.side==='B'?-1:+1;
+  const cash=cashSign*notional;
+  const yld=_bltYieldFor(t.ticker, parseFloat(t.price));
+  const ya = yld?.primary!=null ? yld.primary.toFixed(2)+'%' : '—';
+  const yb = yld?.secondary!=null ? `${yld.secondaryLabel}: ${yld.secondary.toFixed(2)}%` : '';
+  el.innerHTML=`
+    <div class="tm-pv-row"><span>Notional</span><strong>${_fmtMoneyFull(notional)}</strong></div>
+    <div class="tm-pv-row"><span>Impacto cash (${t.settle})</span><strong style="color:${cash>=0?'var(--pos)':'var(--neg)'}">${cash>=0?'+':''}${_fmtMoneyFull(cash)}</strong></div>
+    <div class="tm-pv-row"><span>${yld?.label||'Yield'}</span><strong>${ya} ${yb?`<span style="color:var(--td)">· ${yb}</span>`:''}</strong></div>`;
+}
+
+function saveTradeFromModal(){
+  if(!_tmDraft) return;
+  const t={..._tmDraft};
+  // Validación
+  if(!t.ticker){ alert('Falta ticker'); document.getElementById('tmTicker')?.focus(); return; }
+  const px=parseFloat(t.price), q=parseFloat(t.qty);
+  if(!(px>0)){ alert('Precio inválido'); document.getElementById('tmPrice')?.focus(); return; }
+  if(!(q>0)){ alert('VN inválido'); document.getElementById('tmQty')?.focus(); return; }
+  t.price=px; t.qty=q;
+  // Aviso si el ticker no está en nuestro universo (igual lo dejamos pasar)
+  if(!_bltFindAsset(t.ticker) && !confirm(`Ticker "${t.ticker}" no está en el universo conocido. ¿Guardar igual?`)){
+    return;
+  }
+
+  if(_tmEditingId){
+    const ix=_blotter.findIndex(x=>x.id===_tmEditingId);
+    if(ix>=0){ _blotter[ix]={..._blotter[ix],...t}; }
+  } else {
+    t.id=_bltNextTicket();
+    t.ts=new Date().toISOString();
+    _blotter.push(t);
+  }
+  // Recordar defaults
+  _bltLastCpty=t.cpty||_bltLastCpty; localStorage.setItem("cer_blt_lastCpty",_bltLastCpty);
+  _bltLastSettle=t.settle||_bltLastSettle; localStorage.setItem("cer_blt_lastSettle",_bltLastSettle);
+  _bltLastQty=t.qty||_bltLastQty; localStorage.setItem("cer_blt_lastQty",String(_bltLastQty));
+  saveBlotter();
+  closeTradeModal();
+  renderBlotter();
+}
+
+function editTrade(id){
+  const t=_blotter.find(x=>x.id===id);
+  if(!t) return;
+  _tmEditingId=id;
+  openTradeModal(t);
+}
+function deleteTrade(id){
+  if(!confirm('Borrar este trade?')) return;
+  _blotter=_blotter.filter(x=>x.id!==id);
+  saveBlotter(); renderBlotter();
+}
+function toggleApprove(id){
+  const t=_blotter.find(x=>x.id===id);
+  if(!t) return;
+  t.approved = (t.approved==='yes')?'no':(t.approved==='no')?'rej':'yes';
+  saveBlotter(); renderBlotter();
+}
+function cloneTrade(id){
+  const t=_blotter.find(x=>x.id===id);
+  if(!t) return;
+  _tmEditingId=null;
+  openTradeModal({...t, qty:'', price:'', notes:'', approved:'no'});
+}
+
+// ───────────────────────────────────────────────────────────
+// Render: Blotter table + Summary + Cash projection
+// ───────────────────────────────────────────────────────────
+function renderBlotter(){
+  const tbody=document.getElementById('blotterBody');
+  if(!tbody) return;
+  // Filtros
+  const dF=document.getElementById('bltDateFilter')?.value||'today';
+  const sF=document.getElementById('bltStatusFilter')?.value||'all';
+  const today=new Date().toISOString().slice(0,10);
+  const weekStart=new Date(); weekStart.setDate(weekStart.getDate()-weekStart.getDay()); weekStart.setHours(0,0,0,0);
+  let trades=_blotter.slice().sort((a,b)=>(a.ts||'').localeCompare(b.ts||''));
+  trades=trades.filter(t=>{
+    if(dF==='today') return t.ts && t.ts.startsWith(today);
+    if(dF==='week') return t.ts && new Date(t.ts)>=weekStart;
+    return true;
+  });
+  trades=trades.filter(t=>{
+    if(sF==='all') return true;
+    if(sF==='approved') return t.approved==='yes';
+    if(sF==='pending') return t.approved==='no';
+    if(sF==='rejected') return t.approved==='rej';
+    return true;
+  });
+
+  if(!trades.length){
+    tbody.innerHTML=`<tr><td colspan="13" style="text-align:center;color:var(--tm);padding:18px">Sin trades en este filtro · <button class="btn-api btn-sm" onclick="openTradeModal()" style="margin-left:8px">＋ Nuevo trade</button></td></tr>`;
+  } else {
+    let html='';
+    [...trades].reverse().forEach(t=>{
+      const px=parseFloat(t.price)||0, q=parseFloat(t.qty)||0;
+      const notional=_bltNotional(t);
+      const yld=_bltYieldFor(t.ticker, px);
+      const yldStr= yld?.primary!=null ? yld.primary.toFixed(2)+'%' : '—';
+      const yldTitle= yld?.secondary!=null ? `${yld.secondaryLabel}: ${yld.secondary.toFixed(2)}%` : '';
+      const hora=t.ts?t.ts.slice(11,19):'—';
+      const sideClass = t.side==='B'?'bl-buy':'bl-sell';
+      const sideTd = t.side==='B'?'bl-side-b':'bl-side-s';
+      const sideTxt = t.side==='B'?'COMPRA':'VENTA';
+      const aprPill = t.approved==='yes' ? '<span class="bl-pill yes">✓ APROB</span>'
+                     : t.approved==='rej' ? '<span class="bl-pill rej">✗ RECH</span>'
+                     : '<span class="bl-pill no">⏳ PEND</span>';
+      const ast=_bltFindAsset(t.ticker);
+      const tickerColor = ast?.color || 'var(--t)';
+      html+=`<tr class="bl-row ${sideClass}" data-tid="${t.id}">
+        <td>${hora}</td>
+        <td style="font-size:9px;color:var(--td)">${t.id||'—'}</td>
+        <td><span style="font-size:9px;padding:1px 6px;border-radius:8px;background:${t.settle==='CI'?'rgba(226,232,240,0.12)':'rgba(167,139,250,0.18)'};color:${t.settle==='CI'?'var(--acl)':'var(--fx)'};font-weight:600">${t.settle||'—'}</span></td>
+        <td style="font-size:10px">${t.cpty||'—'}</td>
+        <td class="tk" style="color:${tickerColor};font-weight:700">${t.ticker||'—'}</td>
+        <td class="${sideTd}">${sideTxt}</td>
+        <td class="num">${q.toLocaleString('es-AR')}</td>
+        <td class="num">${px?px.toFixed(2):'—'}</td>
+        <td class="num" style="color:var(--ac)">${_fmtMoneyFull(notional)}</td>
+        <td class="num" title="${yldTitle}">${yldStr}</td>
+        <td><span onclick="toggleApprove('${t.id}')" title="Click para ciclar yes→no→rej">${aprPill}</span></td>
+        <td style="font-size:9.5px;color:var(--td);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(t.notes||'').replace(/"/g,'&quot;')}">${t.notes||'—'}</td>
+        <td>
+          <div style="display:flex;gap:2px">
+            <button class="btn-api btn-sm" style="padding:2px 5px;font-size:10px" onclick="editTrade('${t.id}')" title="Editar">✎</button>
+            <button class="btn-api btn-sm" style="padding:2px 5px;font-size:10px" onclick="cloneTrade('${t.id}')" title="Clonar">⧉</button>
+            <button class="btn-api btn-sm" style="padding:2px 5px;font-size:10px;color:var(--w);border-color:var(--w)" onclick="deleteTrade('${t.id}')" title="Borrar">✕</button>
+          </div>
+        </td>
+      </tr>`;
+    });
+    tbody.innerHTML=html;
+  }
+
+  // Summary
+  const todayTrades=_blotter.filter(t=>t.ts && t.ts.startsWith(today));
+  const nB=todayTrades.filter(t=>t.side==='B').length;
+  const nS=todayTrades.filter(t=>t.side==='S').length;
+  const nAp=todayTrades.filter(t=>t.approved==='yes').length;
+  const nPe=todayTrades.filter(t=>t.approved==='no').length;
+  const totalNotional=todayTrades.reduce((s,t)=>s+_bltNotional(t),0);
+  const set=(id,v)=>{const e=document.getElementById(id);if(e) e.textContent=v;};
+  set('bltCntAll', todayTrades.length);
+  set('bltCntB', nB);
+  set('bltCntS', nS);
+  set('bltCntApproved', nAp);
+  set('bltCntPending', nPe);
+  set('bltNotional', _fmtMoneyFull(totalNotional));
+
+  // Cash projection
+  renderCash();
+}
+
+function renderCash(){
+  const today=new Date().toISOString().slice(0,10);
+  // Solo trades aprobados de hoy impactan caja
+  const todayApproved=_blotter.filter(t=>t.ts && t.ts.startsWith(today) && t.approved==='yes');
+
+  const ci  = todayApproved.filter(t=>t.settle==='CI');
+  const t24 = todayApproved.filter(t=>t.settle==='24hs');
+
+  const ciIn  = ci.filter(t=>t.side==='S').reduce((s,t)=>s+_bltNotional(t),0);
+  const ciOut = ci.filter(t=>t.side==='B').reduce((s,t)=>s+_bltNotional(t),0);
+  const t24In  = t24.filter(t=>t.side==='S').reduce((s,t)=>s+_bltNotional(t),0);
+  const t24Out = t24.filter(t=>t.side==='B').reduce((s,t)=>s+_bltNotional(t),0);
+
+  const ciNet  = ciIn  - ciOut;
+  const t24Net = t24In - t24Out;
+  const total  = ciNet + t24Net;
+
+  const set=(id,v,col)=>{const e=document.getElementById(id);if(e){e.textContent=v;if(col)e.style.color=col;}};
+  set('cashCIIn',  _fmtMoneyFull(ciIn));
+  set('cashCIOut', '-'+_fmtMoneyFull(ciOut));
+  set('cashCINet', (ciNet>=0?'+':'')+_fmtMoneyFull(ciNet),  ciNet>=0?'var(--pos)':'var(--neg)');
+  set('cash24In',  _fmtMoneyFull(t24In));
+  set('cash24Out', '-'+_fmtMoneyFull(t24Out));
+  set('cash24Net', (t24Net>=0?'+':'')+_fmtMoneyFull(t24Net), t24Net>=0?'var(--pos)':'var(--neg)');
+  set('cashTotalNet', (total>=0?'+':'')+_fmtMoneyFull(total), total>=0?'var(--pos)':'var(--neg)');
+
+  // Detail breakdown
+  const fmtList=(rows)=>{
+    if(!rows.length) return '—';
+    const map={};
+    rows.forEach(t=>{
+      if(!map[t.ticker]) map[t.ticker]={B:0,S:0,bN:0,sN:0};
+      const n=_bltNotional(t);
+      if(t.side==='B'){map[t.ticker].B++; map[t.ticker].bN+=n;} else {map[t.ticker].S++; map[t.ticker].sN+=n;}
+    });
+    return Object.entries(map).map(([tk,m])=>{
+      const net=m.sN-m.bN;
+      return `<div>${tk}: <span style="color:var(--pos)">${m.S?'S '+m.S:''}</span>${m.S&&m.B?' / ':''}<span style="color:var(--neg)">${m.B?'B '+m.B:''}</span> · neto <strong style="color:${net>=0?'var(--pos)':'var(--neg)'}">${(net>=0?'+':'')}${_fmtMoneyFull(net)}</strong></div>`;
+    }).join('');
+  };
+  set('cashCIDetail', '');
+  set('cash24Detail', '');
+  const ciD=document.getElementById('cashCIDetail');
+  const t24D=document.getElementById('cash24Detail');
+  if(ciD) ciD.innerHTML=fmtList(ci);
+  if(t24D) t24D.innerHTML=fmtList(t24);
+
+  // Settle dates
+  const tDate=new Date();
+  const ciStr=tDate.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'});
+  let t1=new Date(tDate); t1.setDate(t1.getDate()+1);
+  // Skip weekends + AR holidays
+  while(t1.getDay()===0||t1.getDay()===6||(typeof FER!=='undefined'&&FER.has?FER.has(t1.toISOString().slice(0,10)):false)){
+    t1.setDate(t1.getDate()+1);
+  }
+  const t1Str=t1.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'});
+  set('cashCIDate', ciStr);
+  set('cash24Date', t1Str);
+}
+
+// ───────────────────────────────────────────────────────────
+// AXES / Trading Book
+// ───────────────────────────────────────────────────────────
+function addAxe(){
+  _axes.push({
+    id:'A'+Date.now()+Math.random().toString(36).slice(2,5),
+    ticker:'',
+    bid:'', bidSize:'',
+    offer:'', offerSize:'',
+    notes:''
+  });
+  saveAxes(); renderAxes();
+  // Focus el último ticker que agregamos
+  setTimeout(()=>{
+    const rows=document.querySelectorAll('#axesBody tr[data-axid]');
+    if(rows.length){
+      const last=rows[rows.length-1].querySelector('input.ax-tk');
+      if(last) last.focus();
+    }
+  },50);
+}
+function removeAxe(id){
+  _axes=_axes.filter(a=>a.id!==id);
+  saveAxes(); renderAxes();
+}
+function _axeUpdate(id, field, val){
+  const a=_axes.find(x=>x.id===id);
+  if(!a) return;
+  if(field==='ticker') val=String(val||'').toUpperCase();
+  if(['bid','offer','bidSize','offerSize'].includes(field)) val=val===''?'':parseFloat(val);
+  a[field]=val;
+  saveAxes();
+  // No re-render full, solo update derived cells de la fila
+  _axeUpdateRowDerived(id);
+}
+function _axeUpdateRowDerived(id){
+  const a=_axes.find(x=>x.id===id);
+  if(!a) return;
+  const row=document.querySelector(`tr[data-axid="${id}"]`);
+  if(!row) return;
+  const bid=parseFloat(a.bid)||0, ofr=parseFloat(a.offer)||0;
+  const sp=(bid&&ofr)?ofr-bid:null;
+  const mid=(bid&&ofr)?(bid+ofr)/2:null;
+  const lp=(typeof _livePrices!=='undefined'&&a.ticker)?_livePrices[a.ticker]:null;
+  const liveMid = lp && lp.bid && lp.ask ? (lp.bid+lp.ask)/2 : (lp?lp.last:null) || null;
+  const vsLive = (mid && liveMid) ? (mid - liveMid) : null;
+  const spCell=row.querySelector('.ax-spread');
+  const liveCell=row.querySelector('.ax-livemid');
+  const vsCell=row.querySelector('.ax-vsmid');
+  if(spCell) spCell.textContent = sp!=null ? sp.toFixed(2) : '—';
+  if(liveCell) liveCell.textContent = liveMid ? liveMid.toFixed(2) : '—';
+  if(vsCell){
+    if(vsLive!=null){
+      vsCell.textContent = (vsLive>=0?'+':'')+vsLive.toFixed(2);
+      vsCell.className = 'num '+(vsLive>0?'ax-vs-rich':vsLive<0?'ax-vs-cheap':'');
+    } else {
+      vsCell.textContent='—';
+      vsCell.className='num';
+    }
+  }
+}
+function renderAxes(){
+  const tbody=document.getElementById('axesBody');
+  if(!tbody) return;
+  if(!_axes.length){
+    tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;color:var(--tm);padding:18px">Sin axes · <button class="btn-api btn-sm" onclick="addAxe()" style="margin-left:8px">＋ Agregar primero</button></td></tr>`;
+    return;
+  }
+  const tickers=_bltAllTickers().map(a=>a.ticker).sort();
+  const tickerOpts=tickers.map(t=>`<option value="${t}">`).join('');
+  let html='';
+  _axes.forEach(a=>{
+    const ast=_bltFindAsset(a.ticker);
+    const color=ast?.color||'var(--t)';
+    const bid=parseFloat(a.bid)||0, ofr=parseFloat(a.offer)||0;
+    const sp=(bid&&ofr)?ofr-bid:null;
+    const lp=(typeof _livePrices!=='undefined'&&a.ticker)?_livePrices[a.ticker]:null;
+    const liveMid = lp && lp.bid && lp.ask ? (lp.bid+lp.ask)/2 : (lp?lp.last:null) || null;
+    const mid=(bid&&ofr)?(bid+ofr)/2:null;
+    const vsLive = (mid && liveMid) ? (mid - liveMid) : null;
+    const vsClass = vsLive!=null?(vsLive>0?'ax-vs-rich':vsLive<0?'ax-vs-cheap':''):'';
+    html+=`<tr data-axid="${a.id}">
+      <td>
+        <input class="ax-in ax-tk" type="text" list="axTickerList" value="${a.ticker||''}" placeholder="X15Y6" style="text-align:left;color:${color};font-weight:700;text-transform:uppercase" oninput="_axeUpdate('${a.id}','ticker',this.value);this.style.color=(_bltFindAsset(this.value)?.color||'var(--t)')">
+      </td>
+      <td><input class="ax-in bid" type="number" step="0.01" value="${a.bid!==''&&a.bid!=null?a.bid:''}" placeholder="—" oninput="_axeUpdate('${a.id}','bid',this.value)"></td>
+      <td><input class="ax-in" type="number" step="1000" value="${a.bidSize!==''&&a.bidSize!=null?a.bidSize:''}" placeholder="—" oninput="_axeUpdate('${a.id}','bidSize',this.value)"></td>
+      <td><input class="ax-in ofr" type="number" step="0.01" value="${a.offer!==''&&a.offer!=null?a.offer:''}" placeholder="—" oninput="_axeUpdate('${a.id}','offer',this.value)"></td>
+      <td><input class="ax-in" type="number" step="1000" value="${a.offerSize!==''&&a.offerSize!=null?a.offerSize:''}" placeholder="—" oninput="_axeUpdate('${a.id}','offerSize',this.value)"></td>
+      <td class="num ax-spread">${sp!=null?sp.toFixed(2):'—'}</td>
+      <td class="num ax-livemid" style="color:var(--td)">${liveMid?liveMid.toFixed(2):'—'}</td>
+      <td class="num ax-vsmid ${vsClass}">${vsLive!=null?(vsLive>=0?'+':'')+vsLive.toFixed(2):'—'}</td>
+      <td><input class="ax-in" type="text" value="${(a.notes||'').replace(/"/g,'&quot;')}" placeholder="cliente / vs S31L6 / etc" style="text-align:left" oninput="_axeUpdate('${a.id}','notes',this.value)"></td>
+      <td><button class="btn-api btn-sm" style="padding:2px 6px;font-size:10px;color:var(--w);border-color:var(--w)" onclick="removeAxe('${a.id}')" title="Borrar">✕</button></td>
+    </tr>`;
+  });
+  // Datalist único para todos los inputs
+  html+=`<tr style="display:none"><td colspan="10"><datalist id="axTickerList">${tickerOpts}</datalist></td></tr>`;
+  tbody.innerHTML=html;
+}
+
+// Cuando llegan precios live, refrescar las celdas Mid/Vs de los axes
+const _origUpdateAxesOnPrices = ()=>{
+  if(document.getElementById('axesCard')?.offsetParent==null) return; // no visible
+  _axes.forEach(a=>_axeUpdateRowDerived(a.id));
+};
+
+// ───────────────────────────────────────────────────────────
+// Excel export (multi-sheet con SheetJS)
+// ───────────────────────────────────────────────────────────
+function exportBlotterXLSX(){
+  if(typeof XLSX==='undefined'){
+    alert('SheetJS no cargó (verificá conexión). Usá CSV como fallback.');
+    return;
+  }
+  const today=new Date().toISOString().slice(0,10);
+  const wb=XLSX.utils.book_new();
+
+  // Hoja 1: Trades
+  const tradesData=[[
+    'Hora','Ticket','Fecha','Liquidación','Contraparte','Ticker','Lado','VN','Precio','Notional','TIR/TNA','Aprobado','Notas'
+  ]];
+  _blotter.slice().sort((a,b)=>(a.ts||'').localeCompare(b.ts||'')).forEach(t=>{
+    const yld=_bltYieldFor(t.ticker, parseFloat(t.price));
+    const yStr= yld?.primary!=null ? yld.primary.toFixed(2)+'%' : '';
+    tradesData.push([
+      t.ts?t.ts.slice(11,19):'',
+      t.id||'',
+      t.ts?t.ts.slice(0,10):'',
+      t.settle||'',
+      t.cpty||'',
+      t.ticker||'',
+      t.side==='B'?'COMPRA':'VENTA',
+      parseFloat(t.qty)||0,
+      parseFloat(t.price)||0,
+      _bltNotional(t),
+      yStr,
+      t.approved==='yes'?'SI':t.approved==='rej'?'RECHAZADO':'PENDIENTE',
+      t.notes||''
+    ]);
+  });
+  const wsTrades=XLSX.utils.aoa_to_sheet(tradesData);
+  wsTrades['!cols']=[{wch:9},{wch:13},{wch:11},{wch:8},{wch:14},{wch:10},{wch:8},{wch:13},{wch:9},{wch:14},{wch:9},{wch:11},{wch:30}];
+  XLSX.utils.book_append_sheet(wb, wsTrades, 'Trades');
+
+  // Hoja 2: Cash projection
+  const todayApr=_blotter.filter(t=>t.ts && t.ts.startsWith(today) && t.approved==='yes');
+  const ci=todayApr.filter(t=>t.settle==='CI'), t24=todayApr.filter(t=>t.settle==='24hs');
+  const sum=(arr,side)=>arr.filter(t=>t.side===side).reduce((s,t)=>s+_bltNotional(t),0);
+  const cashData=[
+    ['Cash Projection · '+today, ''],
+    [],
+    ['Liquidación','Entra (ventas)','Sale (compras)','Neto'],
+    ['CI · hoy', sum(ci,'S'), -sum(ci,'B'), sum(ci,'S')-sum(ci,'B')],
+    ['24hs · T+1', sum(t24,'S'), -sum(t24,'B'), sum(t24,'S')-sum(t24,'B')],
+    [],
+    ['TOTAL', '', '', (sum(ci,'S')-sum(ci,'B'))+(sum(t24,'S')-sum(t24,'B'))],
+    [],
+    ['Detalle por ticker'],
+    ['Liquidación','Ticker','Compras (#)','Ventas (#)','Notional B','Notional S','Neto']
+  ];
+  const detailMap={CI:{}, '24hs':{}};
+  todayApr.forEach(t=>{
+    const m=detailMap[t.settle]; if(!m) return;
+    if(!m[t.ticker]) m[t.ticker]={B:0,S:0,bN:0,sN:0};
+    const n=_bltNotional(t);
+    if(t.side==='B'){m[t.ticker].B++; m[t.ticker].bN+=n;} else {m[t.ticker].S++; m[t.ticker].sN+=n;}
+  });
+  ['CI','24hs'].forEach(set=>{
+    Object.entries(detailMap[set]).forEach(([tk,m])=>{
+      cashData.push([set, tk, m.B, m.S, m.bN, m.sN, m.sN-m.bN]);
+    });
+  });
+  const wsCash=XLSX.utils.aoa_to_sheet(cashData);
+  wsCash['!cols']=[{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, wsCash, 'Cash');
+
+  // Hoja 3: Axes
+  const axesData=[['Ticker','Bid','x Size','Offer','x Size','Spread','Mid Mio','Live Mid','Vs Live','Notas']];
+  _axes.forEach(a=>{
+    const bid=parseFloat(a.bid)||0, ofr=parseFloat(a.offer)||0;
+    const sp=(bid&&ofr)?ofr-bid:'';
+    const mid=(bid&&ofr)?(bid+ofr)/2:'';
+    const lp=(typeof _livePrices!=='undefined'&&a.ticker)?_livePrices[a.ticker]:null;
+    const liveMid = lp && lp.bid && lp.ask ? (lp.bid+lp.ask)/2 : (lp?lp.last:null) || '';
+    const vsLive = (mid && liveMid) ? (mid - liveMid) : '';
+    axesData.push([a.ticker||'', bid||'', parseFloat(a.bidSize)||'', ofr||'', parseFloat(a.offerSize)||'', sp, mid, liveMid, vsLive, a.notes||'']);
+  });
+  const wsAxes=XLSX.utils.aoa_to_sheet(axesData);
+  wsAxes['!cols']=[{wch:10},{wch:10},{wch:12},{wch:10},{wch:12},{wch:9},{wch:9},{wch:9},{wch:10},{wch:30}];
+  XLSX.utils.book_append_sheet(wb, wsAxes, 'Axes');
+
+  // Hoja 4: Resumen del día
+  const allToday=_blotter.filter(t=>t.ts && t.ts.startsWith(today));
+  const summaryData=[
+    ['Resumen · '+today],
+    [],
+    ['Métrica','Valor'],
+    ['Trades totales', allToday.length],
+    ['Compras', allToday.filter(t=>t.side==='B').length],
+    ['Ventas', allToday.filter(t=>t.side==='S').length],
+    ['Aprobados', allToday.filter(t=>t.approved==='yes').length],
+    ['Pendientes', allToday.filter(t=>t.approved==='no').length],
+    ['Rechazados', allToday.filter(t=>t.approved==='rej').length],
+    ['Notional total', allToday.reduce((s,t)=>s+_bltNotional(t),0)],
+    [],
+    ['Por contraparte'],
+    ['Contraparte','# Trades','Notional']
+  ];
+  const cptyMap={};
+  allToday.forEach(t=>{
+    const c=t.cpty||'(sin)';
+    if(!cptyMap[c]) cptyMap[c]={n:0, not:0};
+    cptyMap[c].n++; cptyMap[c].not+=_bltNotional(t);
+  });
+  Object.entries(cptyMap).sort((a,b)=>b[1].not-a[1].not).forEach(([c,m])=>{
+    summaryData.push([c,m.n,m.not]);
+  });
+  const wsSum=XLSX.utils.aoa_to_sheet(summaryData);
+  wsSum['!cols']=[{wch:20},{wch:14},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, wsSum, 'Resumen');
+
+  XLSX.writeFile(wb, `blotter_${today.replace(/-/g,'')}.xlsx`);
+}
+
+// ───────────────────────────────────────────────────────────
+// Keyboard shortcuts globales (solo activos en tab Posiciones)
+// ───────────────────────────────────────────────────────────
+document.addEventListener('keydown', function(e){
+  // Solo si estamos en tab Posiciones
+  const posTab=document.getElementById('tab-positions');
+  if(!posTab || posTab.style.display==='none') return;
+
+  // Modal abierto?
+  const modalOpen=!!document.getElementById('tradeModal');
+
+  // Ctrl+N → abrir modal nuevo
+  if((e.ctrlKey||e.metaKey) && (e.key==='n'||e.key==='N') && !modalOpen){
+    e.preventDefault();
+    openTradeModal();
+    return;
+  }
+
+  // Solo dentro del modal
+  if(!modalOpen) return;
+
+  if(e.key==='Escape'){ e.preventDefault(); closeTradeModal(); return; }
+
+  // Enter (no en textarea) → save
+  if(e.key==='Enter' && e.target.tagName!=='TEXTAREA'){
+    e.preventDefault();
+    saveTradeFromModal();
+    return;
+  }
+
+  // B/S solo si NO estamos en un input/textarea
+  const inField = ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName);
+  if(!inField){
+    if(e.key==='b'||e.key==='B'){ e.preventDefault(); _tmSetSide('B'); return; }
+    if(e.key==='s'||e.key==='S'){ e.preventDefault(); _tmSetSide('S'); return; }
+  }
+});
+
+// Refresh axes Vs Live cuando cambian los precios live
+const _origFetchPrices = (typeof fetchPricesFromServer==='function')?fetchPricesFromServer:null;
+if(_origFetchPrices){
+  // Inyectamos un hook al final de fetchPricesFromServer sin pisar la función original.
+  window._postPriceUpdate = window._postPriceUpdate || [];
+  window._postPriceUpdate.push(()=>{
+    if(document.getElementById('tab-positions')?.style.display!=='none'){
+      _origUpdateAxesOnPrices();
+    }
+  });
+}
+
 function generateRun(){
   const title=document.getElementById("runTitle").value||"RUN";
   const spreadBps=parseFloat(document.getElementById("runSpread").value)||50;
@@ -8442,6 +9437,8 @@ function buildTAMARCards(){
     </div>
   `).join("");
 }buildInflGrid();buildTamarGrid();buildBondCards();buildFixedCards();buildTAMARCards();buildComparableSelect();buildPosSelect();buildPaseSelect();
+// Render blotter/cash/axes en el primer load (por si el user refrescó la página dentro de Posiciones)
+if(typeof renderBlotter==='function'){ try{ renderBlotter(); renderAxes(); }catch(e){} }
 setTimeout(initSortableTables,200);
 
 // Setear settlement = T+1 habil dinámico
