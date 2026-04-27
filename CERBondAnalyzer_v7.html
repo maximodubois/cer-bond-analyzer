@@ -412,6 +412,7 @@
 <div class="tab-bar-wrap" style="border-bottom:1px solid var(--cb)">
 <div style="display:flex;gap:0;flex-wrap:nowrap;min-width:max-content">
   <button class="tab-btn active" onclick="switchTab('resumen')">Resumen</button>
+  <button class="tab-btn" onclick="switchTab('cer')" style="color:var(--gn)">CER</button>
   <button class="tab-btn" onclick="switchTab('fx')">FX</button>
   <button class="tab-btn" onclick="switchTab('calculadoras')">Calculadoras</button>
   <button class="tab-btn" onclick="switchTab('analysis')">Análisis</button>
@@ -653,6 +654,148 @@
     </div>
   </div>
 </div>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     TAB: CER · The CER terminal, unlocked.  (estilo bondterminal.com)
+     ════════════════════════════════════════════════════════════════════ -->
+<div id="tab-cer" style="display:none">
+  <div class="cer-term">
+
+    <!-- HERO -->
+    <div class="cer-hero">
+      <div class="cer-hero-left">
+        <h1 class="cer-h1">The CER terminal,<br><span style="color:var(--gn)">unlocked.</span></h1>
+        <div class="cer-h1-sub">curva real argentina · live</div>
+      </div>
+      <div class="cer-hero-right">
+        <div class="cer-search">
+          <input type="text" id="cerSearch" placeholder="Buscá ticker · X15Y6, TZX26, TZXD7..." oninput="renderCERTab()">
+          <span class="cer-search-icon">🔍</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="cer-main-grid">
+
+      <!-- ── SNAPSHOT TABLE ── -->
+      <div class="cer-card cer-snapshot">
+        <div class="cer-card-hd">
+          <div class="cer-card-title">SNAPSHOT</div>
+          <div class="cer-tabs">
+            <button class="cer-subtab active" data-filter="all" onclick="_setCERFilter('all')">TODOS</button>
+            <button class="cer-subtab" data-filter="lecer" onclick="_setCERFilter('lecer')">LECER</button>
+            <button class="cer-subtab" data-filter="boncer" onclick="_setCERFilter('boncer')">BONCER</button>
+            <button class="cer-subtab" data-filter="short" onclick="_setCERFilter('short')">CORTOS</button>
+            <button class="cer-subtab" data-filter="long" onclick="_setCERFilter('long')">LARGOS</button>
+          </div>
+        </div>
+        <div class="cer-table-wrap">
+          <table class="cer-table" id="cerSnapTable">
+            <thead>
+              <tr>
+                <th class="lside">TICKER</th>
+                <th class="num">PRICE</th>
+                <th class="num">TIR REAL</th>
+                <th class="num">TNA TF</th>
+                <th class="num">Δ1D</th>
+                <th class="num">Δ vs CURVA</th>
+                <th class="num">DUR</th>
+                <th class="num">DÍAS</th>
+              </tr>
+            </thead>
+            <tbody id="cerSnapBody">
+              <tr><td colspan="8" style="text-align:center;color:var(--td);padding:18px;font-style:italic">Calculá primero en la pestaña Calculadoras para popular esta vista.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── CURVA CER ── -->
+      <div class="cer-card cer-curve-card">
+        <div class="cer-card-hd">
+          <div class="cer-card-title">CER CURVE</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace">DUR vs TIR REAL %</span>
+            <button class="cer-pill-btn" onclick="renderCERTab()" title="Refrescar curva">↻</button>
+          </div>
+        </div>
+        <div style="position:relative;width:100%;aspect-ratio:1.55/1;min-height:260px">
+          <canvas id="cerTermChart" style="width:100%;height:100%"></canvas>
+        </div>
+        <div id="cerCurveInfo" style="font-size:9.5px;color:var(--td);font-family:'IBM Plex Mono',monospace;margin-top:8px;line-height:1.6;border-top:1px solid var(--cb);padding-top:8px">—</div>
+      </div>
+    </div>
+
+    <!-- ── BOTTOM ROW: 3 panels ── -->
+    <div class="cer-bottom-grid">
+      <!-- Inflación -->
+      <div class="cer-card cer-mini">
+        <div class="cer-card-hd">
+          <div class="cer-card-title">INFLACIÓN · CER</div>
+          <span style="font-size:9px;color:var(--td)">BCRA · INDEC</span>
+        </div>
+        <div id="cerInflBox" style="font-family:'IBM Plex Mono',monospace;font-size:11px">
+          <div class="cer-stat-row"><span class="cer-stat-lbl">CER hoy</span><span class="cer-stat-val" id="cerStatToday">—</span></div>
+          <div class="cer-stat-row"><span class="cer-stat-lbl">CER liq (settle-10)</span><span class="cer-stat-val" id="cerStatLiq">—</span></div>
+          <div class="cer-stat-row"><span class="cer-stat-lbl">Último IPC m/m</span><span class="cer-stat-val" id="cerStatIPC">—</span></div>
+          <div class="cer-stat-row"><span class="cer-stat-lbl">Próximo IPC</span><span class="cer-stat-val" id="cerStatNextIPC">—</span></div>
+          <div class="cer-stat-row"><span class="cer-stat-lbl">Tu TEM proyectada (1m)</span><span class="cer-stat-val" id="cerStatTEMNext">—</span></div>
+          <div class="cer-stat-row"><span class="cer-stat-lbl">Tu TEM avg 6m</span><span class="cer-stat-val" id="cerStatTEM6">—</span></div>
+        </div>
+      </div>
+
+      <!-- Top movers -->
+      <div class="cer-card cer-mini">
+        <div class="cer-card-hd">
+          <div class="cer-card-title">TOP MOVERS · TIR Δ</div>
+          <span style="font-size:9px;color:var(--td)">vs cierre</span>
+        </div>
+        <div id="cerMoversBody" style="font-family:'IBM Plex Mono',monospace;font-size:11px">
+          <div class="cer-mov-empty">—</div>
+        </div>
+      </div>
+
+      <!-- Best breakeven -->
+      <div class="cer-card cer-mini">
+        <div class="cer-card-hd">
+          <div class="cer-card-title">BREAKEVEN INFL · TOP</div>
+          <span style="font-size:9px;color:var(--td)">vs LECAP comp.</span>
+        </div>
+        <div id="cerBeBody" style="font-family:'IBM Plex Mono',monospace;font-size:11px">
+          <div class="cer-mov-empty">Calculá breakevens primero</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RICH/CHEAP table (residuales sobre la curva) ── -->
+    <div class="cer-card" style="margin-top:14px">
+      <div class="cer-card-hd">
+        <div class="cer-card-title">RICH / CHEAP · Residuales sobre curva fiteada</div>
+        <span style="font-size:9px;color:var(--td)">log-fit · Δ negativo = cheap (TIR baja vs curva), Δ positivo = rich</span>
+      </div>
+      <div class="cer-table-wrap">
+        <table class="cer-table">
+          <thead>
+            <tr>
+              <th class="lside">TICKER</th>
+              <th class="num">DUR</th>
+              <th class="num">TIR REAL OBS</th>
+              <th class="num">TIR REAL FIT</th>
+              <th class="num">Δ bps</th>
+              <th class="num">SEÑAL</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="cerRcBody">
+            <tr><td colspan="7" style="text-align:center;color:var(--td);padding:14px;font-style:italic">Necesita ≥ 3 bonos con TIR calculada.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div><!-- end tab-cer -->
 
 <!-- TAB: ANALYSIS -->
 <div id="tab-analysis" style="display:none">
