@@ -3869,7 +3869,13 @@ function renderResumen(){
   const cerBody=document.getElementById("resumenCERBody");
   if(cerBody){
     let rows="";
-    BONDS.filter(b=>b._ok).forEach(b=>{
+    // Ordenar por DURATION ascendente — bonos con flujos cortos / amortizables (TX26)
+    // quedan arriba aunque su mat date sea lejano.
+    BONDS.filter(b=>b._ok).slice().sort((a,b)=>{
+      const da=(a._dur!=null)?a._dur:DB(settle,new Date(a.mat+"T00:00:00"))/365;
+      const db=(b._dur!=null)?b._dur:DB(settle,new Date(b.mat+"T00:00:00"))/365;
+      return da-db;
+    }).forEach(b=>{
       const days=DB(settle,new Date(b.mat+"T00:00:00"));
       const px=getCurrentPrice(b.id);
       const chg=getPriceVariationMeta(b.ticker,"pm_"+b.id);
@@ -4976,6 +4982,14 @@ function openBondCalculator(bondType, bondId){
           tirNom=tirNomRaw!=null?tirNomRaw*100:null;
           tirReal=tirRealRaw!=null?tirRealRaw*100:null;
           tna=tirNom!=null&&days>0?((Math.pow(1+tirNom/100,days/365)-1)*(365/days))*100:null;
+          // Write-back a la entidad bond para keep snapshot tables (Resumen + tab CER)
+          // sincronizadas con el último cálculo del modal. Sin esto, las tablas
+          // muestran valores stale hasta que el user toca "Calculá" de nuevo.
+          if(tirNom!=null){
+            const dur=durationFromFlows(tirNomRaw, flows, 'nominal');
+            b._tr=tirReal; b._tn=tirNom; b._tnaTF=tna; b._dur=dur;
+            b._ok=true;
+          }
         }
       }
 
@@ -5530,9 +5544,10 @@ function renderCERTab(){
       const fit=_cerFitLogCurve(fitPts);
 
       let rows='';
+      // Sort por DURATION ascendente. Si un bono no tiene dur, fallback a days/365.
       okBonds.sort((a,b)=>{
-        const da=DB(settle, new Date(a.mat+'T00:00:00'));
-        const db=DB(settle, new Date(b.mat+'T00:00:00'));
+        const da=(a._dur!=null)?a._dur:DB(settle, new Date(a.mat+'T00:00:00'))/365;
+        const db=(b._dur!=null)?b._dur:DB(settle, new Date(b.mat+'T00:00:00'))/365;
         return da-db;
       }).forEach(b=>{
         const matD=new Date(b.mat+'T00:00:00');
