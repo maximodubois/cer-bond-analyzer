@@ -329,6 +329,98 @@
   .bc-book .bk-vol{color:var(--ac)}
   .bc-book .bk-empty td{color:var(--td);text-align:center;padding:10px;cursor:default;font-style:italic;background:transparent}
   .bc-book .bk-empty:hover td{background:transparent}
+  /* ── Orderbook v2 horizontal (BID izq | OFFER der, estilo broker AR) ─ */
+  .bc-book2{margin-bottom:14px;background:var(--bg);border-radius:8px;border:1px solid var(--cb);overflow:hidden}
+  .bc-book2 .bb2-hd{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--card);border-bottom:1px solid var(--cb);gap:10px;flex-wrap:wrap}
+  .bc-book2 .bb2-title{font-size:10px;font-weight:700;color:var(--acl);text-transform:uppercase;letter-spacing:0.07em;font-family:'IBM Plex Mono',monospace}
+  .bc-book2 .bb2-summary{display:flex;align-items:baseline;gap:8px;font-family:'IBM Plex Mono',monospace}
+  .bc-book2 .bb2-cur-px{font-size:18px;font-weight:700;color:var(--acl);letter-spacing:-0.02em}
+  .bc-book2 .bb2-cur-var{font-size:11px;font-weight:700;padding:1px 6px;border-radius:4px}
+  .bc-book2 .bb2-cur-var.pos{color:var(--pos);background:rgba(74,222,128,0.10)}
+  .bc-book2 .bb2-cur-var.neg{color:var(--neg);background:rgba(248,113,113,0.10)}
+  .bc-book2 .bb2-cur-time{font-size:10px;color:var(--td)}
+  .bc-book2 .bb2-status-wrap{display:flex;gap:8px;align-items:center}
+  .bc-book2 .bc-book-status{font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace}
+  .bc-book2 .bc-book-status.ok{color:var(--pos)}
+  .bc-book2 .bc-book-status.err{color:var(--neg)}
+  .bc-book2 .bc-book-refresh{background:none;border:1px solid var(--cb);color:var(--td);font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer;font-family:'IBM Plex Mono',monospace}
+  .bc-book2 .bc-book-refresh:hover{border-color:var(--acl);color:var(--acl)}
+  .bc-book2 table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11.5px;table-layout:fixed}
+  .bc-book2 thead th{padding:6px 8px;font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;border-bottom:1px solid var(--cb)}
+  .bc-book2 thead .bid-h{background:rgba(74,222,128,0.12);color:var(--pos);text-align:right}
+  .bc-book2 thead .ofr-h{background:rgba(248,113,113,0.12);color:var(--neg);text-align:right}
+  .bc-book2 thead .center-sep{width:2px;background:var(--cb);padding:0;border:none}
+  .bc-book2 tbody td{padding:6px 8px;text-align:right;border-bottom:1px solid rgba(31,41,55,0.4);transition:background 0.08s;font-variant-numeric:tabular-nums}
+  .bc-book2 tbody td.bid-c{background:rgba(74,222,128,0.05);color:var(--pos);cursor:pointer}
+  .bc-book2 tbody td.ofr-c{background:rgba(248,113,113,0.05);color:var(--neg);cursor:pointer}
+  .bc-book2 tbody td.bid-c.bid-vol,
+  .bc-book2 tbody td.ofr-c.ofr-vol{color:var(--ac);font-size:10px;font-weight:500}
+  .bc-book2 tbody td.bid-c.bid-yld,
+  .bc-book2 tbody td.ofr-c.ofr-yld{font-size:9.5px;color:var(--am);font-weight:600;font-style:italic}
+  .bc-book2 tbody td.bid-c.bid-px,
+  .bc-book2 tbody td.ofr-c.ofr-px{font-size:12.5px;font-weight:700}
+  .bc-book2 tbody td.bid-c.best-row,
+  .bc-book2 tbody td.ofr-c.best-row{font-weight:800}
+  .bc-book2 tbody tr.row-bid-hover td.bid-c{background:rgba(74,222,128,0.20)}
+  .bc-book2 tbody tr.row-ofr-hover td.ofr-c{background:rgba(248,113,113,0.20)}
+  .bc-book2 tbody td.center-sep{padding:0;background:var(--cb);cursor:default;border:none}
+  .bc-book2 tbody td.empty-side{color:var(--td);font-style:italic;cursor:default;font-size:9.5px;background:transparent !important;font-weight:400;opacity:0.5}
+  .bc-book2 .bb2-foot{display:flex;align-items:center;gap:10px;padding:7px 12px;background:var(--card);border-top:1px solid var(--cb);font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--td);flex-wrap:wrap}
+  .bc-book2 .bb2-foot strong{color:var(--t);font-weight:600}
+  .bc-book2 .bb2-foot .sep{color:var(--cb)}
+  .bc-book2 .bb2-foot .hint{margin-left:auto;color:var(--td);font-size:9px;font-style:italic}
+
+  /* ─── CER TAB (estilo bondterminal) ───────────────────────────────── */
+  .cer-term{padding:0;font-family:'IBM Plex Mono',monospace;letter-spacing:0;color:var(--t)}
+  .cer-hero{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:20px;padding:24px 4px 18px;border-bottom:1px solid var(--cb);margin-bottom:18px}
+  .cer-h1{font-size:48px;font-weight:800;line-height:0.95;letter-spacing:-0.03em;color:var(--t);font-family:'IBM Plex Mono',monospace;margin:0}
+  .cer-h1-sub{font-size:11px;color:var(--td);margin-top:8px;text-transform:uppercase;letter-spacing:0.1em}
+  .cer-hero-right{flex:1;min-width:280px;max-width:540px}
+  .cer-search{position:relative}
+  .cer-search input{width:100%;background:var(--bg);border:1px solid var(--cb);color:var(--t);padding:14px 40px 14px 18px;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:14px;outline:none;letter-spacing:-0.01em}
+  .cer-search input:focus{border-color:var(--gn);box-shadow:0 0 0 3px rgba(0,229,160,0.08)}
+  .cer-search input::placeholder{color:var(--td)}
+  .cer-search-icon{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--gn);font-size:14px;pointer-events:none}
+  .cer-main-grid{display:grid;grid-template-columns:1.55fr 1fr;gap:14px}
+  @media(max-width:1100px){ .cer-main-grid{grid-template-columns:1fr} }
+  .cer-card{background:var(--card);border:1px solid var(--cb);border-radius:8px;padding:14px}
+  .cer-card-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+  .cer-card-title{font-size:10px;font-weight:700;color:var(--td);text-transform:uppercase;letter-spacing:0.1em;font-family:'IBM Plex Mono',monospace}
+  .cer-tabs{display:flex;gap:0;background:var(--bg);border:1px solid var(--cb);border-radius:5px;padding:2px}
+  .cer-subtab{background:transparent;border:none;color:var(--td);font-size:9px;font-weight:700;padding:4px 10px;cursor:pointer;border-radius:3px;font-family:'IBM Plex Mono',monospace;letter-spacing:0.07em;transition:all 0.1s}
+  .cer-subtab:hover{color:var(--t)}
+  .cer-subtab.active{background:var(--gnd);color:var(--gn)}
+  .cer-pill-btn{background:none;border:1px solid var(--cb);color:var(--td);padding:3px 9px;border-radius:4px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px}
+  .cer-pill-btn:hover{border-color:var(--gn);color:var(--gn)}
+  .cer-table-wrap{overflow-x:auto;max-height:520px;overflow-y:auto;margin:0 -14px -14px;border-top:1px solid var(--cb)}
+  .cer-table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11.5px}
+  .cer-table thead th{position:sticky;top:0;background:var(--card);z-index:1;padding:8px 12px;font-size:9px;font-weight:700;color:var(--td);text-transform:uppercase;letter-spacing:0.07em;border-bottom:1px solid var(--cb);text-align:right}
+  .cer-table thead th.lside{text-align:left}
+  .cer-table tbody td{padding:8px 12px;text-align:right;border-bottom:1px solid rgba(31,41,55,0.35);font-variant-numeric:tabular-nums;cursor:pointer;transition:background 0.08s}
+  .cer-table tbody td.lside{text-align:left}
+  .cer-table tbody tr:hover td{background:rgba(255,255,255,0.025)}
+  .cer-table .cer-tk{font-weight:700;letter-spacing:-0.01em;font-size:12px}
+  .cer-table .cer-tk-sub{font-size:8.5px;color:var(--td);font-weight:400;text-transform:uppercase;letter-spacing:0.05em;margin-left:6px}
+  .cer-table .pos{color:var(--pos)}
+  .cer-table .neg{color:var(--neg)}
+  .cer-table .acl{color:var(--acl)}
+  .cer-table .am{color:var(--am)}
+  .cer-table .signal-buy{color:var(--pos);font-weight:700}
+  .cer-table .signal-sell{color:var(--neg);font-weight:700}
+  .cer-table .signal-flat{color:var(--td)}
+  .cer-bottom-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
+  @media(max-width:900px){ .cer-bottom-grid{grid-template-columns:1fr} }
+  .cer-mini{padding:14px}
+  .cer-stat-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(31,41,55,0.3);font-size:11px}
+  .cer-stat-row:last-child{border-bottom:none}
+  .cer-stat-lbl{color:var(--td);font-size:10px}
+  .cer-stat-val{color:var(--acl);font-weight:700;font-variant-numeric:tabular-nums}
+  .cer-mov-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(31,41,55,0.3);font-size:11px}
+  .cer-mov-row:last-child{border-bottom:none}
+  .cer-mov-tk{font-weight:700;letter-spacing:-0.01em}
+  .cer-mov-val{font-variant-numeric:tabular-nums}
+  .cer-mov-empty{color:var(--td);font-style:italic;font-size:10px;text-align:center;padding:14px 0}
+
   .bc-flows table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:10px}
   .bc-flows th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--cb);color:var(--td);font-size:9px;text-transform:uppercase;letter-spacing:0.06em}
   .bc-flows td{padding:5px 8px;border-bottom:1px solid rgba(31,41,55,0.4)}
@@ -420,6 +512,7 @@
   <button class="tab-btn" onclick="switchTab('positions')">Posiciones</button>
   <button class="tab-btn" onclick="switchTab('pases')">Pases</button>
   <button class="tab-btn" onclick="switchTab('databcra')">BCRA</button>
+  <button class="tab-btn" onclick="switchTab('cer')" style="color:var(--gn);font-weight:700">CER</button>
 </div>
 </div>
 
@@ -1422,6 +1515,147 @@
   </div>
 </div><!-- end tab-fx -->
 
+<!-- ════════════════════════════════════════════════════════════════════
+     TAB: CER · The CER terminal, unlocked.  (estilo bondterminal.com)
+     ════════════════════════════════════════════════════════════════════ -->
+<div id="tab-cer" style="display:none">
+  <div class="cer-term">
+
+    <!-- HERO -->
+    <div class="cer-hero">
+      <div class="cer-hero-left">
+        <h1 class="cer-h1">The CER terminal,<br><span style="color:var(--gn)">unlocked.</span></h1>
+        <div class="cer-h1-sub">curva real argentina · live</div>
+      </div>
+      <div class="cer-hero-right">
+        <div class="cer-search">
+          <input type="text" id="cerSearch" placeholder="Buscá ticker · X15Y6, TZX26, TX26..." oninput="renderCERTab()">
+          <span class="cer-search-icon">🔍</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="cer-main-grid">
+
+      <!-- ── SNAPSHOT TABLE ── -->
+      <div class="cer-card cer-snapshot">
+        <div class="cer-card-hd">
+          <div class="cer-card-title">SNAPSHOT</div>
+          <div class="cer-tabs">
+            <button class="cer-subtab active" data-filter="all" onclick="_setCERFilter('all')">TODOS</button>
+            <button class="cer-subtab" data-filter="lecer" onclick="_setCERFilter('lecer')">LECER</button>
+            <button class="cer-subtab" data-filter="boncer" onclick="_setCERFilter('boncer')">BONCER</button>
+            <button class="cer-subtab" data-filter="short" onclick="_setCERFilter('short')">CORTOS</button>
+            <button class="cer-subtab" data-filter="long" onclick="_setCERFilter('long')">LARGOS</button>
+          </div>
+        </div>
+        <div class="cer-table-wrap">
+          <table class="cer-table" id="cerSnapTable">
+            <thead>
+              <tr>
+                <th class="lside">TICKER</th>
+                <th class="num">PRICE</th>
+                <th class="num">TIR REAL</th>
+                <th class="num">TNA TF</th>
+                <th class="num">Δ1D</th>
+                <th class="num">Δ vs CURVA</th>
+                <th class="num">DUR</th>
+                <th class="num">DÍAS</th>
+              </tr>
+            </thead>
+            <tbody id="cerSnapBody">
+              <tr><td colspan="8" style="text-align:center;color:var(--td);padding:18px;font-style:italic">Calculá primero en la pestaña Calculadoras para popular esta vista.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── CURVA CER ── -->
+      <div class="cer-card cer-curve-card">
+        <div class="cer-card-hd">
+          <div class="cer-card-title">CER CURVE</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace">DUR vs TIR REAL %</span>
+            <button class="cer-pill-btn" onclick="renderCERTab()" title="Refrescar curva">↻</button>
+          </div>
+        </div>
+        <div style="position:relative;width:100%;aspect-ratio:1.55/1;min-height:260px">
+          <canvas id="cerTermChart" style="width:100%;height:100%"></canvas>
+        </div>
+        <div id="cerCurveInfo" style="font-size:9.5px;color:var(--td);font-family:'IBM Plex Mono',monospace;margin-top:8px;line-height:1.6;border-top:1px solid var(--cb);padding-top:8px">—</div>
+      </div>
+    </div>
+
+    <!-- ── BOTTOM ROW: 3 panels ── -->
+    <div class="cer-bottom-grid">
+      <!-- Inflación -->
+      <div class="cer-card cer-mini">
+        <div class="cer-card-hd">
+          <div class="cer-card-title">INFLACIÓN · CER</div>
+          <span style="font-size:9px;color:var(--td)">BCRA · INDEC</span>
+        </div>
+        <div id="cerInflBox" style="font-family:'IBM Plex Mono',monospace;font-size:11px">
+          <div class="cer-stat-row"><span class="cer-stat-lbl">CER hoy</span><span class="cer-stat-val" id="cerStatToday">—</span></div>
+          <div class="cer-stat-row"><span class="cer-stat-lbl">CER liq (settle-10)</span><span class="cer-stat-val" id="cerStatLiq">—</span></div>
+          <div class="cer-stat-row"><span class="cer-stat-lbl">Último IPC m/m</span><span class="cer-stat-val" id="cerStatIPC">—</span></div>
+          <div class="cer-stat-row"><span class="cer-stat-lbl">TEM proyectada (1m)</span><span class="cer-stat-val" id="cerStatTEMNext">—</span></div>
+          <div class="cer-stat-row"><span class="cer-stat-lbl">TEM avg 6m</span><span class="cer-stat-val" id="cerStatTEM6">—</span></div>
+        </div>
+      </div>
+
+      <!-- Top movers -->
+      <div class="cer-card cer-mini">
+        <div class="cer-card-hd">
+          <div class="cer-card-title">TOP MOVERS · TIR Δ</div>
+          <span style="font-size:9px;color:var(--td)">vs cierre</span>
+        </div>
+        <div id="cerMoversBody" style="font-family:'IBM Plex Mono',monospace;font-size:11px">
+          <div class="cer-mov-empty">—</div>
+        </div>
+      </div>
+
+      <!-- Best breakeven -->
+      <div class="cer-card cer-mini">
+        <div class="cer-card-hd">
+          <div class="cer-card-title">BREAKEVEN INFL · TOP</div>
+          <span style="font-size:9px;color:var(--td)">vs LECAP comp.</span>
+        </div>
+        <div id="cerBeBody" style="font-family:'IBM Plex Mono',monospace;font-size:11px">
+          <div class="cer-mov-empty">Calculá breakevens primero</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RICH/CHEAP table (residuales sobre la curva) ── -->
+    <div class="cer-card" style="margin-top:14px">
+      <div class="cer-card-hd">
+        <div class="cer-card-title">RICH / CHEAP · Residuales sobre curva fiteada</div>
+        <span style="font-size:9px;color:var(--td)">log-fit · Δ negativo = cheap (TIR alta vs curva), Δ positivo = rich</span>
+      </div>
+      <div class="cer-table-wrap">
+        <table class="cer-table">
+          <thead>
+            <tr>
+              <th class="lside">TICKER</th>
+              <th class="num">DUR</th>
+              <th class="num">TIR REAL OBS</th>
+              <th class="num">TIR REAL FIT</th>
+              <th class="num">Δ bps</th>
+              <th class="num">SEÑAL</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="cerRcBody">
+            <tr><td colspan="7" style="text-align:center;color:var(--td);padding:14px;font-style:italic">Necesita ≥ 3 bonos con TIR calculada.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div><!-- end tab-cer -->
+
 <div class="card" style="border-color:rgba(71,85,105,0.2);margin-top:10px">
   <div class="st">Metodología</div>
   <div class="method">
@@ -1468,6 +1702,19 @@ const BONDS=[
   {id:"TZX27",ticker:"TZX27",name:"BONCER 30-Jun-27",mat:"2027-06-30",vno:100,cup:0,emDate:"2024-02-01",cerEm:200.38801458912,isin:"",color:"#2dd4bf"},
   {id:"TZXD7",ticker:"TZXD7",name:"BONCER 15-Dic-27",mat:"2027-12-15",vno:100,cup:0,emDate:"2024-03-15",cerEm:271.04755550913,isin:"AR0611949808",color:"#f472b6"},
   {id:"TZX28",ticker:"TZX28",name:"BONCER 30-Jun-28",mat:"2028-06-30",vno:100,cup:0,emDate:"2024-02-01",cerEm:200.38801458912,isin:"",color:"#c084fc"},
+  // ─── TX26: BONCER X 9-Nov-2026, cupón 2% anual (semi 1%), 5 amort 20% ───
+  // Flujos definidos abajo en `schedule`. Cada pago tiene su propio CER (settle-10 hábil).
+  {id:"TX26",ticker:"TX26",name:"BONCER X 9-Nov-26 (2% cupón, amort)",mat:"2026-11-09",vno:100,cup:0.02,cupFreq:2,emDate:"2020-11-09",cerEm:22.544,isin:"ARARGE3209S6",color:"#a3e635",
+    schedule:[
+      // {date:"YYYY-MM-DD", cupRateOnResidual:0.01, amortPct:0.20}
+      {date:"2024-05-09", cupRate:0.01, amortPct:0.00, residualBefore:1.00},  // pasado
+      {date:"2024-11-11", cupRate:0.01, amortPct:0.20, residualBefore:1.00},
+      {date:"2025-05-09", cupRate:0.01, amortPct:0.20, residualBefore:0.80},
+      {date:"2025-11-10", cupRate:0.01, amortPct:0.20, residualBefore:0.60},
+      {date:"2026-05-11", cupRate:0.01, amortPct:0.20, residualBefore:0.40},
+      {date:"2026-11-09", cupRate:0.01, amortPct:0.20, residualBefore:0.20},
+    ]
+  },
 ];
 
 // ═══ TASA FIJA ═══
@@ -2746,12 +2993,53 @@ function getBondEmissionCER(b){
 }
 function getBondSchedule(b, settle, getCER, cerLiqRef){
   const flows=[];
+  const cerEmRef=getBondEmissionCER(b);
+  if(!cerLiqRef||!cerEmRef) return flows;
+  const baseFlow=b.vno;
+
+  // ── Bono con schedule multi-flow (TX26 y similares) ──
+  // Cada flow tiene su propio CER liq (settle-10 hábil de la fecha de pago).
+  // Cupón se paga sobre el residual ANTES de la amortización del mismo flow.
+  // Capital del flow = amortPct × VN.
+  if(Array.isArray(b.schedule) && b.schedule.length){
+    b.schedule.forEach(f=>{
+      const fDate=new Date(f.date+"T00:00:00");
+      if(fDate<=settle) return; // solo flows futuros
+      const refDate=SBD(fDate,10);
+      const cerPay=getCERObservedOrProjected(getCER, refDate);
+      // CER liq para el "real" leg: el CER liquidación al settle-10 (referenciado al settle del trade)
+      // pero en flujos sucesivos el "real" leg también acretiona — usamos cerLiqRef como base para today
+      // y cerPay/cerEmRef como factor para nominal.
+      if(!cerPay) return;
+      const factor = cerPay/cerEmRef; // CER acretion factor a la fecha del pago
+      const realFactor = cerLiqRef/cerEmRef; // CER acretion al settle del trade (sin proyectar)
+      const residualBefore = (f.residualBefore!=null) ? f.residualBefore : 1.0;
+      const cupRate = f.cupRate || 0;       // ej 0.01 = 1% del residual
+      const amortPct = f.amortPct || 0;
+      const cupFlow  = baseFlow * residualBefore * cupRate;     // sobre VN nominal del bono
+      const amrFlow  = baseFlow * amortPct;
+      const totalFlowVN = cupFlow + amrFlow;                    // VN nominal del flow
+      flows.push({
+        date: fDate,
+        days: DB(settle, fDate),
+        cerPay,
+        nominal: totalFlowVN * factor,                          // ARS nominal proyectado al pago
+        real:    totalFlowVN * realFactor,                      // ARS real (CER liq today)
+        // metadata para debug / display
+        cupon: cupFlow * factor,
+        capital: amrFlow * factor,
+        residualBefore,
+      });
+    });
+    if(flows.length) return flows;
+    // Si no hay flows futuros del schedule, caemos al bullet at-mat (último día del schedule)
+  }
+
+  // ── Bullet (default) ──
   const matD=new Date(b.mat+"T00:00:00");
   const ref=SBD(matD,10);
   const cerPay=getCERObservedOrProjected(getCER,ref);
-  const cerEmRef=getBondEmissionCER(b);
-  if(!cerPay||!cerLiqRef||!cerEmRef) return flows;
-  const baseFlow=b.vno;
+  if(!cerPay) return flows;
   flows.push({date:matD, days:DB(settle,matD), cerPay, nominal:baseFlow*(cerPay/cerEmRef), real:baseFlow*(cerLiqRef/cerEmRef)});
   return flows;
 }
@@ -3423,7 +3711,7 @@ function drawImplInflChart(results){
 // ═══ INIT ══════════════════════════
 // ═══ TABS ═════════════════════════════════════════════════════════
 function switchTab(tab){
-  ["calculadoras","resumen","analysis","quantplus","livescreen","positions","pases","databcra","fx"].forEach(t=>{
+  ["calculadoras","resumen","analysis","quantplus","livescreen","positions","pases","databcra","fx","cer"].forEach(t=>{
     const el=document.getElementById("tab-"+t);
     if(el) el.style.display=t===tab?"":"none";
   });
@@ -3436,8 +3724,9 @@ function switchTab(tab){
       ||(tab==="livescreen"&&txt.includes("live"))
       ||(tab==="positions"&&txt.includes("posic"))
       ||(tab==="pases"&&txt.includes("pase"))
-      ||(tab==="databcra"&&txt.includes("data"))
-      ||(tab==="fx"&&txt==="fx");
+      ||(tab==="databcra"&&(txt.includes("data")||txt.includes("bcra")))
+      ||(tab==="fx"&&txt==="fx")
+      ||(tab==="cer"&&txt==="cer");
     b.classList.toggle("active",isActive);
   });
   if(tab==="resumen") renderResumen();
@@ -3446,6 +3735,7 @@ function switchTab(tab){
   if(tab==="pases") buildPaseSelect();
   if(tab==="quantplus") refreshQuantPlus();
   if(tab==="fx") renderFX();
+  if(tab==="cer"){ try{ renderCERTab(); }catch(e){ console.warn('[cer-tab]',e); } }
   setTimeout(initSortableTables,100);
 }
 
@@ -4011,42 +4301,46 @@ function openBondCalculator(bondType, bondId){
           <div class="bc-kpi"><div class="bv" id="bck-total" style="font-size:13px">-</div><div class="bl">Total cobros</div></div>
           <div class="bc-kpi"><div class="bv" id="bck-ganancia" style="font-size:13px">-</div><div class="bl">Ganancia</div></div>
         </div>
-        <div class="bc-prices">
-          <span>BID: <strong style="color:var(--t)" id="bcq-bid">${lp.bid||'-'}</strong></span>
-          <span>LAST: <strong style="color:var(--acl)" id="bcq-last">${lp.last||'-'}</strong></span>
-          <span>OFFER: <strong style="color:var(--t)" id="bcq-ask">${lp.ask||'-'}</strong></span>
-          <span>Cierre: <strong style="color:var(--t)" id="bcq-close">${lp.close||'-'}</strong></span>
-          <span style="cursor:pointer;color:var(--acl)" onclick="document.getElementById('bci-price').value=${lp.bid||0};document.getElementById('bci-price').dispatchEvent(new Event('input'))">usar BID</span>
-          <span style="cursor:pointer;color:var(--acl)" onclick="document.getElementById('bci-price').value=${lp.last||0};document.getElementById('bci-price').dispatchEvent(new Event('input'))">usar LAST</span>
-          <span style="cursor:pointer;color:var(--acl)" onclick="document.getElementById('bci-price').value=${lp.ask||0};document.getElementById('bci-price').dispatchEvent(new Event('input'))">usar OFFER</span>
-        </div>
-        <!-- ── Depth-5 book (Primary API) ───────────────────────── -->
-        <div class="bc-book" id="bc-book-wrap">
-          <div class="bc-book-hd">
-            <div>
-              <span class="bc-book-title">PROFUNDIDAD x5</span>
-              <span style="margin-left:8px;color:var(--td);font-size:9px">— Primary API · click en una fila para usar ese precio</span>
+        <!-- ── Orderbook horizontal (BID izq | OFFER der) — estilo broker AR ── -->
+        <div class="bc-book2" id="bc-book-wrap">
+          <div class="bb2-hd">
+            <span class="bb2-title">PROFUNDIDAD x5</span>
+            <div class="bb2-summary">
+              <span class="bb2-cur-px" id="bcq-last">${lp.last?Number(lp.last).toFixed(2):'—'}</span>
+              <span class="bb2-cur-var" id="bcq-var">—</span>
+              <span class="bb2-cur-time" id="bcq-time">—</span>
             </div>
-            <div style="display:flex;gap:8px;align-items:center">
+            <div class="bb2-status-wrap">
               <span class="bc-book-status" id="bc-book-status">…</span>
-              <button class="bc-book-refresh" id="bc-book-refresh" type="button">↻ refrescar</button>
+              <button class="bc-book-refresh" id="bc-book-refresh" type="button">↻</button>
             </div>
           </div>
           <table>
             <thead>
               <tr>
-                <th class="lside" style="width:14%">Lado</th>
-                <th style="width:18%">Volumen</th>
-                <th style="width:22%">Precio</th>
-                ${bondType==='cer'
-                  ? `<th style="width:23%">TIR Real</th><th style="width:23%">TNA TF CER</th>`
-                  : `<th style="width:46%" colspan="2">TNA</th>`}
+                <th class="bid-h" style="width:14%">Vol C</th>
+                <th class="bid-h" style="width:20%">COMPRA</th>
+                <th class="bid-h" style="width:16%">${bondType==='cer'?'TNA TF':'TNA'}</th>
+                <th class="center-sep"></th>
+                <th class="ofr-h" style="width:16%">${bondType==='cer'?'TNA TF':'TNA'}</th>
+                <th class="ofr-h" style="width:20%">VENTA</th>
+                <th class="ofr-h" style="width:14%">Vol V</th>
               </tr>
             </thead>
             <tbody id="bc-book-body">
-              <tr class="bk-empty"><td colspan="5">Cargando book…</td></tr>
+              <tr><td colspan="7" style="text-align:center;color:var(--td);padding:14px;font-style:italic">Cargando book…</td></tr>
             </tbody>
           </table>
+          <div class="bb2-foot">
+            <span>BID: <strong style="color:var(--pos)" id="bcq-bid">${lp.bid?Number(lp.bid).toFixed(2):'—'}</strong></span>
+            <span class="sep">·</span>
+            <span>OFR: <strong style="color:var(--neg)" id="bcq-ask">${lp.ask?Number(lp.ask).toFixed(2):'—'}</strong></span>
+            <span class="sep">·</span>
+            <span>Cierre: <strong id="bcq-close">${lp.close?Number(lp.close).toFixed(2):'—'}</strong></span>
+            <span class="sep">·</span>
+            <span>Cierre Ant: <strong id="bcq-prev">—</strong></span>
+            <span class="hint">Click en cualquier fila → usa ese precio</span>
+          </div>
         </div>
         <div class="bc-target" style="flex-direction:column;align-items:stretch;gap:10px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -4996,82 +5290,57 @@ function openBondCalculator(bondType, bondId){
   function _renderBookRows(bids, offers){
     const tbody=document.getElementById('bc-book-body');
     if(!tbody) return;
-    const yldCols = bondType==='cer' ? 2 : 2; // (TIR/TNA TF) o (TNA colspan=2)
-    const cols = 3 + yldCols;
 
     const fmtSize = s => (s==null||s==='')?'—':Number(s).toLocaleString('es-AR');
-    const fmtPx = p => (p==null)?'—':Number(p).toFixed(2);
-    const fmtPct = v => (v==null||!isFinite(v))?'—':v.toFixed(2)+'%';
-
-    const renderYldCells = price => {
-      const y=_bcYieldAt(price);
-      if(bondType==='cer'){
-        const a=y?fmtPct(y.tirReal):'—', c=y?fmtPct(y.tnaTF):'—';
-        return `<td class="bk-yld">${a}</td><td class="bk-yld2">${c}</td>`;
-      }
-      return `<td class="bk-yld" colspan="2">${y?fmtPct(y.tna):'—'}</td>`;
+    const fmtPx   = p => (p==null||!(p>0))?'—':Number(p).toFixed(2);
+    const fmtPct  = v => (v==null||!isFinite(v))?'—':v.toFixed(2)+'%';
+    const yldStr  = px => {
+      const y=_bcYieldAt(px);
+      if(!y) return '—';
+      // Para CER mostramos TNA TF (TIR Real va en title hover)
+      return bondType==='cer' ? fmtPct(y.tnaTF) : fmtPct(y.tna);
+    };
+    const yldTitle = px => {
+      const y=_bcYieldAt(px);
+      if(!y) return '';
+      if(bondType==='cer') return `TIR Real: ${fmtPct(y.tirReal)} · TNA TF: ${fmtPct(y.tnaTF)}`;
+      return `TNA: ${fmtPct(y.tna)}`;
     };
 
-    // OFFERS: peor (más alto) arriba, mejor (más bajo) abajo
-    const ofs = (offers||[]).slice(0,5).slice().sort((a,b)=>(b.price||0)-(a.price||0));
-    const bds = (bids  ||[]).slice(0,5).slice().sort((a,b)=>(b.price||0)-(a.price||0));
+    // BID: ordenado descendente (mejor = mayor precio arriba)
+    const bds = (bids  ||[]).slice().filter(x=>x&&x.price>0).sort((a,b)=>(b.price||0)-(a.price||0)).slice(0,5);
+    // OFFER: ordenado ascendente (mejor = menor precio arriba)
+    const ofs = (offers||[]).slice().filter(x=>x&&x.price>0).sort((a,b)=>(a.price||0)-(b.price||0)).slice(0,5);
+
+    // Si ambos lados vacíos, mostrar 1 row vacía
+    if(!bds.length && !ofs.length){
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--td);padding:14px;font-style:italic">— sin ofertas en el libro —</td></tr>`;
+      return;
+    }
 
     let html='';
-    if(!ofs.length){
-      html+=`<tr class="bk-empty"><td colspan="${cols}">— sin ofertas —</td></tr>`;
-    } else {
-      // Si hay menos de 5, padear arriba para que el mejor ask quede pegado al spread
-      const pad=5-ofs.length;
-      for(let i=0;i<pad;i++){
-        html+=`<tr class="bk-empty"><td colspan="${cols}">·</td></tr>`;
-      }
-      ofs.forEach((lvl,i)=>{
-        const isBest = i===ofs.length-1; // mejor ask (más bajo) está al final tras sort desc
-        const lbl=`OFR ${ofs.length-i}`;
-        html+=`<tr class="ofr-row" data-px="${lvl.price||0}" title="Click para usar este precio">
-          <td class="lside" style="${isBest?'font-weight:700':''}">${lbl}</td>
-          <td class="bk-vol">${fmtSize(lvl.size)}</td>
-          <td style="${isBest?'font-weight:700':''}">${fmtPx(lvl.price)}</td>
-          ${renderYldCells(lvl.price)}
-        </tr>`;
-      });
-    }
+    for(let i=0;i<5;i++){
+      const b=bds[i]||null;
+      const o=ofs[i]||null;
+      const bIsBest = b && i===0;
+      const oIsBest = o && i===0;
 
-    // Spread row
-    const bestBid = bds.length?Math.max(...bds.map(x=>x.price||0)):null;
-    const bestOfr = ofs.length?Math.min(...ofs.filter(x=>x.price>0).map(x=>x.price)):null;
-    let spreadTxt='—';
-    if(bestBid&&bestOfr){
-      const sp=bestOfr-bestBid;
-      const spPct=bestBid?(sp/bestBid*100):0;
-      spreadTxt=`Spread <strong>${sp.toFixed(2)}</strong> (${spPct.toFixed(3)}%) · Mid <strong>${((bestBid+bestOfr)/2).toFixed(2)}</strong>`;
-    }
-    html+=`<tr class="spread-row"><td colspan="${cols}" style="text-align:center">${spreadTxt}</td></tr>`;
+      const bidVol = b?`<td class="bid-c bid-vol${bIsBest?' best-row':''}" data-side="bid" data-px="${b.price}">${fmtSize(b.size)}</td>`:`<td class="empty-side">·</td>`;
+      const bidPx  = b?`<td class="bid-c bid-px${bIsBest?' best-row':''}" data-side="bid" data-px="${b.price}" title="${yldTitle(b.price)}">${fmtPx(b.price)}</td>`:`<td class="empty-side">·</td>`;
+      const bidYld = b?`<td class="bid-c bid-yld" data-side="bid" data-px="${b.price}" title="${yldTitle(b.price)}">${yldStr(b.price)}</td>`:`<td class="empty-side">·</td>`;
 
-    if(!bds.length){
-      html+=`<tr class="bk-empty"><td colspan="${cols}">— sin bids —</td></tr>`;
-    } else {
-      bds.forEach((lvl,i)=>{
-        const isBest = i===0; // mejor bid (más alto) está al inicio tras sort desc
-        const lbl=`BID ${i+1}`;
-        html+=`<tr class="bid-row" data-px="${lvl.price||0}" title="Click para usar este precio">
-          <td class="lside" style="${isBest?'font-weight:700':''}">${lbl}</td>
-          <td class="bk-vol">${fmtSize(lvl.size)}</td>
-          <td style="${isBest?'font-weight:700':''}">${fmtPx(lvl.price)}</td>
-          ${renderYldCells(lvl.price)}
-        </tr>`;
-      });
-      const padB=5-bds.length;
-      for(let i=0;i<padB;i++){
-        html+=`<tr class="bk-empty"><td colspan="${cols}">·</td></tr>`;
-      }
-    }
+      const ofrYld = o?`<td class="ofr-c ofr-yld" data-side="ofr" data-px="${o.price}" title="${yldTitle(o.price)}">${yldStr(o.price)}</td>`:`<td class="empty-side">·</td>`;
+      const ofrPx  = o?`<td class="ofr-c ofr-px${oIsBest?' best-row':''}" data-side="ofr" data-px="${o.price}" title="${yldTitle(o.price)}">${fmtPx(o.price)}</td>`:`<td class="empty-side">·</td>`;
+      const ofrVol = o?`<td class="ofr-c ofr-vol${oIsBest?' best-row':''}" data-side="ofr" data-px="${o.price}">${fmtSize(o.size)}</td>`:`<td class="empty-side">·</td>`;
 
+      html += `<tr data-row="${i}">${bidVol}${bidPx}${bidYld}<td class="center-sep"></td>${ofrYld}${ofrPx}${ofrVol}</tr>`;
+    }
     tbody.innerHTML=html;
+
     // Wire click → set price input
-    tbody.querySelectorAll('tr[data-px]').forEach(tr=>{
-      tr.addEventListener('click', ()=>{
-        const px=parseFloat(tr.getAttribute('data-px'))||0;
+    tbody.querySelectorAll('td[data-px]').forEach(td=>{
+      td.addEventListener('click', ()=>{
+        const px=parseFloat(td.getAttribute('data-px'))||0;
         if(px>0){
           const inp=document.getElementById('bci-price');
           if(inp){
@@ -5081,6 +5350,16 @@ function openBondCalculator(bondType, bondId){
             inp.dispatchEvent(new Event('input'));
           }
         }
+      });
+      // Highlight la fila completa del lado al hover
+      td.addEventListener('mouseenter', ()=>{
+        const tr=td.parentElement; if(!tr) return;
+        const side=td.getAttribute('data-side');
+        tr.classList.add(side==='bid'?'row-bid-hover':'row-ofr-hover');
+      });
+      td.addEventListener('mouseleave', ()=>{
+        const tr=td.parentElement; if(!tr) return;
+        tr.classList.remove('row-bid-hover','row-ofr-hover');
       });
     });
   }
@@ -5124,10 +5403,20 @@ function openBondCalculator(bondType, bondId){
       if(hl && data.last!=null) hl.textContent=Number(data.last).toFixed(2);
       const hc=document.getElementById('bcq-close');
       if(hc && data.close!=null) hc.textContent=Number(data.close).toFixed(2);
+      // Var % vs cierre anterior
+      const hv=document.getElementById('bcq-var');
+      if(hv && data.last!=null && data.close!=null && data.close>0){
+        const v=((data.last-data.close)/data.close)*100;
+        hv.textContent=`(${v>=0?'+':''}${v.toFixed(2)}%)`;
+        hv.className=`bb2-cur-var ${v>=0?'pos':'neg'}`;
+      } else if(hv){ hv.textContent='—'; hv.className='bb2-cur-var'; }
+      const ht=document.getElementById('bcq-time');
+      if(ht) ht.textContent=new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      const hp=document.getElementById('bcq-prev');
+      if(hp && data.close!=null) hp.textContent=Number(data.close).toFixed(2);
       if(statusEl){
-        const ts=new Date().toLocaleTimeString('es-AR');
         statusEl.className='bc-book-status ok';
-        statusEl.textContent=`LIVE · ${settleParam} · ${ts}`;
+        statusEl.textContent=`LIVE · ${settleParam}`;
       }
     }catch(e){
       if(statusEl){ statusEl.className='bc-book-status err'; statusEl.textContent=String(e).slice(0,80); }
@@ -5163,6 +5452,252 @@ function calcTIRFromPrice(price,vf,days){
 function calcTNAFromPrice(price,vf,days){
   if(!price||!vf||days<=0)return null;
   return(vf/price-1)*365/days*100;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CER TAB · render snapshot + curve + rich/cheap + movers
+// ═══════════════════════════════════════════════════════════════════
+let _cerFilter='all';
+function _setCERFilter(f){
+  _cerFilter=f;
+  document.querySelectorAll('.cer-subtab').forEach(b=>{
+    b.classList.toggle('active', b.getAttribute('data-filter')===f);
+  });
+  renderCERTab();
+}
+
+// Fit log-lineal: TIR = a + b*ln(dur)  →  los residuales son ricos/baratos
+function _cerFitLogCurve(points){
+  // points: [{x:dur, y:tir}...]
+  const arr=points.filter(p=>p.x>0&&isFinite(p.y));
+  if(arr.length<3) return null;
+  const n=arr.length;
+  let sx=0,sy=0,sxx=0,sxy=0;
+  arr.forEach(p=>{ const lx=Math.log(p.x); sx+=lx; sy+=p.y; sxx+=lx*lx; sxy+=lx*p.y; });
+  const den=n*sxx-sx*sx;
+  if(Math.abs(den)<1e-9) return null;
+  const b=(n*sxy-sx*sy)/den;
+  const a=(sy-b*sx)/n;
+  return d=>a+b*Math.log(Math.max(d,0.01));
+}
+
+function renderCERTab(){
+  const snapBody=document.getElementById('cerSnapBody');
+  const rcBody=document.getElementById('cerRcBody');
+  const moversBody=document.getElementById('cerMoversBody');
+  const beBody=document.getElementById('cerBeBody');
+  const curveInfo=document.getElementById('cerCurveInfo');
+  if(!snapBody) return; // tab no construida
+
+  const search=(document.getElementById('cerSearch')?.value||'').trim().toUpperCase();
+  const sd=document.getElementById('settleDate')?.value;
+  const settle=sd?new Date(sd+'T00:00:00'):new Date();
+
+  // Filter logic
+  const matchFilter=b=>{
+    if(_cerFilter==='lecer')  return /^X[A-Z0-9]/i.test(b.ticker)||(b.name||'').toLowerCase().includes('lecer');
+    if(_cerFilter==='boncer') return /^TZ/i.test(b.ticker)||/^TX/i.test(b.ticker)||(b.name||'').toLowerCase().includes('boncer');
+    const days=DB(settle, new Date(b.mat+'T00:00:00'));
+    if(_cerFilter==='short') return days<=365;
+    if(_cerFilter==='long')  return days>365;
+    return true;
+  };
+  const matchSearch=b=>{
+    if(!search) return true;
+    return b.ticker.toUpperCase().includes(search) || (b.name||'').toUpperCase().includes(search);
+  };
+
+  // Filtrar bonos visibles
+  const bonds=BONDS.filter(matchFilter).filter(matchSearch);
+
+  // ── SNAPSHOT TABLE ──
+  if(!bonds.length){
+    snapBody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:var(--td);padding:18px;font-style:italic">— sin bonos para este filtro —</td></tr>`;
+  } else {
+    const okBonds=bonds.filter(b=>b._ok);
+    if(!okBonds.length){
+      snapBody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:var(--td);padding:18px;font-style:italic">Tocá <strong>Calculá</strong> en la tab Calculadoras para popular esta vista.</td></tr>`;
+    } else {
+      // Computar curva fiteada para Δ vs CURVA
+      const fitPts=okBonds.filter(b=>b._dur>0&&b._tr!=null).map(b=>({x:b._dur,y:b._tr}));
+      const fit=_cerFitLogCurve(fitPts);
+
+      let rows='';
+      okBonds.sort((a,b)=>{
+        const da=DB(settle, new Date(a.mat+'T00:00:00'));
+        const db=DB(settle, new Date(b.mat+'T00:00:00'));
+        return da-db;
+      }).forEach(b=>{
+        const matD=new Date(b.mat+'T00:00:00');
+        const days=DB(settle,matD);
+        const px=getCurrentPrice(b.id);
+        const chg=getPriceVariationMeta(b.ticker,'pm_'+b.id);
+        const fitTir = (fit && b._dur>0) ? fit(b._dur) : null;
+        const dvCurva = (fitTir!=null && b._tr!=null) ? (b._tr - fitTir)*100 : null; // bps
+        const dvColor = dvCurva==null?'':dvCurva<-5?'pos':dvCurva>5?'neg':'';
+        rows+=`<tr onclick="openBondCalculator('cer','${b.id}')" title="Click para abrir calculadora">
+          <td class="lside"><span class="cer-tk" style="color:${b.color}">${b.ticker}</span><span class="cer-tk-sub">${b.mat.slice(0,7)}</span></td>
+          <td class="num">${px?px.toFixed(2):'—'}</td>
+          <td class="num acl"><strong>${b._tr!=null?b._tr.toFixed(2)+'%':'—'}</strong></td>
+          <td class="num am">${b._tnaTF!=null?b._tnaTF.toFixed(2)+'%':'—'}</td>
+          <td class="num ${chg.text&&chg.text.startsWith('+')?'pos':chg.text&&chg.text.startsWith('-')?'neg':''}">${chg.text||'—'}</td>
+          <td class="num ${dvColor}">${dvCurva!=null?(dvCurva>=0?'+':'')+dvCurva.toFixed(0)+'bp':'—'}</td>
+          <td class="num">${b._dur!=null?b._dur.toFixed(2):'—'}</td>
+          <td class="num">${days}</td>
+        </tr>`;
+      });
+      snapBody.innerHTML=rows;
+
+      // ── RICH / CHEAP table ──
+      if(rcBody){
+        const rcRows=okBonds.filter(b=>b._dur>0&&b._tr!=null&&fit).map(b=>{
+          const fitTir=fit(b._dur);
+          const diff=(b._tr-fitTir)*100;
+          return {b, fitTir, diff};
+        }).sort((a,b)=>a.diff-b.diff);
+        if(rcRows.length){
+          let rcHtml='';
+          rcRows.forEach(({b,fitTir,diff})=>{
+            const sig= diff<-15?'CHEAP · BUY' : diff>15?'RICH · SELL' : 'fair';
+            const sigClass= diff<-15?'signal-buy' : diff>15?'signal-sell' : 'signal-flat';
+            rcHtml+=`<tr onclick="openBondCalculator('cer','${b.id}')" title="Click para abrir calculadora">
+              <td class="lside"><span class="cer-tk" style="color:${b.color}">${b.ticker}</span></td>
+              <td class="num">${b._dur.toFixed(2)}</td>
+              <td class="num acl">${b._tr.toFixed(2)}%</td>
+              <td class="num" style="color:var(--td)">${fitTir.toFixed(2)}%</td>
+              <td class="num ${diff<0?'pos':'neg'}"><strong>${diff>=0?'+':''}${diff.toFixed(0)}</strong></td>
+              <td class="num ${sigClass}">${sig}</td>
+              <td></td>
+            </tr>`;
+          });
+          rcBody.innerHTML=rcHtml;
+        } else {
+          rcBody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--td);padding:14px;font-style:italic">— sin datos suficientes para fit —</td></tr>`;
+        }
+      }
+
+      // ── CER CURVE chart ──
+      const cv=document.getElementById('cerTermChart');
+      if(cv && typeof drawOneChart==='function'){
+        const pts=okBonds.filter(b=>b._dur>0&&b._tr!=null).map(b=>({
+          x:b._dur, y:b._tr, label:b.ticker, color:b.color, id:b.id, assetType:'cer'
+        }));
+        const maxX=Math.max(2, ...pts.map(p=>p.x))*1.05;
+        try{
+          drawOneChart('cerTermChart', pts, maxX, 'CER Real',  '#2a9d8f',
+            lbl=>{ const b=BONDS.find(x=>x.ticker===lbl); if(b) openBondCalculator('cer',b.id); });
+        }catch(e){ console.warn('[cer-curve]',e); }
+        if(curveInfo){
+          if(fit){
+            const a0=fit(0.5), a1=fit(1), a2=fit(2);
+            curveInfo.innerHTML=`Fit log-lineal · 6m ≈ <strong style="color:var(--acl)">${a0.toFixed(2)}%</strong> · 1y ≈ <strong style="color:var(--acl)">${a1.toFixed(2)}%</strong> · 2y ≈ <strong style="color:var(--acl)">${a2.toFixed(2)}%</strong>`;
+          } else {
+            curveInfo.textContent='Fit no disponible (mínimo 3 bonos con TIR calculada)';
+          }
+        }
+      }
+    }
+  }
+
+  // ── TOP MOVERS ──
+  if(moversBody){
+    const movers=BONDS.filter(b=>b._tr!=null).map(b=>{
+      const lp=_livePrices[b.ticker]||{};
+      if(!lp.last||!lp.close) return null;
+      const px=lp.last, prev=lp.close;
+      // TIR delta vs cierre approx: usamos var % del precio (signo invertido para TIR)
+      const pxVar = (px-prev)/prev*100;
+      // Aproximación: ΔTIR ≈ -ΔPx/Dur (en %)
+      const tirDelta = b._dur>0 ? -pxVar/b._dur : null;
+      return {b, pxVar, tirDelta};
+    }).filter(x=>x!=null && x.tirDelta!=null);
+    movers.sort((a,b)=>Math.abs(b.tirDelta)-Math.abs(a.tirDelta));
+    if(movers.length){
+      let h='';
+      movers.slice(0,6).forEach(({b,pxVar,tirDelta})=>{
+        const c=tirDelta>=0?'var(--neg)':'var(--pos)';
+        h+=`<div class="cer-mov-row" onclick="openBondCalculator('cer','${b.id}')" style="cursor:pointer">
+          <span class="cer-mov-tk" style="color:${b.color}">${b.ticker}</span>
+          <span class="cer-mov-val" style="color:${c}">${tirDelta>=0?'+':''}${(tirDelta*100).toFixed(0)}bp</span>
+        </div>`;
+      });
+      moversBody.innerHTML=h;
+    } else {
+      moversBody.innerHTML=`<div class="cer-mov-empty">Necesita prices live + cierre</div>`;
+    }
+  }
+
+  // ── INFLACIÓN BOX ──
+  const set=(id,v)=>{const e=document.getElementById(id);if(e) e.textContent=v;};
+  // CER hoy / liq desde inputs principales
+  const baseV=parseFloat(document.getElementById('baseCER')?.value);
+  const baseD=document.getElementById('baseCERDate')?.value;
+  set('cerStatToday', baseV?baseV.toFixed(4):'—');
+  const cerLiq=parseFloat(document.getElementById('cerLiq')?.value);
+  set('cerStatLiq', cerLiq?cerLiq.toFixed(4):'—');
+  // Último IPC desde grilla
+  if(typeof IM!=='undefined' && IM.length){
+    // Tomar el último mes con valor en input
+    let lastIpcK=null, lastIpcV=null;
+    IM.forEach(m=>{
+      const el=document.getElementById('i_'+m.k);
+      if(el){
+        const v=parseFloat(el.value);
+        if(!isNaN(v)&&v!==0){ lastIpcK=m.k; lastIpcV=v; }
+      }
+    });
+    set('cerStatIPC', lastIpcV!=null?lastIpcV.toFixed(2)+'%':'—');
+    // TEM proyectada (1m) = primer mes proyectado a partir del último known
+    let nextIpc=null;
+    for(const m of IM){
+      const el=document.getElementById('i_'+m.k);
+      if(el){
+        const v=parseFloat(el.value);
+        if(!isNaN(v)&&v>0){
+          // Si el siguiente mes es proyección
+          const idx=IM.indexOf(m);
+          const next=IM[idx+1];
+          if(next){
+            const ne=document.getElementById('i_'+next.k);
+            if(ne){
+              const nv=parseFloat(ne.value);
+              if(!isNaN(nv)&&nv>0) nextIpc=nv;
+            }
+          }
+          break;
+        }
+      }
+    }
+    set('cerStatTEMNext', nextIpc!=null?nextIpc.toFixed(2)+'%':'—');
+    // Promedio últimos 6 valores no-cero
+    const vals=IM.map(m=>parseFloat(document.getElementById('i_'+m.k)?.value)).filter(v=>!isNaN(v)&&v>0);
+    if(vals.length>=2){
+      const last6=vals.slice(-6);
+      const avg=last6.reduce((s,v)=>s+v,0)/last6.length;
+      set('cerStatTEM6', avg.toFixed(2)+'%');
+    } else set('cerStatTEM6','—');
+  }
+
+  // ── BREAKEVEN INFL TOP ──
+  if(beBody){
+    const beData=(typeof _implInflResults!=='undefined'&&_implInflResults)?_implInflResults.slice():[];
+    if(beData.length){
+      beData.sort((a,b)=>(a.implPi||0)-(b.implPi||0));
+      let h='';
+      beData.slice(0,6).forEach(r=>{
+        const b=BONDS.find(x=>x.ticker===r.ticker);
+        const c=b?b.color:'var(--t)';
+        h+=`<div class="cer-mov-row" onclick="openBondCalculator('cer','${b?b.id:''}')" style="cursor:pointer">
+          <span class="cer-mov-tk" style="color:${c}">${r.ticker}</span>
+          <span style="font-size:9.5px;color:var(--td);margin:0 6px">vs ${r.comp}</span>
+          <span class="cer-mov-val" style="color:var(--am)">${r.implPi!=null?r.implPi.toFixed(2)+'%':'—'}</span>
+        </div>`;
+      });
+      beBody.innerHTML=h;
+    } else {
+      beBody.innerHTML=`<div class="cer-mov-empty">Calculá breakevens en Análisis</div>`;
+    }
+  }
 }
 
 function buildLiveTable(){
