@@ -1524,8 +1524,7 @@
     <!-- HERO -->
     <div class="cer-hero">
       <div class="cer-hero-left">
-        <h1 class="cer-h1">The CER terminal,<br><span style="color:var(--gn)">unlocked.</span></h1>
-        <div class="cer-h1-sub">curva real argentina · live</div>
+        <h1 class="cer-h1" style="color:var(--gn)">CER.</h1>
       </div>
       <div class="cer-hero-right">
         <div class="cer-search">
@@ -1576,7 +1575,7 @@
         <div class="cer-card-hd">
           <div class="cer-card-title">CER CURVE</div>
           <div style="display:flex;gap:8px;align-items:center">
-            <span style="font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace">DUR vs TIR REAL %</span>
+            <span style="font-size:9px;color:var(--td);font-family:'IBM Plex Mono',monospace">DUR vs TNA TF CER %</span>
             <button class="cer-pill-btn" onclick="renderCERTab()" title="Refrescar curva">↻</button>
           </div>
         </div>
@@ -1630,8 +1629,8 @@
     <!-- ── RICH/CHEAP table (residuales sobre la curva) ── -->
     <div class="cer-card" style="margin-top:14px">
       <div class="cer-card-hd">
-        <div class="cer-card-title">RICH / CHEAP · Residuales sobre curva fiteada</div>
-        <span style="font-size:9px;color:var(--td)">log-fit · Δ negativo = cheap (TIR alta vs curva), Δ positivo = rich</span>
+        <div class="cer-card-title">RICH / CHEAP · Residuales sobre curva TNA TF CER</div>
+        <span style="font-size:9px;color:var(--td)">log-fit · Δ positivo = cheap (paga más que la curva), Δ negativo = rich</span>
       </div>
       <div class="cer-table-wrap">
         <table class="cer-table">
@@ -1639,15 +1638,15 @@
             <tr>
               <th class="lside">TICKER</th>
               <th class="num">DUR</th>
-              <th class="num">TIR REAL OBS</th>
-              <th class="num">TIR REAL FIT</th>
+              <th class="num">TNA TF OBS</th>
+              <th class="num">TNA TF FIT</th>
               <th class="num">Δ bps</th>
               <th class="num">SEÑAL</th>
               <th></th>
             </tr>
           </thead>
           <tbody id="cerRcBody">
-            <tr><td colspan="7" style="text-align:center;color:var(--td);padding:14px;font-style:italic">Necesita ≥ 3 bonos con TIR calculada.</td></tr>
+            <tr><td colspan="7" style="text-align:center;color:var(--td);padding:14px;font-style:italic">Necesita ≥ 3 bonos con TNA TF calculada.</td></tr>
           </tbody>
         </table>
       </div>
@@ -4980,7 +4979,11 @@ function openBondCalculator(bondType, bondId){
         }
       }
 
-      const vtNom=flows.length?flows[0].nominal:null;
+      // VT Nominal: para bullets es flows[0]; para multi-flujo es SUM de todos los flujos futuros
+      const isMultiFlow = Array.isArray(b.schedule) && b.schedule.length > 0;
+      const vtNom = flows.length
+        ? (isMultiFlow ? flows.reduce((s,f)=>s+(f.nominal||0),0) : flows[0].nominal)
+        : null;
       const scale=vnoAmount/100;
       const totalCobros=vtNom?vtNom*scale:null;
       const ganancia=totalCobros&&price>0?totalCobros-vnoAmount/100*price:null;
@@ -5034,19 +5037,23 @@ function openBondCalculator(bondType, bondId){
       {
         const targetTirVal=parseFloat(document.getElementById('bci-target-tir').value);
         const targetTnaVal=parseFloat(document.getElementById('bci-target-tna').value);
-        const real=flows.length?flows[0].real:null;
-        const nom=flows.length?flows[0].nominal:null;
-        const fl=flows.length?flows[0]:null;
         const parts=[];
-        if(!isNaN(targetTirVal)&&real&&fl){
-          const impliedPx=real/Math.pow(1+targetTirVal/100,fl.days/365);
-          parts.push(`TIR real <strong style="color:var(--acl)">${targetTirVal.toFixed(2)}%</strong> → <strong style="color:var(--acl);font-size:13px">${impliedPx.toFixed(4)}</strong>`);
+        // Implied price = NPV de los flujos a la tasa objetivo. Funciona tanto para
+        // bullets como multi-flujo (TX26 y similares).
+        if(!isNaN(targetTirVal)&&flows.length){
+          // TIR Real: descuento exponencial sobre la pierna 'real' de cada flujo
+          const r=targetTirVal/100;
+          const impliedPx=flows.reduce((s,f)=>s+(f.real||0)/Math.pow(1+r, f.days/365), 0);
+          if(impliedPx>0) parts.push(`TIR real <strong style="color:var(--acl)">${targetTirVal.toFixed(2)}%</strong> → <strong style="color:var(--acl);font-size:13px">${impliedPx.toFixed(4)}</strong>`);
         }
-        if(!isNaN(targetTnaVal)&&nom&&fl){
-          // TNA TF CER: simple rate (TNA = (VF/P - 1) * 365/days), same as FIXED TNA logic
-          // P = nom / (1 + TNA * days/365)
-          const impliedPx=nom/(1+targetTnaVal/100*fl.days/365);
-          parts.push(`TNA TF <strong style="color:var(--fx)">${targetTnaVal.toFixed(2)}%</strong> → <strong style="color:var(--fx);font-size:13px">${impliedPx.toFixed(4)}</strong>`);
+        if(!isNaN(targetTnaVal)&&flows.length){
+          // TNA TF CER: tasa nominal anual simple sobre el VT nominal acumulado
+          // y los días al vencimiento (compatible con la lógica del snapshot CER).
+          // Bullet → P = VF / (1 + TNA·d/365)
+          // Multi-flujo → P = Σ VF_i / (1 + TNA·d_i/365)
+          const tna=targetTnaVal/100;
+          const impliedPx=flows.reduce((s,f)=>s+(f.nominal||0)/(1+tna*(f.days/365)), 0);
+          if(impliedPx>0) parts.push(`TNA TF <strong style="color:var(--fx)">${targetTnaVal.toFixed(2)}%</strong> → <strong style="color:var(--fx);font-size:13px">${impliedPx.toFixed(4)}</strong>`);
         }
         document.getElementById('bck-target-result').innerHTML=
           parts.length?parts.join('<span style="color:var(--tm);padding:0 8px">|</span>'):'Ingresa TIR o TNA objetivo para ver el precio implicito';
@@ -5518,8 +5525,8 @@ function renderCERTab(){
     if(!okBonds.length){
       snapBody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:var(--td);padding:18px;font-style:italic">Tocá <strong>Calculá</strong> en la tab Calculadoras para popular esta vista.</td></tr>`;
     } else {
-      // Computar curva fiteada para Δ vs CURVA
-      const fitPts=okBonds.filter(b=>b._dur>0&&b._tr!=null).map(b=>({x:b._dur,y:b._tr}));
+      // Curva fiteada sobre TNA TF CER (tasa fija equivalente — comparable con LECAP)
+      const fitPts=okBonds.filter(b=>b._dur>0&&b._tnaTF!=null).map(b=>({x:b._dur,y:b._tnaTF}));
       const fit=_cerFitLogCurve(fitPts);
 
       let rows='';
@@ -5532,14 +5539,14 @@ function renderCERTab(){
         const days=DB(settle,matD);
         const px=getCurrentPrice(b.id);
         const chg=getPriceVariationMeta(b.ticker,'pm_'+b.id);
-        const fitTir = (fit && b._dur>0) ? fit(b._dur) : null;
-        const dvCurva = (fitTir!=null && b._tr!=null) ? (b._tr - fitTir)*100 : null; // bps
+        const fitTna = (fit && b._dur>0) ? fit(b._dur) : null;
+        const dvCurva = (fitTna!=null && b._tnaTF!=null) ? (b._tnaTF - fitTna)*100 : null; // bps vs curva TNA TF
         const dvColor = dvCurva==null?'':dvCurva<-5?'pos':dvCurva>5?'neg':'';
         rows+=`<tr onclick="openBondCalculator('cer','${b.id}')" title="Click para abrir calculadora">
           <td class="lside"><span class="cer-tk" style="color:${b.color}">${b.ticker}</span><span class="cer-tk-sub">${b.mat.slice(0,7)}</span></td>
           <td class="num">${px?px.toFixed(2):'—'}</td>
           <td class="num acl"><strong>${b._tr!=null?b._tr.toFixed(2)+'%':'—'}</strong></td>
-          <td class="num am">${b._tnaTF!=null?b._tnaTF.toFixed(2)+'%':'—'}</td>
+          <td class="num am"><strong>${b._tnaTF!=null?b._tnaTF.toFixed(2)+'%':'—'}</strong></td>
           <td class="num ${chg.text&&chg.text.startsWith('+')?'pos':chg.text&&chg.text.startsWith('-')?'neg':''}">${chg.text||'—'}</td>
           <td class="num ${dvColor}">${dvCurva!=null?(dvCurva>=0?'+':'')+dvCurva.toFixed(0)+'bp':'—'}</td>
           <td class="num">${b._dur!=null?b._dur.toFixed(2):'—'}</td>
@@ -5548,24 +5555,25 @@ function renderCERTab(){
       });
       snapBody.innerHTML=rows;
 
-      // ── RICH / CHEAP table ──
+      // ── RICH / CHEAP table (residuales sobre la curva TNA TF) ──
       if(rcBody){
-        const rcRows=okBonds.filter(b=>b._dur>0&&b._tr!=null&&fit).map(b=>{
-          const fitTir=fit(b._dur);
-          const diff=(b._tr-fitTir)*100;
-          return {b, fitTir, diff};
-        }).sort((a,b)=>a.diff-b.diff);
+        const rcRows=okBonds.filter(b=>b._dur>0&&b._tnaTF!=null&&fit).map(b=>{
+          const fitTna=fit(b._dur);
+          const diff=(b._tnaTF-fitTna)*100;
+          return {b, fitTna, diff};
+        }).sort((a,b)=>b.diff-a.diff); // CHEAP arriba (TNA mayor que curva)
         if(rcRows.length){
           let rcHtml='';
-          rcRows.forEach(({b,fitTir,diff})=>{
-            const sig= diff<-15?'CHEAP · BUY' : diff>15?'RICH · SELL' : 'fair';
-            const sigClass= diff<-15?'signal-buy' : diff>15?'signal-sell' : 'signal-flat';
+          rcRows.forEach(({b,fitTna,diff})=>{
+            // TNA TF mayor que la curva = CHEAP (paga más); menor = RICH
+            const sig= diff>15?'CHEAP · BUY' : diff<-15?'RICH · SELL' : 'fair';
+            const sigClass= diff>15?'signal-buy' : diff<-15?'signal-sell' : 'signal-flat';
             rcHtml+=`<tr onclick="openBondCalculator('cer','${b.id}')" title="Click para abrir calculadora">
               <td class="lside"><span class="cer-tk" style="color:${b.color}">${b.ticker}</span></td>
               <td class="num">${b._dur.toFixed(2)}</td>
-              <td class="num acl">${b._tr.toFixed(2)}%</td>
-              <td class="num" style="color:var(--td)">${fitTir.toFixed(2)}%</td>
-              <td class="num ${diff<0?'pos':'neg'}"><strong>${diff>=0?'+':''}${diff.toFixed(0)}</strong></td>
+              <td class="num am">${b._tnaTF.toFixed(2)}%</td>
+              <td class="num" style="color:var(--td)">${fitTna.toFixed(2)}%</td>
+              <td class="num ${diff>0?'pos':'neg'}"><strong>${diff>=0?'+':''}${diff.toFixed(0)}</strong></td>
               <td class="num ${sigClass}">${sig}</td>
               <td></td>
             </tr>`;
@@ -5576,23 +5584,23 @@ function renderCERTab(){
         }
       }
 
-      // ── CER CURVE chart ──
+      // ── CER CURVE chart (eje Y = TNA TF CER %) ──
       const cv=document.getElementById('cerTermChart');
       if(cv && typeof drawOneChart==='function'){
-        const pts=okBonds.filter(b=>b._dur>0&&b._tr!=null).map(b=>({
-          x:b._dur, y:b._tr, label:b.ticker, color:b.color, id:b.id, assetType:'cer'
+        const pts=okBonds.filter(b=>b._dur>0&&b._tnaTF!=null).map(b=>({
+          x:b._dur, y:b._tnaTF, label:b.ticker, color:b.color, id:b.id, assetType:'cer'
         }));
         const maxX=Math.max(2, ...pts.map(p=>p.x))*1.05;
         try{
-          drawOneChart('cerTermChart', pts, maxX, 'CER Real',  '#2a9d8f',
+          drawOneChart('cerTermChart', pts, maxX, 'TNA TF CER',  '#2a9d8f',
             lbl=>{ const b=BONDS.find(x=>x.ticker===lbl); if(b) openBondCalculator('cer',b.id); });
         }catch(e){ console.warn('[cer-curve]',e); }
         if(curveInfo){
           if(fit){
             const a0=fit(0.5), a1=fit(1), a2=fit(2);
-            curveInfo.innerHTML=`Fit log-lineal · 6m ≈ <strong style="color:var(--acl)">${a0.toFixed(2)}%</strong> · 1y ≈ <strong style="color:var(--acl)">${a1.toFixed(2)}%</strong> · 2y ≈ <strong style="color:var(--acl)">${a2.toFixed(2)}%</strong>`;
+            curveInfo.innerHTML=`Fit log-lineal sobre <strong>TNA TF CER</strong> · 6m ≈ <strong style="color:var(--am)">${a0.toFixed(2)}%</strong> · 1y ≈ <strong style="color:var(--am)">${a1.toFixed(2)}%</strong> · 2y ≈ <strong style="color:var(--am)">${a2.toFixed(2)}%</strong>`;
           } else {
-            curveInfo.textContent='Fit no disponible (mínimo 3 bonos con TIR calculada)';
+            curveInfo.textContent='Fit no disponible (mínimo 3 bonos con TNA TF calculada)';
           }
         }
       }
