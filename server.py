@@ -21,7 +21,7 @@ import secrets
 import urllib.request
 import urllib.error
 import urllib.parse
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import HTTPServer, ThreadingHTTPServer, SimpleHTTPRequestHandler
 from http.cookies import SimpleCookie
 
 # ══════════════════════════════════════════════════════════════════
@@ -556,7 +556,10 @@ def main():
         print("✗ No dashboard HTML found!")
 
     os.chdir(SCRIPT_DIR)
-    server = HTTPServer(("0.0.0.0", PORT), Handler)
+    # ThreadingHTTPServer permite atender requests concurrentes (prefetch del book,
+    # /api/depth en paralelo, etc.). Con HTTPServer plain las requests se serializaban
+    # y las concurrentes recibían body vacío → "Unexpected end of JSON input".
+    server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     print(f"\n✓ Server running on port {PORT}")
 
     is_railway = os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("PORT")
