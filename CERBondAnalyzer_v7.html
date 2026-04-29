@@ -4117,6 +4117,13 @@ function _attachRowQuoteHover(tr, ticker){
     const seq=++_rowQuoteHoverSeq;
     const settle='24hs';
     const el=_ensureRowQuoteTipEl();
+    // Hot path: cache local válido → instantáneo, sin "cargando…"
+    const cached=_rowQuoteCache.get(ticker+'|'+settle);
+    if(cached && (Date.now()-cached.ts)<8000){
+      _renderRowQuoteTip(el, ticker, settle, cached.data);
+      el.style.display='block'; _positionRowQuoteTip(el,e);
+      return;
+    }
     _rowQuoteHoverTimer=setTimeout(async ()=>{
       el.innerHTML=`<div class="rqt-hd"><span class="rqt-tk">${ticker}</span><span class="rqt-set">${settle}</span></div><div class="rqt-msg">cargando…</div>`;
       el.style.display='block'; _positionRowQuoteTip(el,e);
@@ -4124,7 +4131,7 @@ function _attachRowQuoteHover(tr, ticker){
       if(seq!==_rowQuoteHoverSeq) return; // mouse left
       _renderRowQuoteTip(el, ticker, settle, data);
       _positionRowQuoteTip(el,e);
-    }, 280);
+    }, 180);
   });
   tr.addEventListener('mouseleave',()=>{ _hideRowQuoteTip(); });
 }
@@ -4134,6 +4141,7 @@ function wireResumenQuoteHover(){
     {sel:'#resumenFXBody tr',  src:FIXED},
     {sel:'#resumenTAMARBody tr', src:TAMAR_BONDS}
   ];
+  const tickers=new Set();
   targets.forEach(t=>{
     document.querySelectorAll(t.sel).forEach(tr=>{
       // Onclick contiene el id del bono → reusamos para resolver ticker
@@ -4144,8 +4152,48 @@ function wireResumenQuoteHover(){
       const bond=(t.src||[]).find(x=>x.id===id);
       if(!bond) return;
       _attachRowQuoteHover(tr, bond.ticker);
+      tickers.add(bond.ticker);
     });
   });
+  // Prefetch en paralelo (concurrencia limitada) → al hacer hover ya está cacheado
+  _prefetchRowQuotes(Array.from(tickers));
+  _startRowQuotePoller(Array.from(tickers));
+}
+
+// Prefetch concurrente con límite (evita rate-limit del Primary API).
+// Cada quote queda en _rowQuoteCache → hover instantáneo.
+async function _prefetchRowQuotes(tickers, settle='24hs', concurrency=5){
+  if(!tickers||!tickers.length) return;
+  const queue=tickers.slice();
+  const workers=Array.from({length:Math.min(concurrency, queue.length)}, async ()=>{
+    while(queue.length){
+      const tk=queue.shift();
+      try{ await _fetchRowQuote(tk, settle); }catch(_e){}
+    }
+  });
+  await Promise.all(workers);
+}
+
+// Background poller — cada 10s refresca cache. Solo activo cuando la pestaña Resumen está visible.
+let _rowQuotePollerId=null;
+let _rowQuotePollerTickers=[];
+function _startRowQuotePoller(tickers){
+  _rowQuotePollerTickers=tickers||[];
+  if(_rowQuotePollerId) return; // ya corriendo
+  const tick=()=>{
+    if(document.hidden) return;
+    const resumenActive=document.getElementById('tab-resumen')?.style.display!=='none';
+    if(!resumenActive) return;
+    _rowQuotePollerTickers.forEach(tk=>{
+      const key=tk+'|24hs';
+      const c=_rowQuoteCache.get(key);
+      if(!c || (Date.now()-c.ts)>7000){
+        _fetchRowQuote(tk, '24hs').catch(()=>{});
+      }
+    });
+  };
+  _rowQuotePollerId=setInterval(tick, 10000);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) tick(); });
 }
 
 function _getCaucionLast1D(){
