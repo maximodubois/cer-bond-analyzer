@@ -229,7 +229,7 @@ def fetch_prices():
 # ══════════════════════════════════════════════════════════════════
 _primary_token = {"value": None, "expiry": 0}
 _depth_cache = {}            # symbol -> {"ts": float, "data": dict}
-_DEPTH_CACHE_TTL = 1.5       # seconds — book moves fast, cache short
+_DEPTH_CACHE_TTL = 3.0       # seconds — book moves fast pero 3s es buen compromiso para hover/prefetch (instantáneo) vs frescura
 
 
 def primary_enabled():
