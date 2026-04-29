@@ -4100,7 +4100,10 @@ async function _fetchRowQuote(ticker, settle){
   if(c && (Date.now()-c.ts)<8000) return c.data;
   try{
     const r=await fetch(`/api/depth?ticker=${encodeURIComponent(ticker)}&settle=${encodeURIComponent(settle)}&depth=5`);
-    const data=await r.json();
+    // Defensivo: body puede venir vacío si el server se desconecta
+    const txt=await r.text();
+    if(!txt) throw new Error('empty body http '+r.status);
+    let data; try{ data=JSON.parse(txt); }catch(_e){ throw new Error('bad json '+r.status); }
     if(!r.ok || data.error) throw new Error(data.error||'http '+r.status);
     _rowQuoteCache.set(key,{ts:Date.now(),data});
     return data;
@@ -4162,7 +4165,7 @@ function wireResumenQuoteHover(){
 
 // Prefetch concurrente con límite (evita rate-limit del Primary API).
 // Cada quote queda en _rowQuoteCache → hover instantáneo.
-async function _prefetchRowQuotes(tickers, settle='24hs', concurrency=5){
+async function _prefetchRowQuotes(tickers, settle='24hs', concurrency=3){
   if(!tickers||!tickers.length) return;
   const queue=tickers.slice();
   const workers=Array.from({length:Math.min(concurrency, queue.length)}, async ()=>{
@@ -5631,8 +5634,18 @@ function openBondCalculator(bondType, bondId){
     if(statusEl){ statusEl.className='bc-book-status'; statusEl.textContent='consultando…'; }
     try{
       const r=await fetch(url);
-      const data=await r.json();
+      // Defensivo: body vacío (server cortó conexión) → no romper con SyntaxError
+      const txt=await r.text();
       if(seq!==_bcBookSeq) return; // hubo otra llamada posterior, descartar
+      if(!txt){
+        if(statusEl){ statusEl.className='bc-book-status err'; statusEl.textContent='empty body, retrying…'; }
+        setTimeout(_bcRefreshBook, 800);
+        return;
+      }
+      let data; try{ data=JSON.parse(txt); }catch(_e){
+        if(statusEl){ statusEl.className='bc-book-status err'; statusEl.textContent='bad json'; }
+        return;
+      }
       if(!r.ok || data.error){
         const msg=(data && (data.error||data.detail))||('HTTP '+r.status);
         if(statusEl){ statusEl.className='bc-book-status err'; statusEl.textContent=msg.slice(0,80); }
