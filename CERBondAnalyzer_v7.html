@@ -329,6 +329,21 @@
   .bc-book .bk-vol{color:var(--ac)}
   .bc-book .bk-empty td{color:var(--td);text-align:center;padding:10px;cursor:default;font-style:italic;background:transparent}
   .bc-book .bk-empty:hover td{background:transparent}
+  /* ── Hover preview Bid/Offer en Resumen ──────────────────────────── */
+  #rowQuoteTip{position:fixed;z-index:9999;display:none;background:#0a0e15;border:1px solid var(--cb);border-radius:6px;padding:6px 8px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--t);box-shadow:0 8px 20px rgba(0,0,0,0.55);pointer-events:none;min-width:230px}
+  #rowQuoteTip .rqt-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid #1a2233}
+  #rowQuoteTip .rqt-tk{font-weight:700;color:var(--acl);font-size:11px;letter-spacing:0.05em}
+  #rowQuoteTip .rqt-set{color:var(--tm);font-size:9px}
+  #rowQuoteTip .rqt-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  #rowQuoteTip .rqt-side{padding:5px 7px;border-radius:4px;background:#0d141d;border:1px solid #1a2233}
+  #rowQuoteTip .rqt-side.bid{border-left:3px solid var(--ac)}
+  #rowQuoteTip .rqt-side.ofr{border-left:3px solid var(--neg)}
+  #rowQuoteTip .rqt-lbl{font-size:8.5px;color:var(--tm);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px}
+  #rowQuoteTip .rqt-px{font-size:14px;font-weight:700;letter-spacing:-0.02em}
+  #rowQuoteTip .rqt-px.bid{color:var(--ac)}
+  #rowQuoteTip .rqt-px.ofr{color:var(--neg)}
+  #rowQuoteTip .rqt-vol{font-size:9.5px;color:var(--td)}
+  #rowQuoteTip .rqt-msg{color:var(--tm);font-style:italic;font-size:10px;text-align:center;padding:6px 0}
   /* ── Orderbook v2 horizontal (BID izq | OFFER der, estilo broker AR) ─ */
   .bc-book2{margin-bottom:14px;background:var(--bg);border-radius:8px;border:1px solid var(--cb);overflow:hidden}
   .bc-book2 .bb2-hd{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--card);border-bottom:1px solid var(--cb);gap:10px;flex-wrap:wrap}
@@ -759,9 +774,29 @@
 </div>
 
 <div class="card" id="chartCard" style="display:none">
-  <div class="st">Proyeccion CER Diaria</div>
-  <div class="chart-c"><canvas id="cerChart"></canvas></div>
-  <div class="legend" id="chartLegend"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:8px">
+    <div class="st" style="margin-bottom:0">Proyeccion CER Diaria</div>
+    <div style="display:flex;gap:4px">
+      <button class="btn-api btn-sm" id="cerProjViewChart" onclick="setCerProjView('chart')" style="background:var(--ac);color:#000">Gráfico</button>
+      <button class="btn-api btn-sm" id="cerProjViewList" onclick="setCerProjView('list')">Lista</button>
+    </div>
+  </div>
+  <div id="cerProjChartWrap">
+    <div class="chart-c"><canvas id="cerChart"></canvas></div>
+    <div class="legend" id="chartLegend"></div>
+  </div>
+  <div id="cerProjListWrap" style="display:none;max-height:520px;overflow-y:auto">
+    <table id="cerProjListTable" style="font-family:'IBM Plex Mono',monospace;font-size:11px;width:100%">
+      <thead><tr>
+        <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--cb);position:sticky;top:0;background:var(--bg)">Fecha</th>
+        <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--cb);position:sticky;top:0;background:var(--bg)">Día</th>
+        <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--cb);position:sticky;top:0;background:var(--bg)">CER estimado</th>
+        <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--cb);position:sticky;top:0;background:var(--bg)">Δ vs hoy</th>
+        <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--cb);position:sticky;top:0;background:var(--bg)">Hito</th>
+      </tr></thead>
+      <tbody id="cerProjListBody"></tbody>
+    </table>
+  </div>
 </div>
 
 <div class="card" id="durCard" style="display:none">
@@ -1530,6 +1565,11 @@
         <div class="cer-search">
           <input type="text" id="cerSearch" placeholder="Buscá ticker · X15Y6, TZX26, TX26..." oninput="renderCERTab()">
           <span class="cer-search-icon">🔍</span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--td)">
+          <label for="cerMaxDur" style="white-space:nowrap;letter-spacing:0.05em">DUR MAX</label>
+          <input type="number" id="cerMaxDur" step="0.05" min="0.05" placeholder="∞" oninput="renderCERTab()" style="width:78px;padding:5px 8px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:11px;text-align:right">
+          <button class="cer-pill-btn" onclick="document.getElementById('cerMaxDur').value='';renderCERTab()" title="Limpiar filtro" style="padding:4px 8px">✕</button>
         </div>
       </div>
     </div>
@@ -2593,8 +2633,55 @@ function buildComparableSelect(){
 }
 
 // ═══ CHARTS ════════════════════════
+let _cerProjData={data:[],refDots:[],wBreaks:[]};
+let _cerProjView="chart"; // 'chart' | 'list'
+function setCerProjView(v){
+  _cerProjView=v;
+  const isChart=v==="chart";
+  const wrapC=document.getElementById("cerProjChartWrap");
+  const wrapL=document.getElementById("cerProjListWrap");
+  const btnC=document.getElementById("cerProjViewChart");
+  const btnL=document.getElementById("cerProjViewList");
+  if(wrapC) wrapC.style.display=isChart?"":"none";
+  if(wrapL) wrapL.style.display=isChart?"none":"";
+  if(btnC){btnC.style.background=isChart?"var(--ac)":"";btnC.style.color=isChart?"#000":""}
+  if(btnL){btnL.style.background=!isChart?"var(--ac)":"";btnL.style.color=!isChart?"#000":""}
+  if(!isChart) renderCerProjList();
+  else if(_cerProjData.data.length) drawChart(_cerProjData.data,_cerProjData.refDots,_cerProjData.wBreaks);
+}
+function renderCerProjList(){
+  const body=document.getElementById("cerProjListBody");
+  if(!body) return;
+  const data=_cerProjData.data, refDots=_cerProjData.refDots, wBreaks=_cerProjData.wBreaks;
+  if(!data.length){ body.innerHTML='<tr><td colspan="5" style="padding:10px;color:var(--td)">Sin datos — corré "Calculá" primero</td></tr>'; return; }
+  const wbMap=new Map(); wBreaks.forEach(w=>wbMap.set(w.i,w.l));
+  const refMap=new Map(); refDots.forEach(r=>{
+    const arr=refMap.get(r.i)||[]; arr.push(r); refMap.set(r.i,arr);
+  });
+  const cer0=data[0]?.cer||0;
+  const html=data.map((d,i)=>{
+    const delta=cer0?((d.cer/cer0-1)*100):0;
+    const milestones=[];
+    if(wbMap.has(i)) milestones.push(`<span style="color:var(--tm)">${wbMap.get(i)}</span>`);
+    const refs=refMap.get(i)||[];
+    refs.forEach(r=>milestones.push(`<span style="color:${r.col};font-weight:700">● ${r.tk}</span>`));
+    const deltaCol=delta>=0?"var(--ac)":"var(--neg)";
+    const rowBg=(refs.length||wbMap.has(i))?"background:rgba(0,229,160,0.04)":"";
+    return `<tr style="${rowBg}">
+      <td style="padding:4px 8px;border-bottom:1px solid #1a2233">${d.ds}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #1a2233;text-align:right;color:var(--td)">${d.day}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #1a2233;text-align:right;font-weight:700;color:var(--ac)">${d.cer.toFixed(4)}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #1a2233;text-align:right;color:${deltaCol}">${delta>=0?"+":""}${delta.toFixed(2)}%</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #1a2233">${milestones.join(" · ")}</td>
+    </tr>`;
+  }).join("");
+  body.innerHTML=html;
+}
 function drawChart(data,refDots,wBreaks){
+  // store latest snapshot for list view
+  _cerProjData={data:data||[],refDots:refDots||[],wBreaks:wBreaks||[]};
   document.getElementById("chartCard").style.display="block";
+  if(_cerProjView==="list"){ renderCerProjList(); return; }
   const cv=document.getElementById("cerChart"),ct=cv.parentElement;
   const dpr=window.devicePixelRatio||1,W=ct.clientWidth,H=ct.clientHeight;
   cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+"px";cv.style.height=H+"px";
@@ -3958,7 +4045,107 @@ function renderResumen(){
   }
   renderResumenCurves();
   renderResumenBreakevenVertical();
+  try{ wireResumenQuoteHover(); }catch(_e){}
   renderCaucionesResumen();
+}
+
+// ═══ Hover preview Bid/Offer en filas del Resumen ═════════════════════
+const _rowQuoteCache=new Map(); // ticker → {ts, data}
+let _rowQuoteHoverSeq=0;
+let _rowQuoteHoverTimer=null;
+function _ensureRowQuoteTipEl(){
+  let el=document.getElementById('rowQuoteTip');
+  if(!el){ el=document.createElement('div'); el.id='rowQuoteTip'; document.body.appendChild(el); }
+  return el;
+}
+function _hideRowQuoteTip(){
+  const el=document.getElementById('rowQuoteTip'); if(el) el.style.display='none';
+  if(_rowQuoteHoverTimer){clearTimeout(_rowQuoteHoverTimer);_rowQuoteHoverTimer=null;}
+  _rowQuoteHoverSeq++;
+}
+function _positionRowQuoteTip(el, evt){
+  const pad=14, w=el.offsetWidth||240, h=el.offsetHeight||90;
+  let x=evt.clientX+pad, y=evt.clientY+pad;
+  if(x+w>window.innerWidth-6) x=evt.clientX-w-pad;
+  if(y+h>window.innerHeight-6) y=evt.clientY-h-pad;
+  el.style.left=x+'px'; el.style.top=y+'px';
+}
+function _renderRowQuoteTip(el, ticker, settle, data){
+  if(!data || (!data.bids?.length && !data.offers?.length)){
+    el.innerHTML=`<div class="rqt-hd"><span class="rqt-tk">${ticker}</span><span class="rqt-set">${settle}</span></div><div class="rqt-msg">Sin book</div>`;
+    return;
+  }
+  const bids=(data.bids||[]).filter(x=>x.price>0).sort((a,b)=>b.price-a.price);
+  const ofrs=(data.offers||[]).filter(x=>x.price>0).sort((a,b)=>a.price-b.price);
+  const bb=bids[0], bo=ofrs[0];
+  const fmtVol=v=>{ if(!v) return '—'; v=Number(v); return v>=1e6?(v/1e6).toFixed(2)+'M':v>=1e3?(v/1e3).toFixed(1)+'K':v.toFixed(0); };
+  el.innerHTML=`
+    <div class="rqt-hd"><span class="rqt-tk">${ticker}</span><span class="rqt-set">${settle}${data.last?' · last '+Number(data.last).toFixed(2):''}</span></div>
+    <div class="rqt-grid">
+      <div class="rqt-side bid">
+        <div class="rqt-lbl">Best BID</div>
+        <div class="rqt-px bid">${bb?bb.price.toFixed(2):'—'}</div>
+        <div class="rqt-vol">vol ${bb?fmtVol(bb.size):'—'}</div>
+      </div>
+      <div class="rqt-side ofr">
+        <div class="rqt-lbl">Best OFFER</div>
+        <div class="rqt-px ofr">${bo?bo.price.toFixed(2):'—'}</div>
+        <div class="rqt-vol">vol ${bo?fmtVol(bo.size):'—'}</div>
+      </div>
+    </div>`;
+}
+async function _fetchRowQuote(ticker, settle){
+  const key=ticker+'|'+settle;
+  const c=_rowQuoteCache.get(key);
+  if(c && (Date.now()-c.ts)<8000) return c.data;
+  try{
+    const r=await fetch(`/api/depth?ticker=${encodeURIComponent(ticker)}&settle=${encodeURIComponent(settle)}&depth=5`);
+    const data=await r.json();
+    if(!r.ok || data.error) throw new Error(data.error||'http '+r.status);
+    _rowQuoteCache.set(key,{ts:Date.now(),data});
+    return data;
+  }catch(e){ return null; }
+}
+function _attachRowQuoteHover(tr, ticker){
+  if(!tr || tr.__rqtBound) return; tr.__rqtBound=true;
+  tr.addEventListener('mousemove',(e)=>{
+    const el=document.getElementById('rowQuoteTip');
+    if(el && el.style.display==='block') _positionRowQuoteTip(el,e);
+  });
+  tr.addEventListener('mouseenter',(e)=>{
+    if(_rowQuoteHoverTimer) clearTimeout(_rowQuoteHoverTimer);
+    const seq=++_rowQuoteHoverSeq;
+    const settle='24hs';
+    const el=_ensureRowQuoteTipEl();
+    _rowQuoteHoverTimer=setTimeout(async ()=>{
+      el.innerHTML=`<div class="rqt-hd"><span class="rqt-tk">${ticker}</span><span class="rqt-set">${settle}</span></div><div class="rqt-msg">cargando…</div>`;
+      el.style.display='block'; _positionRowQuoteTip(el,e);
+      const data=await _fetchRowQuote(ticker, settle);
+      if(seq!==_rowQuoteHoverSeq) return; // mouse left
+      _renderRowQuoteTip(el, ticker, settle, data);
+      _positionRowQuoteTip(el,e);
+    }, 280);
+  });
+  tr.addEventListener('mouseleave',()=>{ _hideRowQuoteTip(); });
+}
+function wireResumenQuoteHover(){
+  const targets=[
+    {sel:'#resumenCERBody tr', src:BONDS},
+    {sel:'#resumenFXBody tr',  src:FIXED},
+    {sel:'#resumenTAMARBody tr', src:TAMAR_BONDS}
+  ];
+  targets.forEach(t=>{
+    document.querySelectorAll(t.sel).forEach(tr=>{
+      // Onclick contiene el id del bono → reusamos para resolver ticker
+      const oc=tr.getAttribute('onclick')||'';
+      const m=oc.match(/openBondCalculator\('[^']+',\s*'([^']+)'/);
+      if(!m) return;
+      const id=m[1];
+      const bond=(t.src||[]).find(x=>x.id===id);
+      if(!bond) return;
+      _attachRowQuoteHover(tr, bond.ticker);
+    });
+  });
 }
 
 function _getCaucionLast1D(){
@@ -4299,12 +4486,10 @@ function openBondCalculator(bondType, bondId){
           </div>
         </div>
         <div class="bc-kpis">
-          <div class="bc-kpi"><div class="bv" id="bck-tir">-</div><div class="bl">${bondType==='cer'?'TIR real (TEA)':'TIR (TEA)'}</div></div>
-          <div class="bc-kpi"><div class="bv" id="bck-tna">-</div><div class="bl">TNA equiv.</div></div>
-          <div class="bc-kpi"><div class="bv" id="bck-vt" style="font-size:13px">-</div><div class="bl">${bondType==='cer'?'VT Nominal ($)':'VF ($)'}</div></div>
-          <div class="bc-kpi"><div class="bv" id="bck-vno" style="font-size:13px">-</div><div class="bl">VN adquirido</div></div>
-          <div class="bc-kpi"><div class="bv" id="bck-total" style="font-size:13px">-</div><div class="bl">Total cobros</div></div>
-          <div class="bc-kpi"><div class="bv" id="bck-ganancia" style="font-size:13px">-</div><div class="bl">Ganancia</div></div>
+          <div class="bc-kpi"><div class="bv" id="bck-tir">-</div><div class="bl">${bondType==='cer'?'TIR REAL (TEA)':'TIR (TEA)'}</div></div>
+          <div class="bc-kpi"><div class="bv" id="bck-tna">-</div><div class="bl">TNA EQUIV.</div></div>
+          <div class="bc-kpi"><div class="bv" id="bck-tea">-</div><div class="bl">TEA EQUIV.</div></div>
+          <div class="bc-kpi"><div class="bv" id="bck-tem">-</div><div class="bl">TEM EQ</div></div>
         </div>
         <!-- ── Orderbook horizontal (BID izq | OFFER der) — estilo broker AR ── -->
         <div class="bc-book2" id="bc-book-wrap">
@@ -4999,18 +5184,18 @@ function openBondCalculator(bondType, bondId){
         ? (isMultiFlow ? flows.reduce((s,f)=>s+(f.nominal||0),0) : flows[0].nominal)
         : null;
       const scale=vnoAmount/100;
-      const totalCobros=vtNom?vtNom*scale:null;
-      const ganancia=totalCobros&&price>0?totalCobros-vnoAmount/100*price:null;
-      const vnAdq=price>0?vnoAmount/price*100:null;
+      // TEA EQ (nominal): para CER es la TEA nominal pesos (tirNom). TEM = (1+TEA)^(1/12)-1
+      const teaEq=tirNom;
+      const temEq=tirNom!=null?(Math.pow(1+tirNom/100,1/12)-1)*100:null;
 
       document.getElementById('bck-tir').textContent=tirReal!=null?tirReal.toFixed(2)+'%':'—';
       document.getElementById('bck-tir').style.color=tirReal!=null?(tirReal>=0?'var(--acl)':'var(--neg)'):'var(--td)';
       document.getElementById('bck-tna').textContent=tna!=null?tna.toFixed(2)+'%':'—';
-      document.getElementById('bck-vt').textContent=vtNom?vtNom.toFixed(4):'—';
-      document.getElementById('bck-vno').textContent=vnAdq?vnAdq.toFixed(0)+' VN':'—';
-      document.getElementById('bck-total').textContent=totalCobros?'$'+totalCobros.toFixed(0):'—';
-      document.getElementById('bck-ganancia').textContent=ganancia!=null?(ganancia>=0?'+':'')+'$'+ganancia.toFixed(0):'—';
-      if(ganancia!=null) document.getElementById('bck-ganancia').style.color=ganancia>=0?'var(--pos)':'var(--neg)';
+      document.getElementById('bck-tna').style.color=tna!=null?(tna>=0?'var(--acl)':'var(--neg)'):'var(--td)';
+      document.getElementById('bck-tea').textContent=teaEq!=null?teaEq.toFixed(2)+'%':'—';
+      document.getElementById('bck-tea').style.color=teaEq!=null?(teaEq>=0?'var(--acl)':'var(--neg)'):'var(--td)';
+      document.getElementById('bck-tem').textContent=temEq!=null?temEq.toFixed(2)+'%':'—';
+      document.getElementById('bck-tem').style.color=temEq!=null?(temEq>=0?'var(--acl)':'var(--neg)'):'var(--td)';
 
       // Breakeven inflation display
       const beData=(_implInflResults||[]).find(r=>r.ticker===b.ticker);
@@ -5090,18 +5275,18 @@ function openBondCalculator(bondType, bondId){
         tna=((Math.pow(1+tir/100,days/365)-1)*(365/days))*100;
       }
       const scale=vnoAmount/100;
-      const totalCobros=vf?vf*scale:null;
-      const ganancia=totalCobros&&price>0?totalCobros-(price*scale):null;
-      const vnAdq=price>0?vnoAmount/price*100:null;
+      // TEA EQ = TIR (TEA) para tasa fija; TEM EQ = (1+TEA)^(1/12)-1
+      const teaEq=tir;
+      const temEq=tir!=null?(Math.pow(1+tir/100,1/12)-1)*100:null;
 
       document.getElementById('bck-tir').textContent=tir!=null?tir.toFixed(2)+'%':'-';
       document.getElementById('bck-tir').style.color=tir!=null?(tir>=0?'var(--acl)':'var(--neg)'):'var(--td)';
       document.getElementById('bck-tna').textContent=tna!=null?tna.toFixed(2)+'%':'-';
-      document.getElementById('bck-vt').textContent=vf?vf.toFixed(4):'-';
-      document.getElementById('bck-vno').textContent=vnAdq?vnAdq.toFixed(0)+' VN':'-';
-      document.getElementById('bck-total').textContent=totalCobros?'$'+totalCobros.toFixed(0):'-';
-      document.getElementById('bck-ganancia').textContent=ganancia!=null?(ganancia>=0?'+':'')+'$'+ganancia.toFixed(0):'-';
-      if(ganancia!=null) document.getElementById('bck-ganancia').style.color=ganancia>=0?'var(--pos)':'var(--neg)';
+      document.getElementById('bck-tna').style.color=tna!=null?(tna>=0?'var(--acl)':'var(--neg)'):'var(--td)';
+      document.getElementById('bck-tea').textContent=teaEq!=null?teaEq.toFixed(2)+'%':'-';
+      document.getElementById('bck-tea').style.color=teaEq!=null?(teaEq>=0?'var(--acl)':'var(--neg)'):'var(--td)';
+      document.getElementById('bck-tem').textContent=temEq!=null?temEq.toFixed(2)+'%':'-';
+      document.getElementById('bck-tem').style.color=temEq!=null?(temEq>=0?'var(--acl)':'var(--neg)'):'var(--td)';
       const bcMarginEl=document.getElementById('bck-tamar-margin');
       const bcImpliedEl=document.getElementById('bck-tamar-implied');
       const bcRemAvgEl=document.getElementById('bck-tamar-remavg');
@@ -5170,18 +5355,18 @@ function openBondCalculator(bondType, bondId){
         tna=calcTNAFromPrice(price,vf,days);
       }
       const scale=vnoAmount/100;
-      const totalCobros=vf?vf*scale:null;
-      const ganancia=totalCobros&&price>0?totalCobros-(price*scale):null;
-      const vnAdq=price>0?vnoAmount/price*100:null;
+      // TEA EQ = TIR (TEA); TEM EQ = (1+TEA)^(1/12)-1
+      const teaEq=tir;
+      const temEq=tir!=null?(Math.pow(1+tir/100,1/12)-1)*100:null;
 
       document.getElementById('bck-tir').textContent=tir!=null?tir.toFixed(2)+'%':'—';
       document.getElementById('bck-tir').style.color=tir!=null?(tir>=0?'var(--acl)':'var(--neg)'):'var(--td)';
       document.getElementById('bck-tna').textContent=tna!=null?tna.toFixed(2)+'%':'—';
-      document.getElementById('bck-vt').textContent=vf?vf.toFixed(4):'—';
-      document.getElementById('bck-vno').textContent=vnAdq?vnAdq.toFixed(0)+' VN':'—';
-      document.getElementById('bck-total').textContent=totalCobros?'$'+totalCobros.toFixed(0):'—';
-      document.getElementById('bck-ganancia').textContent=ganancia!=null?(ganancia>=0?'+':'')+'$'+ganancia.toFixed(0):'—';
-      if(ganancia!=null) document.getElementById('bck-ganancia').style.color=ganancia>=0?'var(--pos)':'var(--neg)';
+      document.getElementById('bck-tna').style.color=tna!=null?(tna>=0?'var(--acl)':'var(--neg)'):'var(--td)';
+      document.getElementById('bck-tea').textContent=teaEq!=null?teaEq.toFixed(2)+'%':'—';
+      document.getElementById('bck-tea').style.color=teaEq!=null?(teaEq>=0?'var(--acl)':'var(--neg)'):'var(--td)';
+      document.getElementById('bck-tem').textContent=temEq!=null?temEq.toFixed(2)+'%':'—';
+      document.getElementById('bck-tem').style.color=temEq!=null?(temEq>=0?'var(--acl)':'var(--neg)'):'var(--td)';
 
       if(vf){
         document.getElementById('bck-flows').innerHTML=`
@@ -5511,6 +5696,8 @@ function renderCERTab(){
   if(!snapBody) return; // tab no construida
 
   const search=(document.getElementById('cerSearch')?.value||'').trim().toUpperCase();
+  const maxDurRaw=parseFloat(document.getElementById('cerMaxDur')?.value);
+  const maxDur=(!isNaN(maxDurRaw)&&maxDurRaw>0)?maxDurRaw:null;
   const sd=document.getElementById('settleDate')?.value;
   const settle=sd?new Date(sd+'T00:00:00'):new Date();
 
@@ -5528,8 +5715,15 @@ function renderCERTab(){
     return b.ticker.toUpperCase().includes(search) || (b.name||'').toUpperCase().includes(search);
   };
 
+  // Filtro de duration máxima (aplica a snapshot/curva/rich-cheap/movers/breakevens)
+  const matchDur=b=>{
+    if(maxDur==null) return true;
+    const d=(b._dur!=null)?b._dur:DB(settle, new Date(b.mat+'T00:00:00'))/365;
+    return d<=maxDur;
+  };
+
   // Filtrar bonos visibles
-  const bonds=BONDS.filter(matchFilter).filter(matchSearch);
+  const bonds=BONDS.filter(matchFilter).filter(matchSearch).filter(matchDur);
 
   // ── SNAPSHOT TABLE ──
   if(!bonds.length){
@@ -5624,7 +5818,7 @@ function renderCERTab(){
 
   // ── TOP MOVERS ──
   if(moversBody){
-    const movers=BONDS.filter(b=>b._tr!=null).map(b=>{
+    const movers=BONDS.filter(b=>b._tr!=null).filter(matchDur).map(b=>{
       const lp=_livePrices[b.ticker]||{};
       if(!lp.last||!lp.close) return null;
       const px=lp.last, prev=lp.close;
@@ -5703,7 +5897,10 @@ function renderCERTab(){
 
   // ── BREAKEVEN INFL TOP ──
   if(beBody){
-    const beData=(typeof _implInflResults!=='undefined'&&_implInflResults)?_implInflResults.slice():[];
+    let beData=(typeof _implInflResults!=='undefined'&&_implInflResults)?_implInflResults.slice():[];
+    if(maxDur!=null){
+      beData=beData.filter(r=>{ const b=BONDS.find(x=>x.ticker===r.ticker); return b?matchDur(b):false; });
+    }
     if(beData.length){
       beData.sort((a,b)=>(a.implPi||0)-(b.implPi||0));
       let h='';
