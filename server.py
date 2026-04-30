@@ -12,6 +12,9 @@ import os
 import sys
 import json
 import re
+import base64
+import datetime as _dt
+import threading
 # Fix Unicode output on Windows (cp1252 can't handle emoji)
 if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
@@ -41,6 +44,15 @@ KEY_PATHS = [
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "pythonon-450915-c108a4e2426e.json"),
     os.getenv("GOOGLE_SHEETS_KEY_PATH", ""),
 ]
+
+# History DB (snapshots diarios para z-score, pairs, backtest)
+SCRIPT_DIR_HIST = os.path.dirname(os.path.abspath(__file__))
+HISTORY_FILE = os.path.join(SCRIPT_DIR_HIST, "data", "history.json")
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
+GITHUB_REPO  = os.getenv("GITHUB_REPO", "maximodubois/cer-bond-analyzer")
+GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
+GITHUB_HISTORY_PATH = "data/history.json"
+_HISTORY_LOCK = threading.Lock()
 
 # Primary API (Matba/Rofex) — depth-5 market data
 PRIMARY_USERNAME = os.getenv("PRIMARY_USERNAME", "")
@@ -397,6 +409,87 @@ button:hover{opacity:0.85}
 </div></body></html>"""
 
 
+# ══════════════════════════════════════════════════════════════════
+# HISTORY DB — snapshots diarios + GitHub commit
+# ══════════════════════════════════════════════════════════════════
+def history_read():
+    """Lee data/history.json. Si no existe o está corrupto, devuelve []."""
+    try:
+        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data if isinstance(data, list) else []
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+def history_write(history):
+    """Escribe atómicamente a data/history.json."""
+    os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
+    tmp = HISTORY_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(history, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, HISTORY_FILE)
+
+def history_upsert(snapshot):
+    """Inserta o reemplaza el snapshot del día. Una entrada por fecha."""
+    with _HISTORY_LOCK:
+        history = history_read()
+        date = snapshot.get("date")
+        if not date:
+            return None, "snapshot.date requerido"
+        # Reemplaza el del día si existe, sino agrega
+        history = [s for s in history if s.get("date") != date]
+        history.append(snapshot)
+        # Ordena por fecha ascendente y limita a 365 días
+        history.sort(key=lambda s: s.get("date") or "")
+        if len(history) > 365:
+            history = history[-365:]
+        history_write(history)
+        return history, None
+
+def github_commit_history(history, commit_message=None):
+    """Comitea data/history.json al repo via API. Requiere GITHUB_TOKEN."""
+    if not GITHUB_TOKEN:
+        return False, "GITHUB_TOKEN no configurado"
+    api = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GITHUB_HISTORY_PATH}"
+    headers = {
+        "Authorization": f"Bearer {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "CERBondAnalyzer/1.0",
+    }
+    # Get current sha (si existe)
+    sha = None
+    try:
+        req = urllib.request.Request(api + f"?ref={GITHUB_BRANCH}", headers=headers)
+        with urllib.request.urlopen(req, timeout=15) as r:
+            meta = json.loads(r.read().decode("utf-8"))
+            sha = meta.get("sha")
+    except urllib.error.HTTPError as e:
+        if e.code != 404:
+            return False, f"github GET {e.code}: {e.read().decode('utf-8', 'replace')[:200]}"
+    except Exception as e:
+        return False, f"github GET: {e}"
+    # PUT
+    content_str = json.dumps(history, ensure_ascii=False, indent=2)
+    b64 = base64.b64encode(content_str.encode("utf-8")).decode("ascii")
+    msg = commit_message or f"data: snapshot {_dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"
+    body = {"message": msg, "content": b64, "branch": GITHUB_BRANCH}
+    if sha:
+        body["sha"] = sha
+    try:
+        req = urllib.request.Request(
+            api,
+            data=json.dumps(body).encode("utf-8"),
+            headers={**headers, "Content-Type": "application/json"},
+            method="PUT",
+        )
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return True, f"commit ok {r.status}"
+    except urllib.error.HTTPError as e:
+        return False, f"github PUT {e.code}: {e.read().decode('utf-8', 'replace')[:200]}"
+    except Exception as e:
+        return False, f"github PUT: {e}"
+
+
 class Handler(SimpleHTTPRequestHandler):
     def _check_auth(self):
         if not auth_required():
@@ -435,12 +528,17 @@ class Handler(SimpleHTTPRequestHandler):
             self._proxy_depth()
         elif self.path == "/api/pib":
             self._proxy_pib()
+        elif self.path == "/api/history":
+            self._send_json({"history": history_read()})
         elif self.path == "/api/health":
             self._send_json({
                 "status": "ok",
                 "sheets": _sheet_service is not None,
                 "primary": primary_enabled(),
                 "primaryBase": PRIMARY_BASE_URL if primary_enabled() else None,
+                "githubCommit": bool(GITHUB_TOKEN),
+                "githubRepo": GITHUB_REPO if GITHUB_TOKEN else None,
+                "historyEntries": len(history_read()),
             })
         elif self.path == "/login":
             self._send_html(LOGIN_HTML.replace("__ERR__", ""))
@@ -450,6 +548,12 @@ class Handler(SimpleHTTPRequestHandler):
             super().do_GET()
 
     def do_POST(self):
+        if not self._check_auth() and self.path not in ("/login",):
+            self._send_json({"error": "auth required"}, 401)
+            return
+        if self.path == "/api/history/snapshot":
+            self._save_snapshot()
+            return
         if self.path == "/login":
             length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(length).decode("utf-8")
@@ -475,6 +579,38 @@ class Handler(SimpleHTTPRequestHandler):
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = resp.read()
             self._send_json(json.loads(data))
+        except Exception as e:
+            self._send_json({"error": str(e)}, 500)
+
+    def _save_snapshot(self):
+        """POST /api/history/snapshot
+        Body: {date:'YYYY-MM-DD', ts:int, bonds:{CER:[...], FX:[...], TAMAR:[...]}}
+        Persiste en data/history.json + opcionalmente comitea al repo (si hay token).
+        """
+        try:
+            length = int(self.headers.get("Content-Length", 0) or 0)
+            raw = self.rfile.read(length).decode("utf-8") if length else "{}"
+            snap = json.loads(raw)
+            if not snap.get("date"):
+                self._send_json({"error": "date requerido (YYYY-MM-DD)"}, 400)
+                return
+            history, err = history_upsert(snap)
+            if err:
+                self._send_json({"error": err}, 400)
+                return
+            commit_ok, commit_msg = (False, "skipped (no token)")
+            if GITHUB_TOKEN:
+                commit_ok, commit_msg = github_commit_history(
+                    history,
+                    commit_message=f"data: snapshot {snap.get('date')}"
+                )
+            self._send_json({
+                "ok": True,
+                "entries": len(history),
+                "commit": {"ok": commit_ok, "msg": commit_msg},
+            })
+        except json.JSONDecodeError as e:
+            self._send_json({"error": f"json invalido: {e}"}, 400)
         except Exception as e:
             self._send_json({"error": str(e)}, 500)
 
