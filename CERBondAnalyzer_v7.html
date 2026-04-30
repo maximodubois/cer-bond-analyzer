@@ -1069,6 +1069,132 @@
   <div id="rzResult" style="overflow-x:auto"></div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════════════
+     QUANT TOOLKIT v2 — TOMAR/COLOCAR · Z por bucket · Pairs · Backtest
+     Toda la sección consume /api/depth y /api/history.
+     ══════════════════════════════════════════════════════════════════ -->
+<style>
+  .qt-card{margin-top:10px}
+  .qt-hd{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px}
+  .qt-controls{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+  .qt-table{width:100%;font-family:'IBM Plex Mono',monospace;font-size:11px;border-collapse:collapse}
+  .qt-table th{padding:6px 8px;border-bottom:1px solid var(--cb);color:var(--td);font-weight:600;font-size:9.5px;letter-spacing:0.05em;text-transform:uppercase;text-align:left}
+  .qt-table td{padding:5px 8px;border-bottom:1px solid #1a2233}
+  .qt-table tr:hover td{background:rgba(0,229,160,0.04)}
+  .qt-num{text-align:right;font-variant-numeric:tabular-nums}
+  .qt-pos{color:var(--ac)}
+  .qt-neg{color:var(--neg)}
+  .qt-tag{display:inline-block;padding:2px 7px;border-radius:3px;font-size:9px;letter-spacing:0.05em;text-transform:uppercase;font-weight:700}
+  .qt-tag.tomar{background:rgba(255,123,123,0.15);color:var(--neg);border:1px solid rgba(255,123,123,0.3)}
+  .qt-tag.colocar{background:rgba(0,229,160,0.15);color:var(--ac);border:1px solid rgba(0,229,160,0.3)}
+  .qt-progress{height:4px;background:#0d141d;border-radius:2px;overflow:hidden;margin:4px 0}
+  .qt-progress > div{height:100%;background:var(--ac);width:0;transition:width 0.2s}
+  .qt-bucket{display:inline-block;padding:2px 7px;border-radius:3px;font-size:9px;background:#0d141d;border:1px solid var(--cb);color:var(--acl);font-weight:700;margin-right:4px}
+  .qt-z-hot{background:rgba(255,123,123,0.18);font-weight:700}
+  .qt-z-cold{background:rgba(0,229,160,0.18);font-weight:700}
+  .qt-pair-row{display:grid;grid-template-columns:1.2fr 1.2fr 1fr 1fr 1fr 1fr 0.5fr;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid #1a2233;font-size:11px;font-family:'IBM Plex Mono',monospace}
+  .qt-pair-hd{color:var(--td);font-size:9.5px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600}
+</style>
+
+<!-- ── HISTORY DB STATUS ────────────────────────────────────────── -->
+<div class="card qt-card" id="qt-histcard">
+  <div class="qt-hd">
+    <div class="st" style="margin:0">📊 Base de Datos Histórica (snapshots diarios)</div>
+    <div class="qt-controls">
+      <button class="btn-api btn-sm" onclick="qtTakeSnapshot()" id="qtSnapBtn">📸 Tomar snapshot ahora</button>
+      <button class="btn-api btn-sm" onclick="qtRefreshHistory()">↻ Recargar</button>
+    </div>
+  </div>
+  <div class="note" style="margin-bottom:8px">Cada snapshot guarda <b>price + TIR real + TNA TF + duration</b> de todos los bonos calculados (CER · Tasa fija · TAMAR). Se persiste en <code>data/history.json</code> del repo y se commitea via GitHub API si hay <code>GITHUB_TOKEN</code>. El sistema detecta tu última snapshot del día y la reemplaza si volvés a snapshotear.</div>
+  <div id="qtHistStatus" style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--td)">Cargando estado…</div>
+</div>
+
+<!-- ── TOMAR / COLOCAR (CI vs 24hs) ─────────────────────────────── -->
+<div class="card qt-card">
+  <div class="qt-hd">
+    <div>
+      <div class="st" style="margin:0">🔁 TOMAR / COLOCAR — Spread CI vs 24hs</div>
+      <div class="note" style="margin:4px 0 0 0">
+        <b>TOMAR plata:</b> vendo en CI (recibo hoy) y compro en 24hs (devuelvo mañana). Tasa = (P_24hs_ask / P_CI_bid − 1) × 365/d.<br>
+        <b>COLOCAR plata:</b> vendo en 24hs (cobro mañana) y compro en CI (entrego hoy). Tasa = (P_24hs_bid / P_CI_ask − 1) × 365/d.<br>
+        Considero feriados/finsem entre fecha de hoy y la fecha de liquidación 24hs (<code>SBD(hoy,1)</code>). Usa los <b>bid/ask reales</b> del Primary, depth=1.
+      </div>
+    </div>
+    <div class="qt-controls">
+      <button class="btn-api btn-sm" onclick="qtCalcTomarColocar()" id="qtTcBtn">▶ Calcular ahora</button>
+      <button class="btn-api btn-sm" onclick="qtTcAddBond()">＋ Agregar bono</button>
+    </div>
+  </div>
+  <div id="qtTcUniverse" style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:10px"></div>
+  <div class="qt-progress" id="qtTcProgress" style="display:none"><div></div></div>
+  <div id="qtTcInfo" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;margin-bottom:6px">—</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div>
+      <div class="il" style="color:var(--neg);margin-bottom:4px">▼ TOMAR — barato (mejor para tomar plata)</div>
+      <div id="qtTomarTbl"></div>
+    </div>
+    <div>
+      <div class="il" style="color:var(--ac);margin-bottom:4px">▲ COLOCAR — caro (mejor para colocar plata)</div>
+      <div id="qtColocarTbl"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Z-SCORE POR BUCKET DE DURATION ───────────────────────────── -->
+<div class="card qt-card">
+  <div class="qt-hd">
+    <div>
+      <div class="st" style="margin:0">📐 Z-Score Residual por Bucket de Duration</div>
+      <div class="note" style="margin:4px 0 0 0">Bonos divididos en 4 buckets de duration: <code>0–0.5</code>, <code>0.5–1</code>, <code>1–2</code>, <code>2+</code>. Para cada bucket fitea curva log y calcula residuo (TNA TF − fit). Z = (residuo − μ_bucket) / σ_bucket. <b>|z|&gt;1.5</b> = oportunidad relativa <i>dentro</i> del bucket (no contaminada por la curva general). Si hay histórico, usa la media histórica del bono también.</div>
+    </div>
+    <div class="qt-controls">
+      <button class="btn-api btn-sm" onclick="qtCalcZBucket()">▶ Calcular</button>
+      <select id="qtZUniv" style="padding:4px 8px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;font-size:11px">
+        <option value="cer">CER</option>
+        <option value="fx">Tasa Fija</option>
+      </select>
+    </div>
+  </div>
+  <div id="qtZBucketResult"></div>
+</div>
+
+<!-- ── PAIRS SCREENER ───────────────────────────────────────────── -->
+<div class="card qt-card">
+  <div class="qt-hd">
+    <div>
+      <div class="st" style="margin:0">⚖️ Pairs Screener — Ratio histórico</div>
+      <div class="note" style="margin:4px 0 0 0">Elegí 2 bonos. Te muestro <b>ratio precio</b> (P_A/P_B) y <b>spread TEA</b> (TEA_A − TEA_B) actual + histórico (si existe en la DB). Bandas mean ± 2σ. Cuando se sale = oportunidad de spread trade. Guardás pares como favoritos.</div>
+    </div>
+    <div class="qt-controls">
+      <select id="qtPairA" style="padding:4px 8px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;font-size:11px;font-family:'IBM Plex Mono',monospace"></select>
+      <span style="color:var(--td)">vs</span>
+      <select id="qtPairB" style="padding:4px 8px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;font-size:11px;font-family:'IBM Plex Mono',monospace"></select>
+      <button class="btn-api btn-sm" onclick="qtAddPair()">＋ Favorito</button>
+      <button class="btn-api btn-sm" onclick="qtRenderPairs()">↻ Refrescar</button>
+    </div>
+  </div>
+  <div id="qtPairsList"></div>
+</div>
+
+<!-- ── BACKTEST DE SEÑALES Z-SCORE ──────────────────────────────── -->
+<div class="card qt-card">
+  <div class="qt-hd">
+    <div>
+      <div class="st" style="margin:0">🧪 Backtest — Señales Z-score (convergencia)</div>
+      <div class="note" style="margin:4px 0 0 0">Para cada día con histórico, busca bonos con <b>|z|&gt;2</b>. Trackea qué pasó al residuo en T+5d / T+10d / T+30d. <b>Hit rate</b> = % de señales que convergieron a la curva. <b>Avg Δz</b> = movimiento promedio del z-score post-señal. Necesita ≥10 días de histórico para datos confiables.</div>
+    </div>
+    <div class="qt-controls">
+      <button class="btn-api btn-sm" onclick="qtRunBacktest()">▶ Correr backtest</button>
+      <select id="qtBtThreshold" style="padding:4px 8px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;font-size:11px">
+        <option value="2">|z| &gt; 2.0</option>
+        <option value="1.5">|z| &gt; 1.5</option>
+        <option value="2.5">|z| &gt; 2.5</option>
+      </select>
+    </div>
+  </div>
+  <div id="qtBacktestResult" style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--td)">Tocá "Correr backtest" para evaluar señales sobre el histórico cargado.</div>
+</div>
+
 </div><!-- end tab-quantplus -->
 
 <!-- TAB: LIVE SCREEN -->
@@ -1096,6 +1222,70 @@
 
 <!-- TAB: POSITIONS -->
 <div id="tab-positions" style="display:none">
+
+  <!-- ════════════════════════════════════════════════════════════════
+       AGENDA — Libreta de traders/contrapartes (alimenta Blotter autocomplete)
+       ════════════════════════════════════════════════════════════════ -->
+  <style>
+    #agendaCard .ag-row{display:grid;grid-template-columns:1.4fr 1.2fr 2fr 1fr 1.5fr 0.5fr;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid #1a2233;font-size:11px;font-family:'IBM Plex Mono',monospace}
+    #agendaCard .ag-hd{color:var(--td);font-size:9.5px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;border-bottom:1px solid var(--cb)}
+    #agendaCard .ag-cat{display:inline-block;padding:1px 6px;margin:1px 2px 1px 0;border-radius:3px;font-size:9px;background:#0d141d;border:1px solid var(--cb);color:var(--acl);font-weight:600;cursor:pointer;user-select:none}
+    #agendaCard .ag-cat.on{background:rgba(0,229,160,0.18);color:var(--ac);border-color:var(--ac)}
+    #agendaCard .ag-row:hover{background:rgba(0,229,160,0.04)}
+    #agendaCard .ag-act{display:flex;gap:4px;justify-content:flex-end}
+    #agendaCard .ag-act button{background:transparent;border:1px solid var(--cb);color:var(--td);padding:2px 6px;border-radius:3px;font-size:10px;cursor:pointer;font-family:'IBM Plex Mono',monospace}
+    #agendaCard .ag-act button:hover{border-color:var(--ac);color:var(--ac)}
+    #agendaCard .ag-search{padding:6px 8px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;font-size:11px;font-family:'IBM Plex Mono',monospace;min-width:180px}
+  </style>
+  <div class="card" style="margin-top:10px" id="agendaCard">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="st" style="margin-bottom:0">📒 AGENDA · Traders &amp; Contrapartes</div>
+        <div style="font-size:9px;color:var(--td);margin-top:2px;font-family:'IBM Plex Mono',monospace">
+          Persistido en <code>localStorage</code>. Alimenta el autocomplete del Blotter — al armar trade, contraparte se filtra por categorías que matchean el bono.
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <input id="agSearch" class="ag-search" type="text" placeholder="Buscar por nombre / banco" oninput="renderAgenda()">
+        <select id="agFilterCat" class="ag-search" style="min-width:auto" onchange="renderAgenda()">
+          <option value="">Todas las cat.</option>
+          <option value="CER">CER</option>
+          <option value="TASA FIJA">Tasa Fija</option>
+          <option value="TAMAR">TAMAR</option>
+          <option value="DUAL">DUAL</option>
+          <option value="LECAP">LECAP</option>
+          <option value="DOLLAR LINKED">Dollar Linked</option>
+          <option value="BONOS USD">Bonos USD</option>
+          <option value="CAUCION">Caución</option>
+          <option value="ROFEX">ROFEX</option>
+          <option value="MEP/CCL">MEP/CCL</option>
+        </select>
+        <button class="btn-api btn-sm" onclick="openAgendaForm()">＋ Nuevo</button>
+        <button class="btn-api btn-sm" onclick="exportAgendaXLSX()">⇩ Excel</button>
+      </div>
+    </div>
+
+    <!-- Form (oculto por default) -->
+    <div id="agForm" style="display:none;margin-top:10px;padding:10px;background:var(--bg);border:1px solid var(--cb);border-radius:6px">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px">
+        <div class="ig"><label>Nombre</label><input id="agName" type="text" placeholder="Juan Pérez"></div>
+        <div class="ig"><label>Banco / Mesa</label><input id="agBank" type="text" placeholder="Macro Securities"></div>
+        <div class="ig"><label>Tel / Bloomberg</label><input id="agContact" type="text" placeholder="11 5555-5555 / JPEREZ@MAC"></div>
+        <div class="ig"><label>Notas</label><input id="agNotes" type="text" placeholder="Agresivo en CER cortos..."></div>
+      </div>
+      <div style="margin-bottom:8px">
+        <div style="font-size:9px;color:var(--td);margin-bottom:4px;letter-spacing:0.05em">CATEGORÍAS QUE OPERA (click para toggle)</div>
+        <div id="agCatPicker"></div>
+      </div>
+      <div style="display:flex;gap:6px;justify-content:flex-end">
+        <button class="btn-api btn-sm" onclick="closeAgendaForm()">Cancelar</button>
+        <button class="btn-api btn-sm" onclick="saveAgendaContact()" style="background:var(--ac);color:#000">Guardar</button>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div id="agList" style="margin-top:10px;max-height:340px;overflow-y:auto"></div>
+  </div>
 
   <!-- ════════════════════════════════════════════════════════════════
        BLOTTER — Trade book diario con quick-entry modal
@@ -3802,7 +3992,8 @@ function switchTab(tab){
   });
   if(tab==="resumen") renderResumen();
   if(tab==="livescreen") buildLiveTable();
-  if(tab==="positions"){ renderPositions(); renderBlotter(); renderAxes(); }
+  if(tab==="positions"){ renderPositions(); renderBlotter(); renderAxes(); try{renderAgenda()}catch(_e){} }
+  if(tab==="quantplus"){ try{ qtInit(); }catch(_e){console.warn('[qt]',_e)} }
   if(tab==="pases") buildPaseSelect();
   if(tab==="quantplus") refreshQuantPlus();
   if(tab==="fx") renderFX();
@@ -6472,6 +6663,152 @@ const BLT_CPTYS_DEFAULT = ["Mesa","Cocos","IOL","Veta","Eco","Bull Market","IEB"
 function saveBlotter(){ localStorage.setItem("cer_blotter_v1", JSON.stringify(_blotter)); }
 function saveAxes(){ localStorage.setItem("cer_axes_v1", JSON.stringify(_axes)); }
 
+// ═══════════════════════════════════════════════════════════════════
+// AGENDA — Libreta de traders/contrapartes
+// localStorage: cer_agenda_v1 → [{id, name, bank, contact, notes, cats:[]}]
+// ═══════════════════════════════════════════════════════════════════
+const AG_CATS=["CER","TASA FIJA","TAMAR","DUAL","LECAP","DOLLAR LINKED","BONOS USD","CAUCION","ROFEX","MEP/CCL"];
+let _agenda = JSON.parse(localStorage.getItem("cer_agenda_v1")||"[]");
+let _agEditingId = null;
+let _agDraftCats = [];
+function saveAgenda(){ localStorage.setItem("cer_agenda_v1", JSON.stringify(_agenda)); }
+function _agNewId(){ return 'ag_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,5); }
+
+function openAgendaForm(id){
+  _agEditingId = id || null;
+  const c = id ? _agenda.find(x=>x.id===id) : null;
+  document.getElementById('agName').value    = c?.name||'';
+  document.getElementById('agBank').value    = c?.bank||'';
+  document.getElementById('agContact').value = c?.contact||'';
+  document.getElementById('agNotes').value   = c?.notes||'';
+  _agDraftCats = (c?.cats||[]).slice();
+  _renderAgCatPicker();
+  document.getElementById('agForm').style.display='block';
+  setTimeout(()=>document.getElementById('agName').focus(),50);
+}
+function closeAgendaForm(){
+  _agEditingId=null; _agDraftCats=[];
+  document.getElementById('agForm').style.display='none';
+}
+function _renderAgCatPicker(){
+  const el = document.getElementById('agCatPicker'); if(!el) return;
+  el.innerHTML = AG_CATS.map(c=>{
+    const on = _agDraftCats.includes(c);
+    return `<span class="ag-cat ${on?'on':''}" onclick="_toggleAgCat('${c}')">${c}</span>`;
+  }).join('');
+}
+function _toggleAgCat(cat){
+  const i = _agDraftCats.indexOf(cat);
+  if(i>=0) _agDraftCats.splice(i,1); else _agDraftCats.push(cat);
+  _renderAgCatPicker();
+}
+function saveAgendaContact(){
+  const name=(document.getElementById('agName').value||'').trim();
+  if(!name){ alert('Falta el nombre'); return; }
+  const c={
+    id: _agEditingId || _agNewId(),
+    name,
+    bank: (document.getElementById('agBank').value||'').trim(),
+    contact: (document.getElementById('agContact').value||'').trim(),
+    notes: (document.getElementById('agNotes').value||'').trim(),
+    cats: _agDraftCats.slice(),
+    createdAt: _agEditingId ? (_agenda.find(x=>x.id===_agEditingId)?.createdAt||Date.now()) : Date.now(),
+    updatedAt: Date.now(),
+  };
+  if(_agEditingId){
+    const i = _agenda.findIndex(x=>x.id===_agEditingId);
+    if(i>=0) _agenda[i]=c;
+  } else {
+    _agenda.push(c);
+  }
+  saveAgenda();
+  closeAgendaForm();
+  renderAgenda();
+}
+function deleteAgendaContact(id){
+  const c=_agenda.find(x=>x.id===id);
+  if(!c) return;
+  if(!confirm(`Borrar a ${c.name} (${c.bank||'sin banco'}) de la agenda?`)) return;
+  _agenda = _agenda.filter(x=>x.id!==id);
+  saveAgenda(); renderAgenda();
+}
+function renderAgenda(){
+  const list = document.getElementById('agList'); if(!list) return;
+  const search = (document.getElementById('agSearch')?.value||'').trim().toLowerCase();
+  const fcat = document.getElementById('agFilterCat')?.value||'';
+  let rows = _agenda.slice().sort((a,b)=>{
+    const A=(a.bank||'')+(a.name||''), B=(b.bank||'')+(b.name||'');
+    return A.localeCompare(B);
+  });
+  if(search){
+    rows = rows.filter(c=>(c.name||'').toLowerCase().includes(search) || (c.bank||'').toLowerCase().includes(search));
+  }
+  if(fcat){
+    rows = rows.filter(c=>(c.cats||[]).includes(fcat));
+  }
+  if(!rows.length){
+    list.innerHTML = `<div style="padding:14px;text-align:center;color:var(--td);font-style:italic">— Sin contactos${(search||fcat)?' que matcheen el filtro':''}. Tocá ＋ Nuevo para empezar —</div>`;
+    return;
+  }
+  let html = `<div class="ag-row ag-hd">
+    <div>NOMBRE</div><div>BANCO / MESA</div><div>CATEGORÍAS</div><div>CONTACTO</div><div>NOTAS</div><div></div>
+  </div>`;
+  rows.forEach(c=>{
+    const cats = (c.cats||[]).map(x=>`<span class="ag-cat on">${x}</span>`).join('');
+    html += `<div class="ag-row">
+      <div style="font-weight:700;color:var(--acl)">${(c.name||'—').replace(/</g,'&lt;')}</div>
+      <div style="color:var(--t)">${(c.bank||'—').replace(/</g,'&lt;')}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:2px">${cats||'<span style="color:var(--td)">—</span>'}</div>
+      <div style="color:var(--td);font-size:10px">${(c.contact||'—').replace(/</g,'&lt;')}</div>
+      <div style="color:var(--td);font-size:10px">${(c.notes||'').replace(/</g,'&lt;')}</div>
+      <div class="ag-act">
+        <button onclick="openAgendaForm('${c.id}')" title="Editar">✎</button>
+        <button onclick="deleteAgendaContact('${c.id}')" title="Borrar">✕</button>
+      </div>
+    </div>`;
+  });
+  list.innerHTML = html;
+}
+function exportAgendaXLSX(){
+  if(!_agenda.length){ alert('Agenda vacía'); return; }
+  if(typeof XLSX==='undefined'){ alert('SheetJS no cargó. Refrescá la página.'); return; }
+  const data = _agenda.map(c=>({
+    Nombre:c.name||'', Banco:c.bank||'',
+    Categorias:(c.cats||[]).join(', '),
+    Contacto:c.contact||'', Notas:c.notes||'',
+    Creado: c.createdAt?new Date(c.createdAt).toLocaleDateString('es-AR'):'',
+  }));
+  const ws=XLSX.utils.json_to_sheet(data);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Agenda');
+  XLSX.writeFile(wb, `agenda_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+/** Mapeo asset.type → categoría AGENDA. Usado por el blotter para filtrar contrapartes. */
+function _agCategoryForAsset(asset){
+  if(!asset) return null;
+  const t=(asset.type||'').toUpperCase();
+  if(t==='CER') return 'CER';
+  if(t==='LECAP'||t==='BONCAP') return 'TASA FIJA';
+  if(t==='TAMAR') return 'TAMAR';
+  if(t==='DUAL') return 'DUAL';
+  if(t==='LETAMAR') return 'TAMAR';
+  if(t==='DL'||t==='DOLLAR LINKED') return 'DOLLAR LINKED';
+  return null;
+}
+/** Devuelve lista de contrapartes ordenadas por relevancia (matchean categoría primero). */
+function _agSuggestCpties(asset){
+  const cat=_agCategoryForAsset(asset);
+  const out=[];
+  // Match exacto de categoría primero
+  if(cat){
+    _agenda.forEach(c=>{ if((c.cats||[]).includes(cat)) out.push(c); });
+  }
+  // Después el resto
+  _agenda.forEach(c=>{ if(!out.includes(c)) out.push(c); });
+  return out;
+}
+
 function _bltAllTickers(){
   const out=[];
   if(typeof BONDS!=='undefined')   BONDS.forEach(b=>out.push({ticker:b.ticker, type:'CER',  color:b.color, id:b.id}));
@@ -6584,11 +6921,28 @@ function _fmtMoneyFull(n){
 // ───────────────────────────────────────────────────────────
 // Quick-entry trade modal
 // ───────────────────────────────────────────────────────────
+function _bltCptyOptions(matchAsset){
+  // Mezcla: 1) agenda con match de categoría primero, 2) agenda resto, 3) defaults.
+  const fromAg = (typeof _agSuggestCpties==='function' && Array.isArray(_agenda)) ? _agSuggestCpties(matchAsset) : [];
+  const seen=new Set();
+  const out=[];
+  fromAg.forEach(c=>{
+    const label = c.bank ? `${c.name} (${c.bank})` : c.name;
+    if(!seen.has(label.toLowerCase())){ out.push(label); seen.add(label.toLowerCase()); }
+  });
+  BLT_CPTYS_DEFAULT.forEach(c=>{
+    if(!seen.has(c.toLowerCase())){ out.push(c); seen.add(c.toLowerCase()); }
+  });
+  return out;
+}
 function openTradeModal(prefilled){
   closeTradeModal();
   const tickers=_bltAllTickers().map(a=>a.ticker).sort();
   const tickerOpts=tickers.map(t=>`<option value="${t}">`).join('');
-  const cptyOpts=BLT_CPTYS_DEFAULT.map(c=>`<option value="${c}">`).join('');
+  // Cpty list: mezcla agenda + defaults. Si hay ticker prefilled, prioriza por categoría.
+  const prefAsset = prefilled?._bltFindAsset?.(prefilled.ticker) || (prefilled&&prefilled.ticker?_bltFindAsset(prefilled.ticker):null);
+  const cptyList=_bltCptyOptions(prefAsset);
+  const cptyOpts=cptyList.map(c=>`<option value="${c.replace(/"/g,'&quot;')}">`).join('');
 
   _tmDraft = prefilled ? {...prefilled} : {
     side:'B', settle:_bltLastSettle, cpty:_bltLastCpty,
@@ -6673,6 +7027,13 @@ function openTradeModal(prefilled){
       if(id==='tmTicker') v=v.toUpperCase();
       if(id==='tmQty'||id==='tmPrice') v=v===''?'':parseFloat(v);
       _tmDraft[map[id]]=v;
+      // Re-rank cpty datalist por categoría del ticker (agenda primero)
+      if(id==='tmTicker'){
+        const asset=_bltFindAsset(v);
+        const list=_bltCptyOptions(asset);
+        const dl=$('tmCptyList');
+        if(dl) dl.innerHTML=list.map(c=>`<option value="${c.replace(/"/g,'&quot;')}">`).join('');
+      }
       _tmRenderPreview();
     });
   });
@@ -11061,6 +11422,504 @@ setInterval(()=>{
   const el=document.getElementById("headerClock");
   if(el){const now=new Date();el.textContent=now.toLocaleString("es-AR",{weekday:"short",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",second:"2-digit"});}
 },1000);
+
+// ═══════════════════════════════════════════════════════════════════════
+// QUANT TOOLKIT v2 — Tab DESARROLLO (Quantplus)
+// ═══════════════════════════════════════════════════════════════════════
+let _qtHistory=[];                  // snapshots cargados de /api/history
+let _qtTcUniverse=JSON.parse(localStorage.getItem("cer_qt_tc_universe_v1")||"[]"); // tickers monitor TOMAR/COLOCAR
+let _qtPairFavs=JSON.parse(localStorage.getItem("cer_qt_pair_favs_v1")||"[]");     // [{a,b}]
+let _qtTcResults=null;              // último resultado TOMAR/COLOCAR
+let _qtTcRunning=false;
+const QT_HIST_KEY_LOCAL="cer_qt_history_local_v1"; // fallback local si server no responde
+
+function qtInit(){
+  _qtRefreshHistFromServer();
+  _qtRenderTcUniverse();
+  _qtPopulatePairSelectors();
+  _qtRenderPairsList();
+}
+
+async function _qtRefreshHistFromServer(){
+  const status=document.getElementById('qtHistStatus');
+  if(status) status.textContent='Cargando histórico…';
+  try{
+    const r=await fetch('/api/history');
+    const txt=await r.text();
+    if(!txt) throw new Error('empty body');
+    const j=JSON.parse(txt);
+    _qtHistory=Array.isArray(j.history)?j.history:[];
+    // Cache local también
+    try{ localStorage.setItem(QT_HIST_KEY_LOCAL, JSON.stringify(_qtHistory.slice(-90))); }catch(_e){}
+  }catch(e){
+    // Fallback a localStorage
+    try{ _qtHistory=JSON.parse(localStorage.getItem(QT_HIST_KEY_LOCAL)||"[]"); }catch(_e){ _qtHistory=[]; }
+  }
+  _qtRenderHistStatus();
+}
+function qtRefreshHistory(){ _qtRefreshHistFromServer(); }
+
+function _qtRenderHistStatus(){
+  const el=document.getElementById('qtHistStatus'); if(!el) return;
+  if(!_qtHistory.length){
+    el.innerHTML='<span style="color:var(--neg)">⚠ Sin histórico</span> · Tomá tu primer snapshot tocando el botón de arriba.';
+    return;
+  }
+  const dates=_qtHistory.map(s=>s.date).sort();
+  const first=dates[0], last=dates[dates.length-1];
+  const todayStr=new Date().toISOString().slice(0,10);
+  const hasToday=dates.includes(todayStr);
+  el.innerHTML=`📂 <b style="color:var(--ac)">${_qtHistory.length}</b> snapshots · primer día <b>${first}</b> · último <b>${last}</b> ${hasToday?'<span style="color:var(--ac)">· hoy ✓</span>':'<span style="color:var(--am)">· hoy pendiente</span>'}`;
+}
+
+async function qtTakeSnapshot(){
+  const btn=document.getElementById('qtSnapBtn');
+  const status=document.getElementById('qtHistStatus');
+  if(btn) btn.disabled=true;
+  if(status) status.textContent='📸 Tomando snapshot…';
+  try{
+    // Recolectar estado actual de los bonos calculados
+    const settleEl=document.getElementById('settleDate');
+    const settle=settleEl?.value||new Date().toISOString().slice(0,10);
+    const today=new Date().toISOString().slice(0,10);
+    const collect=(arr,type)=>arr.filter(b=>b._ok).map(b=>{
+      const px=(typeof getCurrentPrice==='function')?getCurrentPrice(b.id):null;
+      return {
+        id:b.id, ticker:b.ticker, type:type,
+        px: px||null,
+        tr: b._tr??null,        // TIR Real (CER)
+        tn: b._tn??null,        // TIR Nominal
+        tnaTF: b._tnaTF??null,  // TNA TF equivalente
+        tea: b._tea??null,      // FIXED TEA
+        tna: b._tna??null,      // FIXED TNA
+        dur: b._dur??null,
+        mat: b.mat||null,
+      };
+    });
+    const snapshot={
+      date: today,
+      ts: Date.now(),
+      settle,
+      bonds:{
+        CER:   typeof BONDS!=='undefined' ? collect(BONDS,'CER') : [],
+        FX:    typeof FIXED!=='undefined' ? collect(FIXED,'FIXED') : [],
+        TAMAR: typeof TAMAR_BONDS!=='undefined' ? collect(TAMAR_BONDS,'TAMAR') : [],
+      }
+    };
+    const r=await fetch('/api/history/snapshot',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(snapshot),
+    });
+    const txt=await r.text();
+    let j={}; try{ j=JSON.parse(txt); }catch(_e){}
+    if(!r.ok || j.error){
+      // Fallback: guardar local solamente
+      const local=JSON.parse(localStorage.getItem(QT_HIST_KEY_LOCAL)||"[]");
+      const filtered=local.filter(s=>s.date!==today);
+      filtered.push(snapshot);
+      localStorage.setItem(QT_HIST_KEY_LOCAL, JSON.stringify(filtered.slice(-90)));
+      _qtHistory=filtered;
+      if(status) status.innerHTML=`<span style="color:var(--am)">⚠ Server falló (${j.error||r.status}) — guardado en localStorage como fallback</span>`;
+    } else {
+      // Reload from server
+      await _qtRefreshHistFromServer();
+      const commitMsg=j.commit?.ok?'<span style="color:var(--ac)">+ commit GitHub</span>':(j.commit?.msg||'sin commit');
+      if(status) status.innerHTML=status.innerHTML+` · ✓ snapshot guardado (${commitMsg})`;
+    }
+  }catch(e){
+    if(status) status.innerHTML=`<span style="color:var(--neg)">Error: ${e.message||e}</span>`;
+  }finally{
+    if(btn) btn.disabled=false;
+  }
+}
+
+// ─── TOMAR / COLOCAR ───────────────────────────────────────────────
+function _qtRenderTcUniverse(){
+  const el=document.getElementById('qtTcUniverse'); if(!el) return;
+  if(!_qtTcUniverse.length){
+    el.innerHTML='<span style="color:var(--td);font-style:italic">Sin bonos en monitor — tocá ＋ Agregar bono. Cuanto más bonos, más lento (1 fetch/seg para no saturar Primary).</span>';
+    return;
+  }
+  el.innerHTML=_qtTcUniverse.map(t=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border:1px solid var(--cb);border-radius:3px;background:#0d141d;color:var(--acl);font-weight:700">${t}<button onclick="qtTcRemove('${t}')" style="background:transparent;border:none;color:var(--neg);cursor:pointer;padding:0;font-size:13px">✕</button></span>`).join('');
+}
+function qtTcAddBond(){
+  const all=(typeof BONDS!=='undefined'?BONDS:[]).concat(typeof FIXED!=='undefined'?FIXED:[]).concat(typeof TAMAR_BONDS!=='undefined'?TAMAR_BONDS:[]);
+  const tickers=all.map(b=>b.ticker).sort();
+  const tk=prompt(`Ticker a agregar al monitor TOMAR/COLOCAR.\nDisponibles:\n${tickers.join(', ')}`);
+  if(!tk) return;
+  const t=tk.trim().toUpperCase();
+  if(!tickers.includes(t)){ alert('Ticker desconocido'); return; }
+  if(_qtTcUniverse.includes(t)) return;
+  _qtTcUniverse.push(t);
+  localStorage.setItem("cer_qt_tc_universe_v1", JSON.stringify(_qtTcUniverse));
+  _qtRenderTcUniverse();
+}
+function qtTcRemove(tk){
+  _qtTcUniverse=_qtTcUniverse.filter(x=>x!==tk);
+  localStorage.setItem("cer_qt_tc_universe_v1", JSON.stringify(_qtTcUniverse));
+  _qtRenderTcUniverse();
+}
+
+async function _qtFetchOneSettle(ticker, settle){
+  try{
+    const r=await fetch(`/api/depth?ticker=${encodeURIComponent(ticker)}&settle=${settle}&depth=1`);
+    const txt=await r.text();
+    if(!txt) return null;
+    const j=JSON.parse(txt);
+    if(!r.ok || j.error) return null;
+    const bid=(j.bids||[]).filter(x=>x.price>0).sort((a,b)=>b.price-a.price)[0];
+    const ofr=(j.offers||[]).filter(x=>x.price>0).sort((a,b)=>a.price-b.price)[0];
+    return { bid, ofr, last:j.last, close:j.close };
+  }catch(e){ return null; }
+}
+
+// Días corridos hoy → liquidación 24hs (usa SBD/ABD si están)
+function _qtDaysToT1(){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const t1 = (typeof ABD==='function')? ABD(today,1) : new Date(today.getTime()+86400000);
+  return Math.max(1, Math.round((t1-today)/86400000));
+}
+
+async function qtCalcTomarColocar(){
+  if(_qtTcRunning){ alert('Ya en curso, esperá'); return; }
+  if(!_qtTcUniverse.length){ alert('Agregá al menos un bono al monitor'); return; }
+  _qtTcRunning=true;
+  const btn=document.getElementById('qtTcBtn'); if(btn){ btn.disabled=true; btn.textContent='Calculando...'; }
+  const prog=document.getElementById('qtTcProgress'); const progBar=prog?.querySelector('div');
+  if(prog) prog.style.display='block';
+  const info=document.getElementById('qtTcInfo');
+  const days=_qtDaysToT1();
+  const total=_qtTcUniverse.length*2; // CI + 24hs
+  let done=0;
+  const results=[];
+  for(const tk of _qtTcUniverse){
+    info.textContent=`Consultando ${tk} CI…`;
+    const ci=await _qtFetchOneSettle(tk,'CI');
+    done++; if(progBar) progBar.style.width=(done/total*100)+'%';
+    await new Promise(r=>setTimeout(r,800)); // throttle
+    info.textContent=`Consultando ${tk} 24hs…`;
+    const t24=await _qtFetchOneSettle(tk,'24hs');
+    done++; if(progBar) progBar.style.width=(done/total*100)+'%';
+    await new Promise(r=>setTimeout(r,800));
+    if(!ci||!t24){ results.push({tk, error:true}); continue; }
+    // TOMAR plata: vendo CI (a bid_CI), compro 24hs (a ask_24hs) → "tomé" plata.
+    // Tasa = (ask_24hs/bid_CI - 1) × 365/d. SI bid_CI faltante → null.
+    const tomar = (ci.bid?.price && t24.ofr?.price) ? ((t24.ofr.price/ci.bid.price)-1)*365/days*100 : null;
+    // COLOCAR plata: vendo 24hs (a bid_24hs), compro CI (a ask_CI) → "coloqué" plata hoy.
+    // Tasa = (bid_24hs/ask_CI - 1) × 365/d.
+    const colocar = (t24.bid?.price && ci.ofr?.price) ? ((t24.bid.price/ci.ofr.price)-1)*365/days*100 : null;
+    results.push({
+      tk, days,
+      ci_bid: ci.bid?.price||null, ci_bid_size: ci.bid?.size||null,
+      ci_ofr: ci.ofr?.price||null, ci_ofr_size: ci.ofr?.size||null,
+      t24_bid: t24.bid?.price||null, t24_bid_size: t24.bid?.size||null,
+      t24_ofr: t24.ofr?.price||null, t24_ofr_size: t24.ofr?.size||null,
+      tomar, colocar,
+    });
+  }
+  _qtTcResults={ts:Date.now(), days, rows:results};
+  _qtRenderTcResults();
+  if(prog) prog.style.display='none';
+  info.textContent=`✓ ${results.length} bonos · ${days}d hasta 24hs · ${new Date().toLocaleTimeString('es-AR')}`;
+  if(btn){ btn.disabled=false; btn.textContent='▶ Recalcular'; }
+  _qtTcRunning=false;
+}
+
+function _qtRenderTcResults(){
+  if(!_qtTcResults){ return; }
+  const tomarEl=document.getElementById('qtTomarTbl');
+  const colocarEl=document.getElementById('qtColocarTbl');
+  // TOMAR: ranqueado por tasa MÁS BAJA (te conviene tomar plata barata)
+  const tomarRows=_qtTcResults.rows.filter(r=>r.tomar!=null).sort((a,b)=>a.tomar-b.tomar);
+  // COLOCAR: ranqueado por tasa MÁS ALTA (te conviene colocar plata cara)
+  const colocarRows=_qtTcResults.rows.filter(r=>r.colocar!=null).sort((a,b)=>b.colocar-a.colocar);
+
+  const fmtVol=v=>{ if(!v) return '—'; v=Number(v); return v>=1e6?(v/1e6).toFixed(2)+'M':v>=1e3?(v/1e3).toFixed(1)+'K':v.toFixed(0); };
+
+  const buildTbl=(rows, key, dir)=>{
+    if(!rows.length) return '<div style="padding:14px;text-align:center;color:var(--td);font-style:italic">— Sin datos —</div>';
+    let h=`<table class="qt-table"><thead><tr>
+      <th>Ticker</th>
+      <th class="qt-num">Tasa TNA</th>
+      <th class="qt-num">CI ${dir==='tomar'?'BID':'ASK'}</th>
+      <th class="qt-num">Vol CI</th>
+      <th class="qt-num">24hs ${dir==='tomar'?'ASK':'BID'}</th>
+      <th class="qt-num">Vol 24hs</th>
+    </tr></thead><tbody>`;
+    rows.forEach(r=>{
+      const ciPx=dir==='tomar'?r.ci_bid:r.ci_ofr;
+      const ciVol=dir==='tomar'?r.ci_bid_size:r.ci_ofr_size;
+      const t24Px=dir==='tomar'?r.t24_ofr:r.t24_bid;
+      const t24Vol=dir==='tomar'?r.t24_ofr_size:r.t24_bid_size;
+      const tasa=r[key];
+      const cls=dir==='tomar'?'qt-neg':'qt-pos';
+      h+=`<tr>
+        <td><span style="font-weight:700;color:var(--acl)">${r.tk}</span></td>
+        <td class="qt-num ${cls}"><b>${tasa.toFixed(2)}%</b></td>
+        <td class="qt-num">${ciPx?ciPx.toFixed(2):'—'}</td>
+        <td class="qt-num" style="color:var(--td)">${fmtVol(ciVol)}</td>
+        <td class="qt-num">${t24Px?t24Px.toFixed(2):'—'}</td>
+        <td class="qt-num" style="color:var(--td)">${fmtVol(t24Vol)}</td>
+      </tr>`;
+    });
+    h+='</tbody></table>';
+    return h;
+  };
+  tomarEl.innerHTML=buildTbl(tomarRows, 'tomar', 'tomar');
+  colocarEl.innerHTML=buildTbl(colocarRows, 'colocar', 'colocar');
+}
+
+// ─── Z-SCORE POR BUCKET DE DURATION ────────────────────────────────
+function qtCalcZBucket(){
+  const univ=document.getElementById('qtZUniv').value;
+  const arr = univ==='cer' ? (typeof BONDS!=='undefined'?BONDS:[])
+            : (typeof FIXED!=='undefined'?FIXED:[]);
+  const items = arr.filter(b=>b._ok && b._dur!=null && b._dur>0);
+  if(!items.length){ document.getElementById('qtZBucketResult').innerHTML='<div class="note">Necesita bonos calculados (corré "Calculá" en la pestaña Calculadoras)</div>'; return; }
+  // Choose yield: TNA TF for CER, TEA for FIXED
+  const yField = univ==='cer' ? '_tnaTF' : '_tea';
+  // Buckets
+  const BUCKETS=[
+    {min:0,    max:0.5, label:'0-0.5y'},
+    {min:0.5,  max:1,   label:'0.5-1y'},
+    {min:1,    max:2,   label:'1-2y'},
+    {min:2,    max:99,  label:'2y+'},
+  ];
+  // For each bucket: fit log curve over its items, compute residuals + z
+  const out=[];
+  BUCKETS.forEach(B=>{
+    const sub=items.filter(b=>b._dur>=B.min && b._dur<B.max);
+    if(sub.length<2){ out.push({bucket:B.label, n:sub.length, items:sub.map(b=>({b,z:null,resid:null}))}); return; }
+    // Fit log: y = a*ln(x) + b
+    const pts=sub.map(b=>({x:b._dur, y:b[yField]}));
+    const ys=pts.map(p=>p.y);
+    const meanY=ys.reduce((s,v)=>s+v,0)/ys.length;
+    let fit=null;
+    try{ fit = (typeof logRegression==='function')?logRegression(pts):null; }catch(_e){}
+    const residuals=sub.map(b=>{
+      const fitV = fit ? fit.predict(b._dur) : meanY;
+      return b[yField]-fitV;
+    });
+    const meanR=residuals.reduce((s,v)=>s+v,0)/residuals.length;
+    const variance=residuals.reduce((s,v)=>s+(v-meanR)*(v-meanR),0)/residuals.length;
+    const stdR=Math.sqrt(variance);
+    const rows=sub.map((b,i)=>{
+      const z = stdR>1e-6 ? (residuals[i]-meanR)/stdR : 0;
+      return {b, z, resid:residuals[i]*100};
+    }).sort((a,c)=>c.z-a.z);
+    out.push({bucket:B.label, n:sub.length, mean:meanR, std:stdR, items:rows});
+  });
+  // Render
+  let html='';
+  out.forEach(B=>{
+    html+=`<div style="margin-top:10px"><div class="qt-bucket">${B.bucket}</div><span style="font-size:10px;color:var(--td)">n=${B.n}${B.std?' · σ='+(B.std*100).toFixed(2)+'bp':''}</span></div>`;
+    if(!B.items.length){ html+='<div class="note">— sin bonos —</div>'; return; }
+    html+='<table class="qt-table" style="margin-top:4px"><thead><tr><th>Ticker</th><th class="qt-num">DUR</th><th class="qt-num">'+(yField==='_tnaTF'?'TNA TF':'TEA')+'</th><th class="qt-num">Resid (bp)</th><th class="qt-num">Z</th><th>Señal</th></tr></thead><tbody>';
+    B.items.forEach(r=>{
+      const z=r.z;
+      const yV=r.b[yField];
+      const sig = z!=null && Math.abs(z)>1.5 ? (z>0?'<span class="qt-tag colocar">CHEAP · BUY</span>':'<span class="qt-tag tomar">RICH · SELL</span>') : '<span style="color:var(--td)">fair</span>';
+      const cls = z!=null && Math.abs(z)>1.5 ? (z>0?'qt-z-cold':'qt-z-hot') : '';
+      html+=`<tr class="${cls}"><td style="color:${r.b.color||'var(--t)'};font-weight:700">${r.b.ticker}</td><td class="qt-num">${r.b._dur.toFixed(2)}</td><td class="qt-num">${yV!=null?yV.toFixed(2)+'%':'—'}</td><td class="qt-num">${r.resid!=null?(r.resid>=0?'+':'')+r.resid.toFixed(0):'—'}</td><td class="qt-num"><b>${z!=null?(z>=0?'+':'')+z.toFixed(2):'—'}</b></td><td>${sig}</td></tr>`;
+    });
+    html+='</tbody></table>';
+  });
+  document.getElementById('qtZBucketResult').innerHTML=html;
+}
+
+// ─── PAIRS SCREENER ────────────────────────────────────────────────
+function _qtPopulatePairSelectors(){
+  const all=(typeof BONDS!=='undefined'?BONDS:[]).concat(typeof FIXED!=='undefined'?FIXED:[]);
+  const opts=all.map(b=>`<option value="${b.id}|${b.ticker}|${b._tea?'fx':'cer'}">${b.ticker}</option>`).join('');
+  ['qtPairA','qtPairB'].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.innerHTML='<option value="">— elegí —</option>'+opts;
+  });
+}
+function qtAddPair(){
+  const a=document.getElementById('qtPairA').value;
+  const b=document.getElementById('qtPairB').value;
+  if(!a||!b||a===b){ alert('Elegí 2 bonos distintos'); return; }
+  if(_qtPairFavs.find(p=>p.a===a&&p.b===b)) return;
+  _qtPairFavs.push({a,b});
+  localStorage.setItem("cer_qt_pair_favs_v1", JSON.stringify(_qtPairFavs));
+  _qtRenderPairsList();
+}
+function qtRemovePair(idx){
+  _qtPairFavs.splice(idx,1);
+  localStorage.setItem("cer_qt_pair_favs_v1", JSON.stringify(_qtPairFavs));
+  _qtRenderPairsList();
+}
+function qtRenderPairs(){ _qtRenderPairsList(); }
+function _qtFindBondById(id){
+  const all=(typeof BONDS!=='undefined'?BONDS:[]).concat(typeof FIXED!=='undefined'?FIXED:[]);
+  return all.find(b=>b.id===id);
+}
+function _qtBondYield(b){
+  // Para CER usamos TNA TF; para FIXED usamos TEA. Si no, fallback.
+  return b._tnaTF!=null?b._tnaTF:b._tea!=null?b._tea:b._tna;
+}
+function _qtPairHistorical(idA, idB){
+  // Devuelve series [{date, pxRatio, teaSpread}] desde _qtHistory
+  const out=[];
+  _qtHistory.forEach(s=>{
+    const all=(s.bonds.CER||[]).concat(s.bonds.FX||[]).concat(s.bonds.TAMAR||[]);
+    const a=all.find(x=>x.id===idA), bb=all.find(x=>x.id===idB);
+    if(!a||!bb) return;
+    const pxA=a.px, pxB=bb.px;
+    const yA=a.tnaTF??a.tea??a.tna, yB=bb.tnaTF??bb.tea??bb.tna;
+    if(pxA&&pxB) out.push({date:s.date, pxRatio:pxA/pxB, teaSpread:(yA!=null&&yB!=null)?(yA-yB):null});
+  });
+  return out;
+}
+function _qtRenderPairsList(){
+  const cont=document.getElementById('qtPairsList'); if(!cont) return;
+  if(!_qtPairFavs.length){
+    cont.innerHTML='<div style="padding:14px;text-align:center;color:var(--td);font-style:italic">— Sin pares guardados. Elegí dos bonos arriba y tocá ＋ Favorito —</div>';
+    return;
+  }
+  let h=`<div class="qt-pair-row qt-pair-hd">
+    <div>BOND A</div><div>BOND B</div><div class="qt-num">PX RATIO</div><div class="qt-num">TEA SPREAD</div><div class="qt-num">Z (px)</div><div class="qt-num">Z (TEA)</div><div></div>
+  </div>`;
+  _qtPairFavs.forEach((p,idx)=>{
+    const [aId,aTk]=p.a.split('|');
+    const [bId,bTk]=p.b.split('|');
+    const A=_qtFindBondById(aId), B=_qtFindBondById(bId);
+    if(!A||!B){ h+=`<div class="qt-pair-row"><div colspan="7" style="grid-column:1/-1;color:var(--neg)">Par roto: ${aTk} / ${bTk}</div></div>`; return; }
+    const pxA=(typeof getCurrentPrice==='function')?getCurrentPrice(aId):null;
+    const pxB=(typeof getCurrentPrice==='function')?getCurrentPrice(bId):null;
+    const yA=_qtBondYield(A), yB=_qtBondYield(B);
+    const ratioNow = (pxA&&pxB)?pxA/pxB:null;
+    const spreadNow = (yA!=null&&yB!=null)?(yA-yB):null;
+    // Histórico
+    const hist=_qtPairHistorical(aId,bId);
+    let zPx=null, zTea=null, mPx=null, sPx=null, mTea=null, sTea=null;
+    if(hist.length>=3){
+      const r=hist.map(x=>x.pxRatio);
+      mPx=r.reduce((s,v)=>s+v,0)/r.length;
+      sPx=Math.sqrt(r.reduce((s,v)=>s+(v-mPx)*(v-mPx),0)/r.length);
+      if(ratioNow!=null && sPx>1e-9) zPx=(ratioNow-mPx)/sPx;
+      const ts=hist.filter(x=>x.teaSpread!=null).map(x=>x.teaSpread);
+      if(ts.length>=3){
+        mTea=ts.reduce((s,v)=>s+v,0)/ts.length;
+        sTea=Math.sqrt(ts.reduce((s,v)=>s+(v-mTea)*(v-mTea),0)/ts.length);
+        if(spreadNow!=null && sTea>1e-9) zTea=(spreadNow-mTea)/sTea;
+      }
+    }
+    const fmtZ=z=>z==null?'<span style="color:var(--td)">—</span>':((Math.abs(z)>1.5?'<b style="color:var(--am)">':'<span>')+(z>=0?'+':'')+z.toFixed(2)+(Math.abs(z)>1.5?'</b>':'</span>'));
+    h+=`<div class="qt-pair-row">
+      <div style="font-weight:700;color:${A.color||'var(--t)'}">${A.ticker} <span style="color:var(--td);font-size:9px">${A.mat||''}</span></div>
+      <div style="font-weight:700;color:${B.color||'var(--t)'}">${B.ticker} <span style="color:var(--td);font-size:9px">${B.mat||''}</span></div>
+      <div class="qt-num">${ratioNow!=null?ratioNow.toFixed(4):'—'} ${mPx?'<span style="color:var(--td);font-size:9px">μ '+mPx.toFixed(4)+'</span>':''}</div>
+      <div class="qt-num">${spreadNow!=null?(spreadNow>=0?'+':'')+spreadNow.toFixed(2)+'pp':'—'} ${mTea!=null?'<span style="color:var(--td);font-size:9px">μ '+(mTea>=0?'+':'')+mTea.toFixed(2)+'</span>':''}</div>
+      <div class="qt-num">${fmtZ(zPx)}</div>
+      <div class="qt-num">${fmtZ(zTea)}</div>
+      <div class="qt-num"><button onclick="qtRemovePair(${idx})" style="background:transparent;border:1px solid var(--cb);color:var(--td);padding:2px 6px;border-radius:3px;cursor:pointer">✕</button></div>
+    </div>`;
+    if(hist.length){
+      h+=`<div style="font-size:9px;color:var(--td);padding:0 8px 6px 8px">Histórico: ${hist.length} días · σ_px=${sPx?sPx.toFixed(4):'—'} · σ_TEA=${sTea?sTea.toFixed(2)+'pp':'—'}</div>`;
+    } else {
+      h+=`<div style="font-size:9px;color:var(--am);padding:0 8px 6px 8px">— Sin histórico aún. Tomá snapshots diarios para construir la serie —</div>`;
+    }
+  });
+  cont.innerHTML=h;
+}
+
+// ─── BACKTEST DE SEÑALES Z-SCORE ───────────────────────────────────
+function qtRunBacktest(){
+  const out=document.getElementById('qtBacktestResult');
+  const thr=parseFloat(document.getElementById('qtBtThreshold').value)||2;
+  if(_qtHistory.length<10){
+    out.innerHTML=`<div style="color:var(--am)">⚠ Necesita ≥10 días de histórico (actual: ${_qtHistory.length}). Tomá snapshots diariamente y volvé en unas semanas.</div>`;
+    return;
+  }
+  // Para cada día N en histórico:
+  //   1) Calcular z-score de cada bono CER vs curva log de ese día (mismo cálculo que cer-rich-cheap)
+  //   2) Si |z| > thr → señal
+  //   3) Buscar día N+5, N+10, N+30 → ¿cuánto se movió z?
+  // Output: hit rate (% señales que convergieron), avg Δz por horizonte
+  const horizons=[5,10,30];
+  const results={5:{n:0,hits:0,sumDz:0}, 10:{n:0,hits:0,sumDz:0}, 30:{n:0,hits:0,sumDz:0}};
+  // Build by-date map
+  const byDate={};
+  _qtHistory.forEach(s=>{ byDate[s.date]=s; });
+  const dates=Object.keys(byDate).sort();
+  // Helper: compute z-scores for snapshot.bonds.CER
+  const calcZ=(bondsArr)=>{
+    const items=bondsArr.filter(b=>b.dur!=null&&b.dur>0&&b.tnaTF!=null);
+    if(items.length<3) return new Map();
+    const pts=items.map(b=>({x:b.dur, y:b.tnaTF}));
+    let fit=null; try{ fit=logRegression(pts); }catch(_e){}
+    const residuals=items.map(b=>b.tnaTF - (fit?fit.predict(b.dur):0));
+    const mean=residuals.reduce((s,v)=>s+v,0)/residuals.length;
+    const std=Math.sqrt(residuals.reduce((s,v)=>s+(v-mean)*(v-mean),0)/residuals.length);
+    const m=new Map();
+    items.forEach((b,i)=>{
+      const z = std>1e-6 ? (residuals[i]-mean)/std : 0;
+      m.set(b.id||b.ticker, z);
+    });
+    return m;
+  };
+  const zByDate={};
+  dates.forEach(d=>{ zByDate[d]=calcZ(byDate[d].bonds.CER||[]); });
+  // For each date with signals, look forward
+  let totalSignals=0;
+  dates.forEach(d=>{
+    const zMap=zByDate[d];
+    const idx=dates.indexOf(d);
+    zMap.forEach((z,id)=>{
+      if(Math.abs(z)<thr) return;
+      totalSignals++;
+      horizons.forEach(h=>{
+        // Find date with idx+h or closest
+        const targetIdx=idx+h;
+        if(targetIdx>=dates.length) return;
+        const futD=dates[targetIdx];
+        const futZmap=zByDate[futD];
+        const futZ=futZmap.get(id);
+        if(futZ==null) return;
+        // Convergencia: si |z futuro| < |z señal| → hit
+        const dz = futZ-z;
+        const hit = Math.abs(futZ)<Math.abs(z);
+        results[h].n++; if(hit) results[h].hits++; results[h].sumDz+=dz;
+      });
+    });
+  });
+  let html=`<div style="margin-bottom:8px"><b>${totalSignals}</b> señales detectadas (|z|>${thr}) sobre ${dates.length} días de histórico.</div>`;
+  html+='<table class="qt-table"><thead><tr><th>Horizonte</th><th class="qt-num">N obs</th><th class="qt-num">Hit rate</th><th class="qt-num">Avg Δz</th><th class="qt-num">Interpretación</th></tr></thead><tbody>';
+  horizons.forEach(h=>{
+    const r=results[h];
+    const rate=r.n?(r.hits/r.n*100):0;
+    const avgDz=r.n?(r.sumDz/r.n):0;
+    const cls=rate>55?'qt-pos':rate<45?'qt-neg':'';
+    html+=`<tr><td><b>T+${h}d</b></td><td class="qt-num">${r.n}</td><td class="qt-num ${cls}"><b>${rate.toFixed(1)}%</b></td><td class="qt-num">${avgDz>=0?'+':''}${avgDz.toFixed(2)}</td><td>${rate>55?'señal funciona':rate<45?'señal contraria/débil':'inconclusivo'}</td></tr>`;
+  });
+  html+='</tbody></table>';
+  html+='<div class="note" style="margin-top:8px">Hit rate &gt; 55% sugiere que la señal predice convergencia mejor que random. &lt; 45% sugiere que pasa al revés (anti-señal). Avg Δz negativo = el residuo se reduce post-señal (lo esperado).</div>';
+  out.innerHTML=html;
+}
+
+// Auto-snapshot diario silencioso (1 vez por día, sin commit GitHub para no spamear).
+// Si querés persistir, tocá el botón manual.
+function _qtMaybeAutoSnapshot(){
+  try{
+    const last=localStorage.getItem('cer_qt_last_autosnap_v1');
+    const today=new Date().toISOString().slice(0,10);
+    if(last===today) return;
+    // Solo si hay bonos calculados
+    const okCount=(typeof BONDS!=='undefined'?BONDS.filter(b=>b._ok).length:0)+
+                  (typeof FIXED!=='undefined'?FIXED.filter(b=>b._ok).length:0);
+    if(okCount<3) return;
+    // Disparamos pero no esperamos
+    setTimeout(()=>{
+      qtTakeSnapshot();
+      localStorage.setItem('cer_qt_last_autosnap_v1', today);
+    }, 5000);
+  }catch(_e){}
+}
+// Hook al cálculo principal — se ejecuta al final de calculate() vía MutationObserver pasivo
+setTimeout(()=>{ _qtMaybeAutoSnapshot(); }, 12000);
 </script>
 </body>
 </html>
