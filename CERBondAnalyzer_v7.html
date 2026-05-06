@@ -1962,6 +1962,9 @@ const TAMAR_BONDS=[
   {id:"TTS26", ticker:"TTS26", name:"Dual TAMAR 15-Sep-26",type:"DUAL",     mat:"2026-09-15", emDate:"2025-01-29", margen1816:0,   margen90:0,   temFija:0.0217, color:"#b8900a"},
   {id:"TTD26", ticker:"TTD26", name:"Dual TAMAR 15-Dic-26",type:"DUAL",     mat:"2026-12-15", emDate:"2025-01-29", margen1816:0,   margen90:0,   temFija:0.0214, color:"#a88505"},
   {id:"TMF27", ticker:"TMF27", name:"Bono TAMAR 26-Feb-27",type:"BONTAMAR", mat:"2027-02-26", emDate:"2026-02-13", margen1816:650, margen90:650, color:"#987a00"},
+  {id:"TMG27", ticker:"TMG27", name:"Bono TAMAR 30-Ago-27",type:"BONTAMAR", mat:"2027-08-30", emDate:"2026-02-13", margen1816:650, margen90:650, color:"#7a6300"},
+  {id:"TMF28", ticker:"TMF28", name:"Bono TAMAR 28-Feb-28",type:"BONTAMAR", mat:"2028-02-28", emDate:"2026-02-13", margen1816:700, margen90:700, color:"#5e4c00"},
+  {id:"TMG28", ticker:"TMG28", name:"Bono TAMAR 30-Ago-28",type:"BONTAMAR", mat:"2028-08-30", emDate:"2026-02-13", margen1816:750, margen90:750, color:"#3f3300"},
 ];
 
 // ═══ TAMAR MONTHLY ASSUMPTIONS (TNA%) ═══
@@ -2636,23 +2639,32 @@ function calcTamarAvgTNAFromDate(startDate, bond, tamarMonthlyMap, flatTNAOverri
   }
   return cnt?{avgTNA:sumTNA/cnt,count:cnt}:null;
 }
+function getLastKnownTamarTNA(){
+  if(!_bcraHistTamarSeries||!_bcraHistTamarSeries.length) return null;
+  return _bcraHistTamarSeries[_bcraHistTamarSeries.length-1].valor;
+}
+// Excel "TMF27 convención días reales": TIREA via XIRR (ACT/365),
+// then TNA base 32/365 = ((1+TIREA)^(32/365)-1)*365/32, margen = TNA32 - última TAMAR observada.
 function calcTamarCurrentMarginData(bond, price, settle, tamarMonthlyMap, flatTNAOverride){
   const matD=new Date(bond.mat+"T00:00:00");
-  const days=DB(settle,matD);
+  const daysAct=DB(settle,matD);
   const valueData=calcTamarValueData(bond,tamarMonthlyMap,flatTNAOverride);
-  const remDays360=days360US(settle,matD);
   if(!(price>0)) return null;
-  if(!valueData||!valueData.vf||days<=0||remDays360<=0) return null;
-  const impliedTEM=Math.pow(valueData.vf/price,30/remDays360)-1;
+  if(!valueData||!valueData.vf||daysAct<=0) return null;
+  const tirea=Math.pow(valueData.vf/price, 365/daysAct)-1;
   const den=365/32;
-  const impliedTNA=((Math.pow(1+impliedTEM,12/den)-1)*den)*100;
+  const tna32=(Math.pow(1+tirea, 32/365)-1)*den;
+  const impliedTNA=tna32*100;
+  const lastTamarTNA=getLastKnownTamarTNA();
   const remAvg=calcTamarAvgTNAFromDate(settle,bond,tamarMonthlyMap,flatTNAOverride);
-  if(impliedTNA==null||!remAvg||remAvg.avgTNA==null) return null;
+  if(impliedTNA==null||lastTamarTNA==null) return null;
   return {
     impliedTNA,
-    remainingAvgTNA:remAvg.avgTNA,
-    currentMargin:impliedTNA-remAvg.avgTNA,
-    vf:valueData.vf
+    impliedTIREA: tirea*100,
+    remainingAvgTNA: remAvg ? remAvg.avgTNA : null,
+    lastTamarTNA,
+    currentMargin: impliedTNA - lastTamarTNA,
+    vf: valueData.vf
   };
 }
 function setTamarDefaultProjection(avgInfo){
@@ -3491,6 +3503,7 @@ function calculate(){
       t._marginToday=null;
       t._impliedTNA=null;
       t._remainingAvgTNA=defaultProjTNA;
+      t._lastTamarTNA=getLastKnownTamarTNA();
       t._tamarBE=null;
       t._compTicker=null;
       t._compTNA=null;
@@ -3500,6 +3513,7 @@ function calculate(){
         t._marginToday=currentMarginData.currentMargin;
         t._impliedTNA=currentMarginData.impliedTNA;
         t._remainingAvgTNA=currentMarginData.remainingAvgTNA;
+        t._lastTamarTNA=currentMarginData.lastTamarTNA;
       }
       // Find closest-duration LECAP for BE TAMAR reference
       if(okFixed.length){
@@ -4535,6 +4549,11 @@ function openBondCalculator(bondType, bondId){
           <button class="bc-tab active" id="bcTabCalc" onclick="_bcSwitchTab('calc')">Calculadora</button>
           <button class="bc-tab" id="bcTabInfl" onclick="_bcSwitchTab('infl')">Inflación</button>
         </div>`:''}
+        ${bondType==='tamar'?`
+        <div class="bc-tabs">
+          <button class="bc-tab active" id="bcTabCalc" onclick="_bcSwitchTab('calc')">Calculadora</button>
+          <button class="bc-tab" id="bcTabTamar" onclick="_bcSwitchTab('tamar')">TAMAR</button>
+        </div>`:''}
         <div class="bc-pane" id="bc-pane-calc">
         <!-- Liquidacion toggle -->
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--cb)">
@@ -4629,7 +4648,7 @@ function openBondCalculator(bondType, bondId){
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px">
             <div class="bc-kpi"><div class="bv" id="bck-tamar-margin" style="color:var(--bl)">${b._marginToday!=null?(b._marginToday>=0?'+':'')+b._marginToday.toFixed(2)+'%':'-'}</div><div class="bl">Margen hoy</div></div>
             <div class="bc-kpi"><div class="bv" id="bck-tamar-implied" style="color:var(--acl)">${b._impliedTNA!=null?b._impliedTNA.toFixed(2)+'%':'-'}</div><div class="bl">TNA impl.</div></div>
-            <div class="bc-kpi"><div class="bv" id="bck-tamar-remavg" style="color:var(--bl)">${b._remainingAvgTNA!=null?b._remainingAvgTNA.toFixed(4)+'%':'-'}</div><div class="bl">TAMAR rem. prom.</div></div>
+            <div class="bc-kpi"><div class="bv" id="bck-tamar-remavg" style="color:var(--bl)">${b._lastTamarTNA!=null?b._lastTamarTNA.toFixed(4)+'%':'-'}</div><div class="bl">TAMAR última (T-2)</div></div>
             <div class="bc-kpi"><div class="bv" id="bck-tamar-be" style="color:var(--acl)">${b._tamarBE!=null?b._tamarBE.toFixed(2)+'%':'-'}</div><div class="bl">BE TAMAR</div></div>
           </div>
           <div style="border-top:1px solid var(--cb);padding-top:10px">
@@ -4668,6 +4687,10 @@ function openBondCalculator(bondType, bondId){
         <div class="bc-pane" id="bc-pane-infl" style="display:none">
           <div id="bc-infl-content"></div>
         </div>`:''}
+        ${bondType==='tamar'?`
+        <div class="bc-pane" id="bc-pane-tamar" style="display:none">
+          <div id="bc-tamar-content"></div>
+        </div>`:''}
       </div>
     </div>`;
 
@@ -4676,20 +4699,29 @@ function openBondCalculator(bondType, bondId){
   document.getElementById('bcClose').addEventListener('click', ()=>{ delete window._bcSetSettle; delete window._bcSwitchTab; _bondCalcCtx=null; overlay.remove(); });
   overlay.addEventListener('click', e=>{ if(e.target===overlay){ delete window._bcSetSettle; delete window._bcSwitchTab; _bondCalcCtx=null; overlay.remove(); } });
 
-  // Tab switcher (only active for CER)
+  // Tab switcher: handles CER (infl) and TAMAR (tamar) tabs
   window._bcSwitchTab=function(which){
     const calc=document.getElementById('bc-pane-calc');
     const infl=document.getElementById('bc-pane-infl');
+    const tam=document.getElementById('bc-pane-tamar');
     const tCalc=document.getElementById('bcTabCalc');
     const tInfl=document.getElementById('bcTabInfl');
-    if(!calc||!infl) return;
-    if(which==='infl'){
-      calc.style.display='none'; infl.style.display='block';
-      tCalc.classList.remove('active'); tInfl.classList.add('active');
+    const tTam=document.getElementById('bcTabTamar');
+    if(!calc) return;
+    const setActive=(btn,on)=>{ if(btn){ btn.classList[on?'add':'remove']('active'); } };
+    if(which==='infl' && infl){
+      calc.style.display='none'; infl.style.display='block'; if(tam) tam.style.display='none';
+      setActive(tCalc,false); setActive(tInfl,true); setActive(tTam,false);
       if(typeof _bcRenderInflTab==='function') _bcRenderInflTab();
+    } else if(which==='tamar' && tam){
+      calc.style.display='none'; tam.style.display='block'; if(infl) infl.style.display='none';
+      setActive(tCalc,false); setActive(tInfl,false); setActive(tTam,true);
+      if(typeof _bcRenderTamarTab==='function') _bcRenderTamarTab();
     } else {
-      calc.style.display='block'; infl.style.display='none';
-      tInfl.classList.remove('active'); tCalc.classList.add('active');
+      calc.style.display='block';
+      if(infl) infl.style.display='none';
+      if(tam) tam.style.display='none';
+      setActive(tCalc,true); setActive(tInfl,false); setActive(tTam,false);
     }
   };
 
@@ -4721,6 +4753,175 @@ function openBondCalculator(bondType, bondId){
         resultEl.innerHTML=html;
       });
     }
+  }
+
+  // ── TAMAR TAB (TAMAR bonds only) ─────────────────────────────────
+  let _bcRenderTamarTab=null;
+  if(bondType==='tamar'){
+    _bcRenderTamarTab=function(){
+      const host=document.getElementById('bc-tamar-content');
+      if(!host) return;
+      const matD2=new Date(b.mat+"T00:00:00");
+      const emD2=new Date(b.emDate+"T00:00:00");
+      const months_em=days360US(emD2,matD2)/30;
+      const settle2=settle;
+      const daysToMat=DB(settle2,matD2);
+      const lastT=getLastKnownTamarTNA();
+      const compTicker=b._compTicker||'-';
+      const compTNA=b._compTNA;
+      const compFixed=FIXED.find(x=>x.ticker===b._compTicker);
+      const compTEA=compFixed?compFixed._tea:null;
+      const beTamar=b._tamarBE;
+      const marginToday=b._marginToday;
+      const impliedTNA=b._impliedTNA;
+      const spreadBps=getTamarMarginBps(b);
+
+      // Build sendero of monthly TAMAR projections from the global grid (TM[])
+      // Filter to months covering settle → maturity-10wd
+      const startK=settle2.getFullYear()+"-"+String(settle2.getMonth()+1).padStart(2,"0");
+      const endRefD=SBD(matD2,10);
+      const endK=endRefD.getFullYear()+"-"+String(endRefD.getMonth()+1).padStart(2,"0");
+      const months=TM.filter(m=>m.k>=startK && m.k<=endK);
+
+      // Per-bond local sendero state (initialised from main grid)
+      if(!b._tamarPath) b._tamarPath={};
+      months.forEach(m=>{
+        if(b._tamarPath[m.k]==null){
+          const el=document.getElementById("tm_"+m.k);
+          const v=el?parseFloat(el.value):NaN;
+          b._tamarPath[m.k]=isFinite(v)&&v>0?v:(lastT||getTamarProjectionDefaultTNA());
+        }
+      });
+
+      const compTxt = compTNA!=null
+        ? `Comparable LECAP/BONCAP por duration: <strong style="color:var(--fx)">${compTicker}</strong> @ <strong>${compTNA.toFixed(2)}%</strong> TNA${compTEA!=null?` / <strong>${compTEA.toFixed(2)}%</strong> TEA`:''}`
+        : `<span style="color:var(--td)">Sin comparable de tasa fija — corré el cálculo principal primero.</span>`;
+
+      const beMercadoTxt = beTamar!=null
+        ? `BE TAMAR de mercado: <strong style="color:var(--am)">${beTamar.toFixed(2)}%</strong> TNA plana (TAMAR uniforme que iguala TEA del comparable)`
+        : `<span style="color:var(--td)">BE TAMAR no disponible.</span>`;
+
+      const lastTNATxt = lastT!=null ? `${lastT.toFixed(4)}%` : '-';
+      const marginTxt = marginToday!=null ? `${marginToday>=0?'+':''}${marginToday.toFixed(2)}%` : '-';
+      const impliedTxt = impliedTNA!=null ? `${impliedTNA.toFixed(2)}%` : '-';
+
+      host.innerHTML = `
+        <div style="margin-bottom:10px">
+          <div class="st" style="margin-bottom:6px">Sendero TAMAR proyectada · ${b.ticker}</div>
+          <div style="font-size:10px;color:var(--td);line-height:1.6">
+            ${compTxt}<br>
+            ${beMercadoTxt}<br>
+            Última TAMAR BCRA (T-2): <strong style="color:var(--bl)">${lastTNATxt}</strong> ·
+            Spread contractual: <strong>+${(spreadBps/100).toFixed(2)}%</strong> ·
+            ${months.length} mes${months.length===1?'':'es'} de TAMAR proyectada
+          </div>
+        </div>
+        <div class="bc-kpis" style="grid-template-columns:repeat(4,1fr)">
+          <div class="bc-kpi"><div class="bv" id="bcTamMargin" style="font-size:18px;color:var(--bl)">${marginTxt}</div><div class="bl">Margen hoy (vs T-2)</div></div>
+          <div class="bc-kpi"><div class="bv" id="bcTamImplied" style="font-size:15px;color:var(--acl)">${impliedTxt}</div><div class="bl">TNA implícita</div></div>
+          <div class="bc-kpi"><div class="bv" id="bcTamBE" style="font-size:15px;color:var(--am)">${beTamar!=null?beTamar.toFixed(2)+'%':'-'}</div><div class="bl">BE TAMAR mercado</div></div>
+          <div class="bc-kpi"><div class="bv"><input type="number" id="bcTamPriceIn" step="0.01" value="${(parseFloat(document.getElementById('bci-price')?.value)||defaultPx||0)}" style="background:transparent;border:none;border-bottom:1px solid var(--acl);color:var(--acl);font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right;width:80px;outline:none;padding:0"></div><div class="bl">Precio</div></div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+          <button class="infl-btn primary" id="bcTamBtnCalc">Recalcular margen</button>
+          <button class="infl-btn primary" id="bcTamBtnFlat">Aplicar TAMAR plana</button>
+          <input type="number" id="bcTamFlatIn" step="0.01" placeholder="TNA % plana" style="width:90px;padding:4px 6px;border:1px solid var(--cb);background:var(--bg);color:var(--t);border-radius:4px;font-size:11px">
+          <button class="infl-btn" id="bcTamBtnLast">Reset última TAMAR</button>
+          <button class="infl-btn" id="bcTamBtnAvg5">Reset prom. 5</button>
+        </div>
+        <div style="font-size:9px;color:var(--tm);margin-bottom:8px;line-height:1.5">
+          Editá las proyecciones TAMAR mes a mes. La margen se calcula vs <strong>última TAMAR observada (T-2)</strong>, replicando la celda C13 del Excel "TMF27 convención días reales".
+        </div>
+        <div class="infl-path" id="bcTamPath"></div>
+      `;
+
+      const renderRows=()=>{
+        const pathHost=document.getElementById('bcTamPath');
+        if(!pathHost) return;
+        let html='';
+        months.forEach(m=>{
+          const v=b._tamarPath[m.k];
+          html+=`<div class="infl-row" id="bcTamRow_${m.k}">
+            <div class="ilab">${m.l}</div>
+            <input type="number" step="0.01" id="bcTamIn_${m.k}" value="${(v!=null?v:0).toFixed(4)}">
+          </div>`;
+        });
+        pathHost.innerHTML=html;
+        months.forEach(m=>{
+          const inp=document.getElementById('bcTamIn_'+m.k);
+          if(inp) inp.addEventListener('input',()=>{
+            const v=parseFloat(inp.value);
+            if(isFinite(v)) b._tamarPath[m.k]=v;
+            updateKPIs();
+          });
+        });
+      };
+
+      const buildPathMap=()=>{
+        // Override TM grid with the local sendero values for this bond's months
+        const map=getTamarMap();
+        months.forEach(m=>{ if(b._tamarPath[m.k]!=null) map[m.k]=b._tamarPath[m.k]; });
+        return map;
+      };
+
+      const updateKPIs=()=>{
+        const priceEl=document.getElementById('bcTamPriceIn');
+        const price=priceEl?parseFloat(priceEl.value):NaN;
+        if(!(price>0)) return;
+        const map=buildPathMap();
+        const cmd=calcTamarCurrentMarginData(b,price,settle2,map,null);
+        const mEl=document.getElementById('bcTamMargin');
+        const iEl=document.getElementById('bcTamImplied');
+        if(cmd){
+          if(mEl) mEl.textContent=(cmd.currentMargin>=0?'+':'')+cmd.currentMargin.toFixed(2)+'%';
+          if(iEl) iEl.textContent=cmd.impliedTNA.toFixed(2)+'%';
+        } else {
+          if(mEl) mEl.textContent='-';
+          if(iEl) iEl.textContent='-';
+        }
+      };
+
+      renderRows();
+
+      const priceInEl=document.getElementById('bcTamPriceIn');
+      if(priceInEl) priceInEl.addEventListener('input',updateKPIs);
+
+      document.getElementById('bcTamBtnCalc').addEventListener('click',updateKPIs);
+
+      document.getElementById('bcTamBtnFlat').addEventListener('click',()=>{
+        const fl=parseFloat(document.getElementById('bcTamFlatIn').value);
+        if(!isFinite(fl)||fl<=0){alert('Ingresá una TNA plana válida.');return;}
+        months.forEach(m=>{
+          b._tamarPath[m.k]=fl;
+          const inp=document.getElementById('bcTamIn_'+m.k);
+          if(inp) inp.value=fl.toFixed(4);
+        });
+        updateKPIs();
+      });
+
+      document.getElementById('bcTamBtnLast').addEventListener('click',()=>{
+        if(lastT==null){alert('Sin TAMAR observada.');return;}
+        months.forEach(m=>{
+          b._tamarPath[m.k]=lastT;
+          const inp=document.getElementById('bcTamIn_'+m.k);
+          if(inp) inp.value=lastT.toFixed(4);
+        });
+        updateKPIs();
+      });
+
+      document.getElementById('bcTamBtnAvg5').addEventListener('click',()=>{
+        const avg=_tamarAvg5Info&&_tamarAvg5Info.avg!=null?_tamarAvg5Info.avg:null;
+        if(avg==null){alert('Sin promedio de 5 disponible.');return;}
+        months.forEach(m=>{
+          b._tamarPath[m.k]=avg;
+          const inp=document.getElementById('bcTamIn_'+m.k);
+          if(inp) inp.value=avg.toFixed(4);
+        });
+        updateKPIs();
+      });
+
+      updateKPIs();
+    };
   }
 
   // Inflation sensitivity — CER only
@@ -5370,7 +5571,7 @@ function openBondCalculator(bondType, bondId){
       const currentMarginData=price>0 ? calcTamarCurrentMarginData(b,price,settle,tamarMap,!isNaN(projTNA)&&projTNA>0?projTNA:null) : null;
       if(bcMarginEl) bcMarginEl.textContent=currentMarginData&&currentMarginData.currentMargin!=null?(currentMarginData.currentMargin>=0?'+':'')+currentMarginData.currentMargin.toFixed(2)+'%':'-';
       if(bcImpliedEl) bcImpliedEl.textContent=currentMarginData&&currentMarginData.impliedTNA!=null?currentMarginData.impliedTNA.toFixed(2)+'%':'-';
-      if(bcRemAvgEl) bcRemAvgEl.textContent=currentMarginData&&currentMarginData.remainingAvgTNA!=null?currentMarginData.remainingAvgTNA.toFixed(4)+'%':'-';
+      if(bcRemAvgEl) bcRemAvgEl.textContent=currentMarginData&&currentMarginData.lastTamarTNA!=null?currentMarginData.lastTamarTNA.toFixed(4)+'%':'-';
       if(bcBeEl) bcBeEl.textContent=b._tamarBE!=null?b._tamarBE.toFixed(2)+'%':'-';
 
       if(vf){
