@@ -3570,13 +3570,14 @@ function calculate(){
                 if(vfM<vfTarget) lo=mid; else hi=mid;
                 if(hi-lo<0.001) break;
               }
-              const beTNA=(lo+hi)/2;
-              t._tamarBE=beTNA-getTamarMarginBps(t)/100;
+              // proj devuelto por bisecta = TAMAR pura (el spread ya esta incluido
+              // dentro de calcTamarTEMFromAnnualTNA al calcular el VF). NO restar.
+              t._tamarBE=(lo+hi)/2;
             }
           }
         } else {
-          // Sin precio: aproximacion lineal
-          t._tamarBE=best._tna-getTamarMarginBps(t)/100;
+          // Sin precio: no se puede solver el override - dejar null
+          t._tamarBE=null;
         }
       }
       t._ok=true;
@@ -4852,16 +4853,20 @@ function openBondCalculator(bondType, bondId){
       });
 
       const compTxt = compTNA!=null
-        ? `Comparable LECAP/BONCAP por duration: <strong style="color:var(--fx)">${compTicker}</strong> @ <strong>${compTNA.toFixed(2)}%</strong> TNA${compTEA!=null?` / <strong>${compTEA.toFixed(2)}%</strong> TEA`:''}`
+        ? `Comparable LECAP/BONCAP (cercanía mat): <strong style="color:var(--fx)">${compTicker}</strong> @ <strong>${compTNA.toFixed(2)}%</strong> TNA / <strong>${compTEA!=null?compTEA.toFixed(2)+'%':'-'}</strong> TEA`
         : `<span style="color:var(--td)">Sin comparable de tasa fija — corré el cálculo principal primero.</span>`;
 
       const beMercadoTxt = beTamar!=null
-        ? `BE TAMAR de mercado: <strong style="color:var(--am)">${beTamar.toFixed(2)}%</strong> TNA plana (TAMAR uniforme que iguala TEA del comparable)`
+        ? `BE TAMAR de mercado: <strong style="color:var(--am)">${beTamar.toFixed(2)}%</strong> TNA plana (TAMAR proyectada uniforme que iguala TEA del comparable). <span style="color:var(--tm)">Aplicala con el botón TAMAR plana — el TIR (TEA) del bono debería igualar al comparable.</span>`
         : `<span style="color:var(--td)">BE TAMAR no disponible.</span>`;
 
       const lastTNATxt = lastT!=null ? `${lastT.toFixed(4)}%` : '-';
       const marginTxt = marginToday!=null ? `${marginToday>=0?'+':''}${marginToday.toFixed(2)}%` : '-';
       const impliedTxt = impliedTNA!=null ? `${impliedTNA.toFixed(2)}%` : '-';
+      // TIR (TEA) implícita: convención ACT/365, comparable directamente con compTEA
+      const den32=365/32;
+      const impliedTEA = impliedTNA!=null ? (Math.pow(1+impliedTNA/100/den32, den32)-1)*100 : null;
+      const impliedTEATxt = impliedTEA!=null ? `${impliedTEA.toFixed(2)}%` : '-';
 
       host.innerHTML = `
         <div style="margin-bottom:10px">
@@ -4875,11 +4880,12 @@ function openBondCalculator(bondType, bondId){
             ${months.length} mes${months.length===1?'':'es'} de TAMAR proyectada
           </div>
         </div>
-        <div class="bc-kpis" style="grid-template-columns:repeat(4,1fr)">
-          <div class="bc-kpi"><div class="bv" id="bcTamMargin" style="font-size:18px;color:var(--bl)">${marginTxt}</div><div class="bl">Margen hoy (vs prom 5d)</div></div>
+        <div class="bc-kpis" style="grid-template-columns:repeat(5,1fr)">
+          <div class="bc-kpi"><div class="bv" id="bcTamMargin" style="font-size:16px;color:var(--bl)">${marginTxt}</div><div class="bl">Margen (vs prom 5d)</div></div>
           <div class="bc-kpi"><div class="bv" id="bcTamImplied" style="font-size:15px;color:var(--acl)">${impliedTxt}</div><div class="bl">TNA implícita</div></div>
-          <div class="bc-kpi"><div class="bv" id="bcTamBE" style="font-size:15px;color:var(--am)">${beTamar!=null?beTamar.toFixed(2)+'%':'-'}</div><div class="bl">BE TAMAR mercado</div></div>
-          <div class="bc-kpi"><div class="bv"><input type="number" id="bcTamPriceIn" step="0.01" value="${(parseFloat(document.getElementById('bci-price')?.value)||defaultPx||0)}" style="background:transparent;border:none;border-bottom:1px solid var(--acl);color:var(--acl);font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right;width:80px;outline:none;padding:0"></div><div class="bl">Precio</div></div>
+          <div class="bc-kpi"><div class="bv" id="bcTamTEA" style="font-size:15px;color:var(--fx)">${impliedTEATxt}</div><div class="bl">TIR (TEA)</div></div>
+          <div class="bc-kpi"><div class="bv" id="bcTamBE" style="font-size:15px;color:var(--am)">${beTamar!=null?beTamar.toFixed(2)+'%':'-'}</div><div class="bl">BE TAMAR</div></div>
+          <div class="bc-kpi"><div class="bv"><input type="number" id="bcTamPriceIn" step="0.01" value="${(parseFloat(document.getElementById('bci-price')?.value)||defaultPx||0)}" style="background:transparent;border:none;border-bottom:1px solid var(--acl);color:var(--acl);font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right;width:70px;outline:none;padding:0"></div><div class="bl">Precio</div></div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
           <button class="infl-btn primary" id="bcTamBtnCalc">Recalcular margen</button>
@@ -4931,12 +4937,16 @@ function openBondCalculator(bondType, bondId){
         const cmd=calcTamarCurrentMarginData(b,price,settle2,map,null);
         const mEl=document.getElementById('bcTamMargin');
         const iEl=document.getElementById('bcTamImplied');
+        const tEl=document.getElementById('bcTamTEA');
         if(cmd){
           if(mEl) mEl.textContent=(cmd.currentMargin>=0?'+':'')+cmd.currentMargin.toFixed(2)+'%';
           if(iEl) iEl.textContent=cmd.impliedTNA.toFixed(2)+'%';
+          // TIR (TEA) ACT/365 = impliedTIREA (devuelto por calcTamarCurrentMarginData)
+          if(tEl) tEl.textContent=cmd.impliedTIREA!=null?cmd.impliedTIREA.toFixed(2)+'%':'-';
         } else {
           if(mEl) mEl.textContent='-';
           if(iEl) iEl.textContent='-';
+          if(tEl) tEl.textContent='-';
         }
       };
 
