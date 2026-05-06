@@ -2542,7 +2542,7 @@ function getTamarAccrualStartDate(bond){
 function calcTamarAvgTNA(bond, tamarMonthlyMap, flatTNAOverride){
   const emD=getTamarAccrualStartDate(bond);
   const matD=new Date(bond.mat+"T00:00:00");
-  const startRef=shiftTamarPublishedDaysBack(emD,10);
+  const startRef=SBD(emD,10);
   const endRef=SBD(matD,10);
   const latestHistDate=_bcraHistTamarSeries.length?new Date(_bcraHistTamarSeries[_bcraHistTamarSeries.length-1].fecha+"T00:00:00"):null;
   let cur=new Date(startRef);
@@ -2643,8 +2643,19 @@ function getLastKnownTamarTNA(){
   if(!_bcraHistTamarSeries||!_bcraHistTamarSeries.length) return null;
   return _bcraHistTamarSeries[_bcraHistTamarSeries.length-1].valor;
 }
-// Excel "TMF27 convención días reales": TIREA via XIRR (ACT/365),
-// then TNA base 32/365 = ((1+TIREA)^(32/365)-1)*365/32, margen = TNA32 - última TAMAR observada.
+// Excel C4: lookup en TAMAR_tasa columna C = promedio rolling 5 días TAMAR a la fecha T-2.
+// Equivale al avg de las últimas 5 observaciones publicadas (idéntico a _tamarAvg5Info.avg).
+function getTamarBenchmarkTNA(){
+  if(_tamarAvg5Info && _tamarAvg5Info.avg != null && isFinite(_tamarAvg5Info.avg)) return _tamarAvg5Info.avg;
+  return getLastKnownTamarTNA();
+}
+// Excel "TMF27 convención días reales":
+//   • VF = 100 + intereses, intereses = ((1+TEM)^(DAYS360(em,mat)/30) - 1) * 100
+//   • TEM = ((1 + (TAMAR_ponderada + spread) / (365/32))^(365/32))^(1/12) - 1
+//   • TAMAR_ponderada (C16): para días conocidos = AVG TAMAR observada; para días futuros = C4 (prom 5d a T-2)
+//   • TIREA = (VF/price)^(365/días_reales)-1   (ACT/365 estilo XIRR)
+//   • TNA32 = ((1+TIREA)^(32/365)-1)*365/32
+//   • Margen (C13) = TNA32 - C4
 function calcTamarCurrentMarginData(bond, price, settle, tamarMonthlyMap, flatTNAOverride){
   const matD=new Date(bond.mat+"T00:00:00");
   const daysAct=DB(settle,matD);
@@ -2655,15 +2666,17 @@ function calcTamarCurrentMarginData(bond, price, settle, tamarMonthlyMap, flatTN
   const den=365/32;
   const tna32=(Math.pow(1+tirea, 32/365)-1)*den;
   const impliedTNA=tna32*100;
+  const benchTamarTNA=getTamarBenchmarkTNA();      // C4: prom 5d a T-2
   const lastTamarTNA=getLastKnownTamarTNA();
   const remAvg=calcTamarAvgTNAFromDate(settle,bond,tamarMonthlyMap,flatTNAOverride);
-  if(impliedTNA==null||lastTamarTNA==null) return null;
+  if(impliedTNA==null||benchTamarTNA==null) return null;
   return {
     impliedTNA,
     impliedTIREA: tirea*100,
     remainingAvgTNA: remAvg ? remAvg.avgTNA : null,
     lastTamarTNA,
-    currentMargin: impliedTNA - lastTamarTNA,
+    benchTamarTNA,
+    currentMargin: impliedTNA - benchTamarTNA,
     vf: valueData.vf
   };
 }
@@ -3504,6 +3517,7 @@ function calculate(){
       t._impliedTNA=null;
       t._remainingAvgTNA=defaultProjTNA;
       t._lastTamarTNA=getLastKnownTamarTNA();
+      t._benchTamarTNA=getTamarBenchmarkTNA();
       t._tamarBE=null;
       t._compTicker=null;
       t._compTNA=null;
@@ -3514,6 +3528,7 @@ function calculate(){
         t._impliedTNA=currentMarginData.impliedTNA;
         t._remainingAvgTNA=currentMarginData.remainingAvgTNA;
         t._lastTamarTNA=currentMarginData.lastTamarTNA;
+        t._benchTamarTNA=currentMarginData.benchTamarTNA;
       }
       // Find closest-duration LECAP for BE TAMAR reference
       if(okFixed.length){
@@ -4648,7 +4663,7 @@ function openBondCalculator(bondType, bondId){
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px">
             <div class="bc-kpi"><div class="bv" id="bck-tamar-margin" style="color:var(--bl)">${b._marginToday!=null?(b._marginToday>=0?'+':'')+b._marginToday.toFixed(2)+'%':'-'}</div><div class="bl">Margen hoy</div></div>
             <div class="bc-kpi"><div class="bv" id="bck-tamar-implied" style="color:var(--acl)">${b._impliedTNA!=null?b._impliedTNA.toFixed(2)+'%':'-'}</div><div class="bl">TNA impl.</div></div>
-            <div class="bc-kpi"><div class="bv" id="bck-tamar-remavg" style="color:var(--bl)">${b._lastTamarTNA!=null?b._lastTamarTNA.toFixed(4)+'%':'-'}</div><div class="bl">TAMAR última (T-2)</div></div>
+            <div class="bc-kpi"><div class="bv" id="bck-tamar-remavg" style="color:var(--bl)">${b._benchTamarTNA!=null?b._benchTamarTNA.toFixed(4)+'%':'-'}</div><div class="bl">TAMAR ref. (prom 5d T-2)</div></div>
             <div class="bc-kpi"><div class="bv" id="bck-tamar-be" style="color:var(--acl)">${b._tamarBE!=null?b._tamarBE.toFixed(2)+'%':'-'}</div><div class="bl">BE TAMAR</div></div>
           </div>
           <div style="border-top:1px solid var(--cb);padding-top:10px">
@@ -4767,6 +4782,7 @@ function openBondCalculator(bondType, bondId){
       const settle2=settle;
       const daysToMat=DB(settle2,matD2);
       const lastT=getLastKnownTamarTNA();
+      const benchT=getTamarBenchmarkTNA();
       const compTicker=b._compTicker||'-';
       const compTNA=b._compTNA;
       const compFixed=FIXED.find(x=>x.ticker===b._compTicker);
@@ -4811,13 +4827,14 @@ function openBondCalculator(bondType, bondId){
           <div style="font-size:10px;color:var(--td);line-height:1.6">
             ${compTxt}<br>
             ${beMercadoTxt}<br>
-            Última TAMAR BCRA (T-2): <strong style="color:var(--bl)">${lastTNATxt}</strong> ·
+            TAMAR ref. (prom 5d T-2): <strong style="color:var(--bl)">${benchT!=null?benchT.toFixed(4)+'%':'-'}</strong> ·
+            Última TAMAR BCRA: <strong>${lastTNATxt}</strong> ·
             Spread contractual: <strong>+${(spreadBps/100).toFixed(2)}%</strong> ·
             ${months.length} mes${months.length===1?'':'es'} de TAMAR proyectada
           </div>
         </div>
         <div class="bc-kpis" style="grid-template-columns:repeat(4,1fr)">
-          <div class="bc-kpi"><div class="bv" id="bcTamMargin" style="font-size:18px;color:var(--bl)">${marginTxt}</div><div class="bl">Margen hoy (vs T-2)</div></div>
+          <div class="bc-kpi"><div class="bv" id="bcTamMargin" style="font-size:18px;color:var(--bl)">${marginTxt}</div><div class="bl">Margen hoy (vs prom 5d)</div></div>
           <div class="bc-kpi"><div class="bv" id="bcTamImplied" style="font-size:15px;color:var(--acl)">${impliedTxt}</div><div class="bl">TNA implícita</div></div>
           <div class="bc-kpi"><div class="bv" id="bcTamBE" style="font-size:15px;color:var(--am)">${beTamar!=null?beTamar.toFixed(2)+'%':'-'}</div><div class="bl">BE TAMAR mercado</div></div>
           <div class="bc-kpi"><div class="bv"><input type="number" id="bcTamPriceIn" step="0.01" value="${(parseFloat(document.getElementById('bci-price')?.value)||defaultPx||0)}" style="background:transparent;border:none;border-bottom:1px solid var(--acl);color:var(--acl);font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right;width:80px;outline:none;padding:0"></div><div class="bl">Precio</div></div>
@@ -5571,7 +5588,7 @@ function openBondCalculator(bondType, bondId){
       const currentMarginData=price>0 ? calcTamarCurrentMarginData(b,price,settle,tamarMap,!isNaN(projTNA)&&projTNA>0?projTNA:null) : null;
       if(bcMarginEl) bcMarginEl.textContent=currentMarginData&&currentMarginData.currentMargin!=null?(currentMarginData.currentMargin>=0?'+':'')+currentMarginData.currentMargin.toFixed(2)+'%':'-';
       if(bcImpliedEl) bcImpliedEl.textContent=currentMarginData&&currentMarginData.impliedTNA!=null?currentMarginData.impliedTNA.toFixed(2)+'%':'-';
-      if(bcRemAvgEl) bcRemAvgEl.textContent=currentMarginData&&currentMarginData.lastTamarTNA!=null?currentMarginData.lastTamarTNA.toFixed(4)+'%':'-';
+      if(bcRemAvgEl) bcRemAvgEl.textContent=currentMarginData&&currentMarginData.benchTamarTNA!=null?currentMarginData.benchTamarTNA.toFixed(4)+'%':'-';
       if(bcBeEl) bcBeEl.textContent=b._tamarBE!=null?b._tamarBE.toFixed(2)+'%':'-';
 
       if(vf){
