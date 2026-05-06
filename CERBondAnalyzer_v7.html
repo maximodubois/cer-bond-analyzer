@@ -632,14 +632,16 @@
     </div>
     <!-- TAMAR -->
     <div class="resumen-table-panel">
-      <div class="st" style="color:var(--bl)">TAMAR</div>
+      <div class="st" style="color:var(--bl)">TAMAR <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:9px;color:var(--td)">TNA/TIR equivalentes asumiendo proyecciones TAMAR de CALCULADORA</span></div>
       <table class="lt">
         <thead><tr>
           <th>Ticker</th><th class="num">Var%</th><th class="num">Px</th>
           <th class="num" style="color:var(--bl)">Margen hoy</th>
+          <th class="num" style="color:var(--fx)">TNA</th>
+          <th class="num" style="color:var(--fx)">TIR (TEA)</th>
           <th class="num">Días</th>
         </tr></thead>
-        <tbody id="resumenTAMARBody"><tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin datos</td></tr></tbody>
+        <tbody id="resumenTAMARBody"><tr><td colspan="7" style="text-align:center;color:var(--tm);padding:10px">Sin datos</td></tr></tbody>
       </table>
     </div>
     <!-- DL Bonds -->
@@ -3246,7 +3248,7 @@ function drawDurationChart3(ptsFX,ptsCERReal,ptsCombo){
 
   drawOneChart("durChartFX",ptsFX,maxXUse,"LECAP/BONCAP","#8b5cf6",lbl=>{const f=FIXED.find(x=>x.ticker===lbl);if(f)openBondCalculator('fixed',f.id);});
   drawOneChart("durChartCERReal",ptsCERReal,maxXUse,"CER Real","#2a9d8f",lbl=>{const b=BONDS.find(x=>x.ticker===lbl);if(b)openBondCalculator('cer',b.id);});
-  drawOneChart("durChartCombo",ptsCombo,maxXUse,"Combinado","#F86D36",lbl=>{const b=BONDS.find(x=>x.ticker===lbl);if(b){openBondCalculator('cer',b.id)}else{const f=FIXED.find(x=>x.ticker===lbl);if(f)openBondCalculator('fixed',f.id);}});
+  drawOneChart("durChartCombo",ptsCombo,maxXUse,"Combinado","#F86D36",lbl=>{const b=BONDS.find(x=>x.ticker===lbl);if(b){openBondCalculator('cer',b.id);return;}const f=FIXED.find(x=>x.ticker===lbl);if(f){openBondCalculator('fixed',f.id);return;}const t=TAMAR_BONDS.find(x=>x.ticker===lbl);if(t){openBondCalculator('tamar',t.id);}});
 
   // Legend
   document.getElementById("durLegend").innerHTML=`
@@ -3530,25 +3532,50 @@ function calculate(){
         t._lastTamarTNA=currentMarginData.lastTamarTNA;
         t._benchTamarTNA=currentMarginData.benchTamarTNA;
       }
-      // Find closest-duration LECAP for BE TAMAR reference
+      // Comparable LECAP/BONCAP: closest by maturity date (not duration)
       if(okFixed.length){
-        const best=okFixed.reduce((a,b)=>Math.abs(b._dur-t._dur)<Math.abs(a._dur-t._dur)?b:a);
+        const tMatTime=matDate.getTime();
+        const best=okFixed.reduce((a,b)=>{
+          const da=Math.abs(new Date(a.mat+"T00:00:00").getTime()-tMatTime);
+          const db=Math.abs(new Date(b.mat+"T00:00:00").getTime()-tMatTime);
+          return db<da?b:a;
+        });
         t._compTicker=best.ticker;
         t._compTNA=best._tna;
-        // BE TAMAR: TAMAR TNA at which buying this bond at current price yields same TEA as closest LECAP
+        t._compTEA=best._tea;
+        // BE TAMAR: bisecta el override flat de TAMAR proyectada que hace
+        //   TIREA(VF/price) = compTEA. La parte historica (TAMAR observada) NO
+        //   se altera; solo se varia la proyeccion futura. Para DUAL respeta
+        //   el max(VF_TAMAR, VF_fija). Ya descontamos el spread.
         if(price>0&&days>0){
           const compTEA=best._tea/100;
-          const emD=new Date(t.emDate+"T00:00:00");
-          const months_em=days360US(emD,matDate)/30;
-          if(months_em>0){
-            const vfRequired=price*Math.pow(1+compTEA,days/365);
-            const allInTEM=Math.pow(vfRequired/100,1/months_em)-1;
-            const den=365/32;
-            const allInTNA_pct=((Math.pow(1+allInTEM,12/den)-1)*den)*100;
-            t._tamarBE=allInTNA_pct-getTamarMarginBps(t)/100;
+          const vfTarget=price*Math.pow(1+compTEA,days/365);
+          const vfAt=(proj)=>{
+            const data=calcTamarValueData(t,tamarMap,proj);
+            return data?data.vf:null;
+          };
+          const vfFloor=vfAt(0.001);
+          const vfMax=vfAt(500);
+          if(vfFloor!=null&&vfMax!=null){
+            if(vfFloor>=vfTarget){
+              t._tamarBE=0; // DUAL: rama fija ya domina aun con TAMAR ~0
+            } else if(vfMax<vfTarget){
+              t._tamarBE=null;
+            } else {
+              let lo=0.001, hi=500;
+              for(let i=0;i<60;i++){
+                const mid=(lo+hi)/2;
+                const vfM=vfAt(mid);
+                if(vfM==null) break;
+                if(vfM<vfTarget) lo=mid; else hi=mid;
+                if(hi-lo<0.001) break;
+              }
+              const beTNA=(lo+hi)/2;
+              t._tamarBE=beTNA-getTamarMarginBps(t)/100;
+            }
           }
         } else {
-          // Sin precio: aproximación lineal
+          // Sin precio: aproximacion lineal
           t._tamarBE=best._tna-getTamarMarginBps(t)/100;
         }
       }
@@ -3605,6 +3632,10 @@ function calculate(){
   scatterPts.forEach(p=>{
     if(p.yReal!=null) ptsCERReal.push({x:p.x,y:p.yReal,label:p.label,color:p.color});
     ptsCombo.push({x:p.x,y:p.y,label:p.label,color:"#2a9d8f"});
+  });
+  // TAMAR puntos (modo tasa fija equivalente: TNA32 implícita asumiendo proyecciones)
+  TAMAR_BONDS.filter(t=>t._ok&&t._dur!=null&&t._impliedTNA!=null).forEach(t=>{
+    ptsCombo.push({x:t._dur,y:t._impliedTNA,label:t.ticker,color:t.color||"#4da6ff"});
   });
   drawDurationChart3(ptsFX, ptsCERReal, ptsCombo);
 
@@ -4203,18 +4234,29 @@ function renderResumen(){
   const tamarBody=document.getElementById("resumenTAMARBody");
   if(tamarBody){
     if(!TAMAR_BONDS.length){
-      tamarBody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin datos</td></tr>';
+      tamarBody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--tm);padding:10px">Sin datos</td></tr>';
     } else {
       let rows="";
       TAMAR_BONDS.forEach(t=>{
         const days=DB(settle,new Date(t.mat+"T00:00:00"));
         const px=getCurrentPrice(t.id)||null;
         const chg=getPriceVariationMeta(t.ticker,"");
+        // TIR (TEA) tasa fija equivalente: ((1+TIREA)) ya es la TEA implicita
+        // partiendo de impliedTIREA (ACT/365). Si no esta, derivamos desde TNA32.
+        let tnaEq=t._impliedTNA;
+        let teaEq=null;
+        if(t._impliedTNA!=null){
+          const den=365/32;
+          // TNA32 -> TEA: (1+TNA/N)^N - 1
+          teaEq=((Math.pow(1+t._impliedTNA/100/den, den)-1)*100);
+        }
         rows+=`<tr class="clickable-row" onclick="openBondCalculator('tamar','${t.id}')" title="Click para calculadora">
           <td class="tk" style="color:${t.color}">${t.ticker}</td>
           <td class="num" style="color:${chg.color};font-weight:600">${chg.text}</td>
           <td class="num">${px!=null?px.toFixed(2):'—'}</td>
           <td class="num" style="color:var(--bl)">${t._marginToday!=null?(t._marginToday>=0?'+':'')+t._marginToday.toFixed(2)+'%':'—'}</td>
+          <td class="num" style="color:var(--fx)">${tnaEq!=null?tnaEq.toFixed(2)+'%':'—'}</td>
+          <td class="num" style="color:var(--fx)">${teaEq!=null?teaEq.toFixed(2)+'%':'—'}</td>
           <td class="num">${days}</td>
         </tr>`;
       });
@@ -4323,7 +4365,7 @@ function renderResumenCurves(){
     lbl=>{const b=BONDS.find(x=>x.ticker===lbl);if(b)openBondCalculator('cer',b.id);},
     _closeDurData.cerReal);
   drawOneChart('resumenChartCombo', cd.combo, getMax('maxDurCombo',autoMax), 'Combinado','#f07040',
-    lbl=>{const b=BONDS.find(x=>x.ticker===lbl);if(b){openBondCalculator('cer',b.id)}else{const f=FIXED.find(x=>x.ticker===lbl);if(f)openBondCalculator('fixed',f.id);}});
+    lbl=>{const b=BONDS.find(x=>x.ticker===lbl);if(b){openBondCalculator('cer',b.id);return;}const f=FIXED.find(x=>x.ticker===lbl);if(f){openBondCalculator('fixed',f.id);return;}const t=TAMAR_BONDS.find(x=>x.ticker===lbl);if(t){openBondCalculator('tamar',t.id);}});
   const ptsTAMAR=TAMAR_BONDS.filter(t=>t._ok&&t._dur!=null).map(t=>({
     x:t._dur, y:t._tnaNeta, label:t.ticker, color:t.color, id:t.id
   })).filter(p=>p.x>0&&isFinite(p.y));
