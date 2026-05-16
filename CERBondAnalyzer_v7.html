@@ -11518,16 +11518,20 @@ function renderFX(){
   futBody.innerHTML=futRows||'<tr><td colspan="4" style="text-align:center;color:var(--tm);padding:10px">Sin precios futuros</td></tr>';
 
   // ── Yesterday's close points (gray overlay) ──────────────────
+  // FIX: días tienen que medirse desde el día hábil anterior (cuando se generó
+  // el cierre), no desde hoy. SBD(today,1) salta finde y feriados via FER.
+  const prevBizDay = SBD(today, 1);                    // ayer hábil (trade date del close)
+  const prevSettle = ABD(prevBizDay, 1);               // T+1 equivalente para DL
   const spotClose=(_livePrices["DLR/SPOT"]||{}).close||0;
 
-  // Warning si el close del spot está raro (vacío o desviación > 8% vs spot actual)
+  // Warning si el close del spot está raro
   if (spot > 0) {
     if (!spotClose) {
-      console.warn('[fx-curves] DLR/SPOT.close = 0 → la curva de ayer no se renderiza');
+      console.warn('[fx-curves] DLR/SPOT.close = 0 → curva de ayer no renderiza');
     } else {
       const dev = Math.abs(spotClose/spot - 1) * 100;
       if (dev > 8) {
-        console.warn('[fx-curves] DLR/SPOT.close ('+spotClose.toFixed(2)+') difiere '+dev.toFixed(1)+'% del spot actual ('+spot.toFixed(2)+'). Verificá la columna "close" de DLR/SPOT en la Sheet.');
+        console.warn('[fx-curves] DLR/SPOT.close ('+spotClose.toFixed(2)+') difiere '+dev.toFixed(1)+'% del spot actual ('+spot.toFixed(2)+'). Verificá columna "close" en la Sheet.');
       }
     }
   }
@@ -11539,12 +11543,12 @@ function renderFX(){
       const pxClose=lp.close||0;
       if(!pxClose) return;
       const matDate=new Date(b.mat+"T00:00:00");
-      const days=DB(settle,matDate);
+      const days=DB(prevSettle, matDate);              // días desde ayer T+1
       if(days<=0) return;
       const tnaPrev=(100*spotClose/pxClose-1)*365/days*100;
       if(isFinite(tnaPrev)) dlPointsPrev.push({
         x:days, y:tnaPrev, label:b.ticker, color:'#475569',
-        _diag: {pxClose, spotClose, days, ticker:b.ticker}
+        _diag: {pxClose, spotClose, days, ticker:b.ticker, asOf:DS(prevBizDay)}
       });
     });
   }
@@ -11555,12 +11559,12 @@ function renderFX(){
       const pxClose=lp.close||0;
       if(!pxClose) return;
       const expDate=new Date(f.exp+"T00:00:00");
-      const days=DB(today,expDate);
+      const days=DB(prevBizDay, expDate);              // días desde ayer hábil
       if(days<=0) return;
       const tnaPrev=(pxClose/spotClose-1)*365/days*100;
       if(isFinite(tnaPrev)) futPointsPrev.push({
         x:days, y:tnaPrev, label:f.ticker.replace("DLR/",""), color:'#475569',
-        _diag: {pxClose, spotClose, days, ticker:f.ticker}
+        _diag: {pxClose, spotClose, days, ticker:f.ticker, asOf:DS(prevBizDay)}
       });
     });
   }
@@ -12232,12 +12236,11 @@ function drawFxCurveChart(canvasId,points,maxX,prevPoints=[],seriesColor='#94a3b
         cv.style.cursor = best.isPrev ? 'help' : 'pointer';
         if (best.isPrev && best.diag) {
           const d = best.diag;
-          cv.title = best.label + ' (AYER)\n'
+          cv.title = best.label + ' — cierre ' + (d.asOf||'ayer hábil') + '\n'
             + 'pxClose: ' + (d.pxClose ? d.pxClose.toFixed(2) : '—') + '\n'
             + 'spotClose (DLR/SPOT.close): ' + (d.spotClose ? d.spotClose.toFixed(2) : '—') + '\n'
-            + 'días: ' + d.days + '\n'
-            + 'TNA = ' + best.y.toFixed(2) + '%\n'
-            + 'Si el TNA no cuadra, revisá la columna "close" del ticker en la Sheet.';
+            + 'días al vto desde ' + (d.asOf||'ayer') + ': ' + d.days + '\n'
+            + 'TNA = ' + best.y.toFixed(2) + '%';
         } else {
           cv.title = best.label + ' — click para abrir calculadora';
         }
