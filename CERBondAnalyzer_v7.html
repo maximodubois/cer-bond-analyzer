@@ -430,6 +430,10 @@
   .bc-tab{background:transparent;border:none;color:var(--td);font-family:'Inter',sans-serif;font-size:11px;font-weight:500;padding:10px 14px 9px;cursor:pointer;border-bottom:2px solid transparent;letter-spacing:0.04em;text-transform:uppercase;transition:color 0.15s,border-color 0.15s}
   .bc-tab:hover{color:var(--t)}
   .bc-tab.active{color:var(--gn);border-bottom-color:var(--gn);font-weight:700}
+  .bc-univ-buttons{display:flex;gap:4px}
+  .bc-univ-btn{background:var(--bg);border:1px solid var(--cb);color:var(--td);font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;padding:4px 10px;cursor:pointer;border-radius:4px;letter-spacing:0.04em;text-transform:uppercase;transition:all 0.12s}
+  .bc-univ-btn:hover{color:var(--t);border-color:var(--acl)}
+  .bc-univ-btn.active{background:var(--acd);color:var(--acl);border-color:var(--acl);font-weight:700}
   .bc-pane{display:block}
   /* Inflation path editor */
   .infl-path{display:grid;grid-template-columns:1fr;gap:6px}
@@ -4006,6 +4010,22 @@ function durationFromFlows(y, flows, key){
   const mac=wt/pv;
   return mac/(1+y);
 }
+// Convexidad estándar: C = Σ t(t+1) PV(CF_t) / P / (1+y)^2
+// Aproxima ΔP/P ≈ -D·Δy + ½·C·(Δy)². Para sensibilidad por 100bp: C/100.
+function convexityFromFlows(y, flows, key){
+  const arr=flows.filter(f=>f.days>0&&f[key]>0);
+  if(!arr.length||y==null||y<=-0.9999) return null;
+  let pv=0, conv=0;
+  arr.forEach(f=>{
+    const t=f.days/365;
+    const disc=Math.pow(1+y,t);
+    const cf=f[key]/disc;
+    pv += cf;
+    conv += t*(t+1)*cf;
+  });
+  if(!pv) return null;
+  return conv/pv/Math.pow(1+y,2);
+}
 
 // ═══ CALC RATE FIXED ═══════════════
 function calcFixedOne(f){
@@ -5234,11 +5254,18 @@ function openBondCalculator(bondType, bondId){
         <div class="bc-tabs">
           <button class="bc-tab active" id="bcTabCalc" onclick="_bcSwitchTab('calc')">Calculadora</button>
           <button class="bc-tab" id="bcTabInfl" onclick="_bcSwitchTab('infl')">Inflación</button>
+          <button class="bc-tab" id="bcTabChart" onclick="_bcSwitchTab('chart')">Gráfico</button>
         </div>`:''}
         ${bondType==='tamar'?`
         <div class="bc-tabs">
           <button class="bc-tab active" id="bcTabCalc" onclick="_bcSwitchTab('calc')">Calculadora</button>
           <button class="bc-tab" id="bcTabTamar" onclick="_bcSwitchTab('tamar')">TAMAR</button>
+          <button class="bc-tab" id="bcTabChart" onclick="_bcSwitchTab('chart')">Gráfico</button>
+        </div>`:''}
+        ${bondType==='fixed'?`
+        <div class="bc-tabs">
+          <button class="bc-tab active" id="bcTabCalc" onclick="_bcSwitchTab('calc')">Calculadora</button>
+          <button class="bc-tab" id="bcTabChart" onclick="_bcSwitchTab('chart')">Gráfico</button>
         </div>`:''}
         <div class="bc-pane" id="bc-pane-calc">
         <!-- Liquidacion toggle -->
@@ -5271,6 +5298,14 @@ function openBondCalculator(bondType, bondId){
           <div class="bc-kpi"><div class="bv" id="bck-tna">-</div><div class="bl">TNA EQUIV.</div></div>
           <div class="bc-kpi"><div class="bv" id="bck-tea">-</div><div class="bl">TEA EQUIV.</div></div>
           <div class="bc-kpi"><div class="bv" id="bck-tem">-</div><div class="bl">TEM EQ</div></div>
+        </div>
+        <!-- Riesgo / Curva -->
+        <div class="bc-kpis" style="margin-top:8px">
+          <div class="bc-kpi"><div class="bv" id="bck-dur" style="color:var(--bl)">-</div><div class="bl">Mod. Duration</div></div>
+          <div class="bc-kpi"><div class="bv" id="bck-conv" style="color:var(--bl)">-</div><div class="bl">Convexidad</div></div>
+          <div class="bc-kpi"><div class="bv" id="bck-curve-nss" style="color:var(--fx)">-</div><div class="bl">En curva NSS</div></div>
+          <div class="bc-kpi"><div class="bv" id="bck-curve-log" style="color:var(--fx)">-</div><div class="bl">En curva LOG</div></div>
+          <div class="bc-kpi"><div class="bv" id="bck-spread-curve" style="color:var(--am)">-</div><div class="bl">Spread vs curva (bps)</div></div>
         </div>
         <!-- ── Orderbook horizontal (BID izq | OFFER der) — estilo broker AR ── -->
         <div class="bc-book2" id="bc-book-wrap">
@@ -5377,6 +5412,24 @@ function openBondCalculator(bondType, bondId){
         <div class="bc-pane" id="bc-pane-tamar" style="display:none">
           <div id="bc-tamar-content"></div>
         </div>`:''}
+        <!-- Pane GRAFICO (curva del bono dentro de su universo) -->
+        <div class="bc-pane" id="bc-pane-chart" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap">
+            <div class="st" style="margin:0">Curva — ${b.ticker} resaltado</div>
+            ${bondType==='cer'?`
+            <div class="bc-univ-buttons" id="bc-univ-buttons">
+              <button class="bc-univ-btn active" data-univ="cer" onclick="_bcSetChartUniverse('cer')">Solo CER</button>
+              <button class="bc-univ-btn" data-univ="combo" onclick="_bcSetChartUniverse('combo')">CER + Tasa Fija</button>
+            </div>`:''}
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--cb);border-radius:8px;padding:10px">
+            <canvas id="bc-chart-canvas" style="width:100%;height:340px;display:block"></canvas>
+          </div>
+          <div id="bc-chart-legend" style="font-size:10px;color:var(--td);margin-top:8px;line-height:1.5"></div>
+          <div style="font-size:10px;color:var(--td);margin-top:6px">
+            <em>Nota:</em> el gráfico intradiario / semanal de precio y TIR se va a agregar en la próxima iteración (necesita historial 1-min que arranca a guardarse desde el próximo deploy).
+          </div>
+        </div>
       </div>
     </div>`;
 
@@ -5385,29 +5438,165 @@ function openBondCalculator(bondType, bondId){
   document.getElementById('bcClose').addEventListener('click', ()=>{ delete window._bcSetSettle; delete window._bcSwitchTab; _bondCalcCtx=null; overlay.remove(); });
   overlay.addEventListener('click', e=>{ if(e.target===overlay){ delete window._bcSetSettle; delete window._bcSwitchTab; _bondCalcCtx=null; overlay.remove(); } });
 
-  // Tab switcher: handles CER (infl) and TAMAR (tamar) tabs
+  // Estado del gráfico de curva (CER puede toglearse entre solo-CER y CER+TF)
+  let _bcChartUniv = 'cer';
+  window._bcSetChartUniverse = function(u){
+    _bcChartUniv = u;
+    document.querySelectorAll('#bc-univ-buttons .bc-univ-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.univ === u);
+    });
+    _bcRenderChartTab();
+  };
+
+  function _bcRenderChartTab(){
+    const cv = document.getElementById('bc-chart-canvas');
+    const legend = document.getElementById('bc-chart-legend');
+    if (!cv) return;
+    // Construir series según el tipo del bono + toggle universo
+    const series = [];
+    function _pushUniv(univ, color, yKey, xKey, label){
+      const pts = (univ||[])
+        .filter(x => x && x[yKey] != null && isFinite(x[yKey]) && x[xKey] > 0)
+        .map(x => ({x: x[xKey], y: x[yKey], label: x.ticker, isCurrent: x.id === b.id}));
+      if (pts.length) series.push({pts, color, label});
+    }
+    if (bondType === 'cer') {
+      _pushUniv(BONDS, '#22d3ee', '_tr', '_dur', 'CER (TIR Real)');
+      if (_bcChartUniv === 'combo') {
+        // Para TF usamos TIR TEA. Eje Y heterogéneo (real vs nominal): aviso al user.
+        _pushUniv(FIXED, '#fbbf24', '_tea', '_dur', 'Tasa Fija (TIR TEA)');
+      }
+    } else if (bondType === 'fixed') {
+      _pushUniv(FIXED, '#fbbf24', '_tea', '_dur', 'Tasa Fija (TIR TEA)');
+    } else if (bondType === 'tamar') {
+      _pushUniv(TAMAR_BONDS, '#4da6ff', '_tn', '_dur', 'TAMAR (TIR Nom)');
+    }
+    _bcDrawCurveCanvas(cv, series, b);
+    if (legend) {
+      const parts = series.map(s => `<span style="color:${s.color}">●</span> ${s.label} (${s.pts.length})`).join('  ·  ');
+      const sel = `<span style="color:#fff;background:${b.color};padding:1px 6px;border-radius:3px;margin-left:8px">${b.ticker}</span>`;
+      legend.innerHTML = parts + ' ' + sel + (bondType==='cer' && _bcChartUniv==='combo' ? '  ·  <em>OJO: CER y TF usan ejes distintos (real vs nominal). Útil para ver formas relativas.</em>' : '');
+    }
+  }
+
+  function _bcDrawCurveCanvas(cv, series, currentBond){
+    const dpr = window.devicePixelRatio || 1;
+    const W = cv.clientWidth || 600, H = cv.clientHeight || 340;
+    cv.width = W*dpr; cv.height = H*dpr;
+    const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0);
+    c.clearRect(0,0,W,H);
+    const pad = {t:14, r:14, b:30, l:48};
+    const allPts = series.flatMap(s => s.pts);
+    if (!allPts.length) {
+      c.fillStyle = '#475569'; c.font = "11px 'IBM Plex Mono',monospace"; c.textAlign='center';
+      c.fillText('Sin datos para construir la curva — calculá los bonos del universo primero', W/2, H/2);
+      return;
+    }
+    const xs = allPts.map(p => p.x), ys = allPts.map(p => p.y);
+    const xMin = 0, xMax = Math.max(...xs) * 1.08;
+    const ySpread = Math.max(...ys) - Math.min(...ys);
+    const yPad = Math.max(ySpread*0.15, 1);
+    const yMin = Math.min(...ys) - yPad, yMax = Math.max(...ys) + yPad;
+    const xP = x => pad.l + (x-xMin)/(xMax-xMin)*(W-pad.l-pad.r);
+    const yP = y => pad.t + (1 - (y-yMin)/(yMax-yMin))*(H-pad.t-pad.b);
+    // Grid
+    c.strokeStyle='#1a2233'; c.lineWidth=0.5;
+    for (let i=0; i<=5; i++) {
+      const y = yMin + (yMax-yMin)*i/5, py = yP(y);
+      c.beginPath(); c.moveTo(pad.l, py); c.lineTo(W-pad.r, py); c.stroke();
+      c.fillStyle='#64748b'; c.font="9px 'IBM Plex Mono',monospace"; c.textAlign='right';
+      c.fillText(y.toFixed(1)+'%', pad.l-5, py+3);
+    }
+    for (let i=0; i<=5; i++) {
+      const x = xMin + (xMax-xMin)*i/5, px = xP(x);
+      c.beginPath(); c.moveTo(px, pad.t); c.lineTo(px, H-pad.b); c.stroke();
+      c.fillStyle='#64748b'; c.textAlign='center'; c.font="9px 'IBM Plex Mono',monospace";
+      c.fillText(x.toFixed(1)+'y', px, H-14);
+    }
+    // Para cada serie: ajusta NSS/LOG y dibuja líneas tenues
+    series.forEach(s => {
+      const fitPts = s.pts.map(p => ({x:p.x, y:p.y}));
+      if (fitPts.length >= 2) {
+        let logFit = null, nssFit = null;
+        try { logFit = logRegression(fitPts); } catch(e){}
+        try { nssFit = fitPts.length>=3 ? fitNSS(fitPts) : null; } catch(e){}
+        const steps = 80;
+        const dx = (xMax - 0.1) / steps;
+        if (logFit) {
+          c.save(); c.setLineDash([4,3]); c.strokeStyle=s.color+'88'; c.lineWidth=1.2;
+          c.beginPath(); let first=true;
+          for (let i=0; i<=steps; i++) {
+            const x = 0.1 + i*dx;
+            const y = logFit.predict(x);
+            if (!isFinite(y) || y < yMin-5 || y > yMax+5) { first=true; continue; }
+            const px = xP(x), py = yP(y);
+            first ? (c.moveTo(px,py), first=false) : c.lineTo(px,py);
+          }
+          c.stroke(); c.restore();
+        }
+        if (nssFit) {
+          c.save(); c.strokeStyle=s.color+'cc'; c.lineWidth=1.6;
+          c.beginPath(); let first=true;
+          for (let i=0; i<=steps; i++) {
+            const x = Math.max(0.1, 0.1 + i*dx);
+            const y = nssFit.predict(x);
+            if (!isFinite(y) || y < yMin-5 || y > yMax+5) { first=true; continue; }
+            const px = xP(x), py = yP(y);
+            first ? (c.moveTo(px,py), first=false) : c.lineTo(px,py);
+          }
+          c.stroke(); c.restore();
+        }
+      }
+      // Puntos
+      s.pts.forEach(p => {
+        const px = xP(p.x), py = yP(p.y);
+        const isCur = p.isCurrent;
+        c.beginPath();
+        c.arc(px, py, isCur ? 7 : 4, 0, Math.PI*2);
+        c.fillStyle = isCur ? (currentBond.color || '#ff6b4a') : s.color;
+        c.fill();
+        c.strokeStyle = isCur ? '#fff' : '#080c14'; c.lineWidth = isCur ? 2 : 1; c.stroke();
+        c.fillStyle = isCur ? '#fff' : s.color;
+        c.font = isCur ? "bold 10px 'IBM Plex Mono',monospace" : "8px 'IBM Plex Mono',monospace";
+        c.textAlign='center';
+        c.fillText(p.label, px, py - (isCur?12:8));
+        c.fillStyle = '#94a3b8';
+        c.font="8px 'IBM Plex Mono',monospace";
+        c.fillText(p.y.toFixed(2)+'%', px, py + (isCur?20:14));
+      });
+    });
+  }
+
+  // Tab switcher: handles CER (infl), TAMAR (tamar), and Chart tabs
   window._bcSwitchTab=function(which){
     const calc=document.getElementById('bc-pane-calc');
     const infl=document.getElementById('bc-pane-infl');
     const tam=document.getElementById('bc-pane-tamar');
+    const chart=document.getElementById('bc-pane-chart');
     const tCalc=document.getElementById('bcTabCalc');
     const tInfl=document.getElementById('bcTabInfl');
     const tTam=document.getElementById('bcTabTamar');
+    const tChart=document.getElementById('bcTabChart');
     if(!calc) return;
     const setActive=(btn,on)=>{ if(btn){ btn.classList[on?'add':'remove']('active'); } };
+    const hideAll=()=>{
+      calc.style.display='none';
+      if(infl) infl.style.display='none';
+      if(tam)  tam.style.display='none';
+      if(chart) chart.style.display='none';
+      setActive(tCalc,false); setActive(tInfl,false); setActive(tTam,false); setActive(tChart,false);
+    };
     if(which==='infl' && infl){
-      calc.style.display='none'; infl.style.display='block'; if(tam) tam.style.display='none';
-      setActive(tCalc,false); setActive(tInfl,true); setActive(tTam,false);
+      hideAll(); infl.style.display='block'; setActive(tInfl,true);
       if(typeof _bcRenderInflTab==='function') _bcRenderInflTab();
     } else if(which==='tamar' && tam){
-      calc.style.display='none'; tam.style.display='block'; if(infl) infl.style.display='none';
-      setActive(tCalc,false); setActive(tInfl,false); setActive(tTam,true);
+      hideAll(); tam.style.display='block'; setActive(tTam,true);
       if(typeof _bcRenderTamarTab==='function') _bcRenderTamarTab();
+    } else if(which==='chart' && chart){
+      hideAll(); chart.style.display='block'; setActive(tChart,true);
+      _bcRenderChartTab();
     } else {
-      calc.style.display='block';
-      if(infl) infl.style.display='none';
-      if(tam) tam.style.display='none';
-      setActive(tCalc,true); setActive(tInfl,false); setActive(tTam,false);
+      hideAll(); calc.style.display='block'; setActive(tCalc,true);
     }
   };
 
@@ -6113,6 +6302,49 @@ function openBondCalculator(bondType, bondId){
     };
   }
 
+  // Helper: ajusta NSS y LOG sobre la curva del universo del bono y predice TIR
+  // al `dur` del bono actual (excluye el propio bono). yKey = '_tr' para CER,
+  // '_tea' para FIXED. xKey = '_dur'. Devuelve {nss, log, nPts}.
+  function _bcFitCurveYield(univ, b, dur, yKey){
+    if (!Array.isArray(univ) || !(dur > 0)) return {nss:null, log:null, nPts:0};
+    const pts = univ.filter(x => x && x.id !== b.id && x._dur > 0 && x[yKey] != null && isFinite(x[yKey]))
+                    .map(x => ({x: x._dur, y: x[yKey]}));
+    if (pts.length < 2) return {nss:null, log:null, nPts:pts.length};
+    let logFit = null, nssFit = null;
+    try { logFit = (typeof logRegression==='function') ? logRegression(pts) : null; } catch(e){}
+    try { nssFit = (pts.length >= 3 && typeof fitNSS==='function') ? fitNSS(pts) : null; } catch(e){}
+    return {
+      nss: (nssFit && isFinite(nssFit.predict(dur))) ? nssFit.predict(dur) : null,
+      log: (logFit && isFinite(logFit.predict(dur))) ? logFit.predict(dur) : null,
+      nPts: pts.length,
+    };
+  }
+
+  // Helper: pinta los KPIs de Riesgo / Curva (dur, conv, NSS, LOG, spread)
+  function _bcRenderRiskKpis(dur, conv, fit, marketYield){
+    const eDur  = document.getElementById('bck-dur');
+    const eConv = document.getElementById('bck-conv');
+    const eNss  = document.getElementById('bck-curve-nss');
+    const eLog  = document.getElementById('bck-curve-log');
+    const eSpr  = document.getElementById('bck-spread-curve');
+    if (eDur)  eDur.textContent  = (dur  != null && isFinite(dur))  ? dur.toFixed(2) + 'y' : '—';
+    if (eConv) eConv.textContent = (conv != null && isFinite(conv)) ? conv.toFixed(2)       : '—';
+    if (eNss)  eNss.textContent  = (fit && fit.nss != null) ? fit.nss.toFixed(2) + '%' : '—';
+    if (eLog)  eLog.textContent  = (fit && fit.log != null) ? fit.log.toFixed(2) + '%' : '—';
+    if (eSpr) {
+      // Preferencia: NSS > LOG. Spread = market - curva, en bps.
+      const ref = (fit && fit.nss != null) ? fit.nss : (fit && fit.log != null ? fit.log : null);
+      if (ref != null && marketYield != null) {
+        const bps = (marketYield - ref) * 100;  // pp → bps
+        eSpr.textContent = (bps>=0?'+':'') + bps.toFixed(0) + ' bps';
+        eSpr.style.color = bps > 0 ? 'var(--acl)' : (bps < 0 ? 'var(--neg)' : 'var(--td)');
+        eSpr.title = 'Positivo = bono rinde MÁS que la curva (potencialmente barato). Negativo = MENOS (potencialmente caro). Ref: ' + (fit.nss!=null?'NSS':'LOG');
+      } else {
+        eSpr.textContent = '—'; eSpr.style.color = 'var(--td)'; eSpr.title = '';
+      }
+    }
+  }
+
   function recalc(){
     const price=parseFloat(document.getElementById('bci-price').value)||0;
     const vnoAmount=parseFloat(document.getElementById('bci-vno').value)||100;
@@ -6146,7 +6378,8 @@ function openBondCalculator(bondType, bondId){
           // muestran valores stale hasta que el user toca "Calculá" de nuevo.
           if(tirNom!=null){
             const dur=durationFromFlows(tirNomRaw, flows, 'nominal');
-            b._tr=tirReal; b._tn=tirNom; b._tnaTF=tna; b._dur=dur;
+            const conv=convexityFromFlows(tirNomRaw, flows, 'nominal');
+            b._tr=tirReal; b._tn=tirNom; b._tnaTF=tna; b._dur=dur; b._conv=conv;
             b._ok=true;
           }
         }
@@ -6170,6 +6403,15 @@ function openBondCalculator(bondType, bondId){
       document.getElementById('bck-tea').style.color=teaEq!=null?(teaEq>=0?'var(--acl)':'var(--neg)'):'var(--td)';
       document.getElementById('bck-tem').textContent=temEq!=null?temEq.toFixed(2)+'%':'—';
       document.getElementById('bck-tem').style.color=temEq!=null?(temEq>=0?'var(--acl)':'var(--neg)'):'var(--td)';
+
+      // ── Riesgo / Curva (Convexidad + En curva NSS/LOG + Spread) ──
+      {
+        const dur  = b._dur;
+        const conv = b._conv;
+        // CER: fiteamos sobre TIR REAL (b._tr) vs duración del propio universo CER.
+        const fit  = _bcFitCurveYield(BONDS, b, dur, '_tr');
+        _bcRenderRiskKpis(dur, conv, fit, tirReal);
+      }
 
       // Breakeven inflation display
       const beData=(_implInflResults||[]).find(r=>r.ticker===b.ticker);
@@ -6341,6 +6583,21 @@ function openBondCalculator(bondType, bondId){
       document.getElementById('bck-tea').style.color=teaEq!=null?(teaEq>=0?'var(--acl)':'var(--neg)'):'var(--td)';
       document.getElementById('bck-tem').textContent=temEq!=null?temEq.toFixed(2)+'%':'—';
       document.getElementById('bck-tem').style.color=temEq!=null?(temEq>=0?'var(--acl)':'var(--neg)'):'var(--td)';
+
+      // ── Riesgo / Curva FIXED ────────────────────────────────────
+      {
+        // Bullet: dur = días/365 con TIR TEA. Convexidad sobre flujo único.
+        let dur = null, conv = null;
+        if (vf && tir != null && days > 0) {
+          const flowsFx = [{days, nominal: vf}];
+          const y = tir/100;
+          dur  = durationFromFlows(y, flowsFx, 'nominal');
+          conv = convexityFromFlows(y, flowsFx, 'nominal');
+          b._dur = dur; b._conv = conv; b._tea = tir; b._tna = tna; b._ok = true;
+        }
+        const fit = _bcFitCurveYield(FIXED, b, dur, '_tea');
+        _bcRenderRiskKpis(dur, conv, fit, tir);
+      }
 
       if(vf){
         document.getElementById('bck-flows').innerHTML=`
