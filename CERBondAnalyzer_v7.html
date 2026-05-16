@@ -1725,6 +1725,419 @@
       <div id="fxSynthSFResult" style="margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.8">Seleccioná futuro para ver el arbitraje</div>
     </div>
   </div>
+
+  <!-- ════════════════════════════════════════════════════════════
+       FX PANEL GLOBAL — LATAM, Majors, DXY + Matriz Cruzada
+       Data: DolarAPI (ARS) + TwelveData (FX real-time) + Yahoo fallback
+       Histórico persistido en SQLite (server-side)
+       ════════════════════════════════════════════════════════════ -->
+  <style id="fx-global-styles">
+    #fx-global { font-family:'IBM Plex Mono',monospace; color:#e2e8f0; }
+    #fx-global .fx-header { display:flex; align-items:baseline; justify-content:space-between;
+      margin-bottom:12px; border-bottom:1px solid #1a2233; padding-bottom:8px; }
+    #fx-global h3.fx-title { font-size:13px; font-weight:700; color:#00e5a0; letter-spacing:1.2px;
+      text-transform:uppercase; margin:0; }
+    #fx-global .fx-meta { font-size:10px; color:#64748b; }
+    #fx-global .fx-grid { display:grid; grid-template-columns:1fr 1.2fr; gap:12px; }
+    @media (max-width:1100px){ #fx-global .fx-grid { grid-template-columns:1fr; } }
+    #fx-global .fx-pane { background:#0c1220; border:1px solid #1a2233; border-radius:8px; padding:12px; }
+    #fx-global .fx-pane h4 { font-size:10px; font-weight:600; color:#94a3b8;
+      text-transform:uppercase; letter-spacing:1px; margin:0 0 10px 0; }
+    #fx-global table.fx-table { width:100%; border-collapse:collapse; font-size:11px; }
+    #fx-global table.fx-table th { text-align:right; font-weight:500; color:#64748b;
+      font-size:9px; text-transform:uppercase; letter-spacing:0.6px; padding:4px 6px;
+      border-bottom:1px solid #1a2233; }
+    #fx-global table.fx-table th:first-child { text-align:left; }
+    #fx-global table.fx-table td { padding:5px 6px; border-bottom:1px solid #131a28;
+      text-align:right; font-variant-numeric:tabular-nums; }
+    #fx-global table.fx-table td:first-child { text-align:left; color:#cbd5e1; }
+    #fx-global table.fx-table tr.group-header td { background:#0a0f1a; color:#00e5a0;
+      font-size:8px; letter-spacing:1.3px; text-transform:uppercase; padding:3px 6px;
+      border-bottom:1px solid #1a2233; }
+    #fx-global table.fx-table tr.fx-row { cursor:pointer; transition:background 0.12s; }
+    #fx-global table.fx-table tr.fx-row:hover { background:#131a28; }
+    #fx-global table.fx-table tr.fx-row.active { background:#1a2540; }
+    #fx-global .pct-pos { color:#00e5a0; }
+    #fx-global .pct-neg { color:#ff6b4a; }
+    #fx-global .pct-zero { color:#64748b; }
+    #fx-global .fx-error { color:#ff6b4a; font-size:9px; }
+    #fx-global .src-badge { display:inline-block; font-size:7px; padding:1px 4px;
+      border-radius:3px; text-transform:uppercase; letter-spacing:0.5px; font-weight:700;
+      vertical-align:middle; margin-left:5px; }
+    #fx-global .src-twelvedata, #fx-global .src-dolarapi {
+      background:rgba(0,229,160,0.15); color:#00e5a0; border:1px solid rgba(0,229,160,0.3); }
+    #fx-global .src-yahoo_fallback {
+      background:rgba(251,191,36,0.12); color:#fbbf24; border:1px solid rgba(251,191,36,0.3); }
+    #fx-global .src-yahoo {
+      background:rgba(148,163,184,0.12); color:#94a3b8; border:1px solid rgba(148,163,184,0.3); }
+    #fx-global .fx-status-pill { display:inline-block; padding:2px 7px; border-radius:10px;
+      font-size:9px; letter-spacing:0.5px; text-transform:uppercase; margin-left:6px; }
+    #fx-global .fx-status-on { background:rgba(0,229,160,0.12); color:#00e5a0; border:1px solid rgba(0,229,160,0.3); }
+    #fx-global .fx-status-off { background:rgba(148,163,184,0.1); color:#64748b; border:1px solid rgba(148,163,184,0.25); }
+    #fx-global .fx-status-warn { background:rgba(251,191,36,0.12); color:#fbbf24; border:1px solid rgba(251,191,36,0.3); }
+    #fx-global .spark { display:inline-block; vertical-align:middle; }
+    #fx-global .fx-chart-wrap { display:flex; flex-direction:column; }
+    #fx-global .fx-chart-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+    #fx-global .fx-chart-title { font-size:12px; font-weight:600; color:#e2e8f0; }
+    #fx-global .fx-chart-title .pair-last { color:#00e5a0; margin-left:8px; font-weight:700; }
+    #fx-global .fx-chart-title .pair-pct { margin-left:6px; font-size:10px; }
+    #fx-global .fx-tf-buttons { display:flex; gap:3px; }
+    #fx-global .fx-tf-btn { background:#0c1220; border:1px solid #1e2d44; color:#94a3b8;
+      padding:3px 9px; font-size:10px; font-family:inherit; font-weight:600; cursor:pointer;
+      border-radius:4px; transition:all 0.12s; }
+    #fx-global .fx-tf-btn:hover { color:#e2e8f0; border-color:#2a3d5a; }
+    #fx-global .fx-tf-btn.active { background:#00e5a0; color:#080c14; border-color:#00e5a0; }
+    #fx-global .fx-chart-svg { width:100%; height:240px; background:#0a0f1a; border-radius:6px; border:1px solid #131a28; }
+    #fx-global .fx-chart-empty { height:240px; display:flex; align-items:center;
+      justify-content:center; color:#475569; font-size:11px; background:#0a0f1a; border-radius:6px; }
+    #fx-global .fx-cross-wrap { grid-column:1 / -1; margin-top:4px; }
+    #fx-global table.fx-cross { width:100%; border-collapse:collapse; font-size:10px; font-variant-numeric:tabular-nums; }
+    #fx-global table.fx-cross th, #fx-global table.fx-cross td {
+      padding:4px 5px; border:1px solid #131a28; text-align:right; white-space:nowrap; }
+    #fx-global table.fx-cross th { background:#0a0f1a; color:#94a3b8; font-weight:600;
+      text-transform:uppercase; letter-spacing:0.5px; font-size:9px; }
+    #fx-global table.fx-cross th.row-header,
+    #fx-global table.fx-cross td.row-header { background:#0a0f1a; color:#cbd5e1;
+      text-align:left; font-weight:600; position:sticky; left:0; }
+    #fx-global table.fx-cross td.diag { background:#131a28; color:#475569; }
+    #fx-global table.fx-cross td .cross-val { display:block; color:#e2e8f0; font-size:10px; }
+    #fx-global table.fx-cross td .cross-pct { display:block; font-size:8px; margin-top:2px; }
+    #fx-global .fx-cross-scroll { overflow-x:auto; border:1px solid #1a2233; border-radius:6px; }
+    #fx-global table.fx-cross td.bg-pos { background:rgba(0,229,160,0.04); }
+    #fx-global table.fx-cross td.bg-pos-strong { background:rgba(0,229,160,0.12); }
+    #fx-global table.fx-cross td.bg-neg { background:rgba(255,107,74,0.04); }
+    #fx-global table.fx-cross td.bg-neg-strong { background:rgba(255,107,74,0.12); }
+  </style>
+
+  <div class="card">
+    <div id="fx-global">
+      <div class="fx-header">
+        <h3 class="fx-title">FX Panel — LATAM &amp; Majors (Tiempo Real)</h3>
+        <div class="fx-meta" id="fxg-meta">—</div>
+      </div>
+      <div class="fx-grid">
+        <div class="fx-pane">
+          <h4>Monedas — Último &amp; %día</h4>
+          <table class="fx-table" id="fxg-quotes-table">
+            <thead><tr><th>Par</th><th>Último</th><th>%Día</th><th>1D</th></tr></thead>
+            <tbody id="fxg-quotes-body">
+              <tr><td colspan="4" style="text-align:center;color:#475569;padding:20px">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="fx-pane fx-chart-wrap">
+          <div class="fx-chart-header">
+            <div class="fx-chart-title">
+              <span id="fxg-chart-label">—</span>
+              <span class="pair-last" id="fxg-chart-last"></span>
+              <span class="pair-pct" id="fxg-chart-pct"></span>
+            </div>
+            <div class="fx-tf-buttons" id="fxg-tf-buttons">
+              <button class="fx-tf-btn active" data-tf="1D">1D</button>
+              <button class="fx-tf-btn" data-tf="1W">1W</button>
+              <button class="fx-tf-btn" data-tf="1M">1M</button>
+              <button class="fx-tf-btn" data-tf="YTD">YTD</button>
+              <button class="fx-tf-btn" data-tf="HIST" title="Histórico propio (SQLite)">HIST</button>
+            </div>
+          </div>
+          <div id="fxg-chart-area"><div class="fx-chart-empty">Seleccioná una moneda</div></div>
+        </div>
+        <div class="fx-cross-wrap fx-pane">
+          <h4>Matriz cruzada (estilo WCR) — fila por columna · %día abajo</h4>
+          <div class="fx-cross-scroll">
+            <table class="fx-cross" id="fxg-cross-table">
+              <thead><tr><th class="row-header"></th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div style="font-size:9px;color:#64748b;margin-top:6px;line-height:1.4">
+            Cada celda: <strong style="color:#cbd5e1">precio</strong> = cuántas unidades de la fila se necesitan para comprar 1 de la columna. <strong style="color:#cbd5e1">%día</strong> = apreciación de la columna vs la fila.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script id="fxg-script">
+  (function () {
+    'use strict';
+    const state = { snapshot:null, selectedCode:'BRL', selectedTf:'1D', series:null, cross:null };
+    const REFRESH_MS = 30000;
+
+    function fmtPrice(v) {
+      if (v == null || isNaN(v)) return '—';
+      const abs = Math.abs(v);
+      let dec = 4;
+      if (abs >= 1000) dec = 2;
+      else if (abs >= 100) dec = 2;
+      else if (abs >= 10) dec = 3;
+      else if (abs >= 1) dec = 4;
+      else dec = 5;
+      return v.toLocaleString('es-AR', { minimumFractionDigits:dec, maximumFractionDigits:dec });
+    }
+    function fmtPct(v) {
+      if (v == null || isNaN(v)) return '—';
+      return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
+    }
+    function pctClass(v) {
+      if (v == null || isNaN(v)) return 'pct-zero';
+      if (v > 0.01) return 'pct-pos';
+      if (v < -0.01) return 'pct-neg';
+      return 'pct-zero';
+    }
+    function bgClass(v) {
+      if (v == null || isNaN(v)) return '';
+      if (v > 0.5) return 'bg-pos-strong';
+      if (v > 0.05) return 'bg-pos';
+      if (v < -0.5) return 'bg-neg-strong';
+      if (v < -0.05) return 'bg-neg';
+      return '';
+    }
+    async function fetchJSON(url) {
+      const r = await fetch(url, { credentials:'same-origin' });
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      return r.json();
+    }
+
+    function renderStatusLine() {
+      const el = document.getElementById('fxg-meta');
+      const snap = state.snapshot;
+      if (!snap) { el.textContent = '—'; return; }
+      const tdInfo = snap.twelvedata || {};
+      const creds = tdInfo.credits || {};
+      const ts = snap.ts ? new Date(snap.ts) : null;
+      const tsStr = ts ? ts.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) : '—';
+      const used = creds.used || 0; const cap = 790;
+      const credClass = (used/cap)*100 >= 90 ? 'fx-status-warn' : 'fx-status-on';
+      let tdHtml = '';
+      if (!tdInfo.configured) {
+        tdHtml = '<span class="fx-status-pill fx-status-off">TwelveData no configurada</span>';
+      } else if (!tdInfo.in_window) {
+        tdHtml = '<span class="fx-status-pill fx-status-off">Fuera de ventana (10-17 ART)</span>';
+      } else {
+        const ageStr = tdInfo.data_age_sec != null ? tdInfo.data_age_sec+'s' : '—';
+        tdHtml = '<span class="fx-status-pill fx-status-on">TwelveData live · last '+ageStr+'</span>';
+      }
+      el.innerHTML = '<span>Actualizado '+tsStr+'</span>'+tdHtml
+        +'<span class="fx-status-pill '+credClass+'">Créd '+used+'/'+cap+'</span>';
+    }
+
+    function renderQuotesTable() {
+      const tbody = document.getElementById('fxg-quotes-body');
+      if (!state.snapshot) return;
+      const groups = { ARS:[], LATAM:[], MAJORS:[] };
+      state.snapshot.items.forEach(it => { if (groups[it.group]) groups[it.group].push(it); });
+      const gl = { ARS:'Argentina', LATAM:'LATAM', MAJORS:'Majors / DXY' };
+      const sl = { 'twelvedata':'LIVE', 'dolarapi':'LIVE', 'yahoo_fallback':'DELAY', 'yahoo':'DELAY' };
+      const rows = [];
+      Object.keys(groups).forEach(g => {
+        if (!groups[g].length) return;
+        rows.push('<tr class="group-header"><td colspan="4">'+gl[g]+'</td></tr>');
+        groups[g].forEach(it => {
+          const sel = it.code === state.selectedCode ? ' active' : '';
+          const ds = it.data_source || it.source;
+          const badge = sl[ds] ? '<span class="src-badge src-'+ds+'">'+sl[ds]+'</span>' : '';
+          rows.push(
+            '<tr class="fx-row'+sel+'" data-code="'+it.code+'">'
+            +'<td>'+it.label+badge+'</td>'
+            +'<td>'+(it.error ? '<span class="fx-error">err</span>' : fmtPrice(it.last))+'</td>'
+            +'<td class="'+pctClass(it.pct_day)+'">'+(it.error?'—':fmtPct(it.pct_day))+'</td>'
+            +'<td><span class="spark" id="fxg-spark-'+it.code+'">·</span></td>'
+            +'</tr>'
+          );
+        });
+      });
+      tbody.innerHTML = rows.join('');
+      tbody.querySelectorAll('tr.fx-row').forEach(tr => {
+        tr.addEventListener('click', () => {
+          state.selectedCode = tr.dataset.code;
+          renderQuotesTable();
+          loadSeries();
+        });
+      });
+      state.snapshot.items.forEach(it => {
+        if (it.error) return;
+        fetchJSON('/api/fx/series?code='+encodeURIComponent(it.code)+'&tf=1D')
+          .then(s => renderSparkline(it.code, s.points || []))
+          .catch(() => {});
+      });
+      renderStatusLine();
+    }
+
+    function renderSparkline(code, points) {
+      const el = document.getElementById('fxg-spark-'+code);
+      if (!el || !points || !points.length) return;
+      const w=70, h=18;
+      const vs = points.map(p => p.v).filter(v => v != null);
+      if (!vs.length) return;
+      const mn = Math.min.apply(null,vs), mx = Math.max.apply(null,vs);
+      const rg = mx-mn || 1;
+      const dx = w / Math.max(1, points.length-1);
+      const d = points.map((p,i) =>
+        (i===0?'M':'L')+(i*dx).toFixed(2)+','+(h - ((p.v-mn)/rg)*h).toFixed(2)
+      ).join(' ');
+      const trend = vs[vs.length-1] >= vs[0] ? '#00e5a0' : '#ff6b4a';
+      el.innerHTML = '<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'">'
+        +'<path d="'+d+'" fill="none" stroke="'+trend+'" stroke-width="1.2"/></svg>';
+    }
+
+    function renderChart() {
+      const area = document.getElementById('fxg-chart-area');
+      const labelEl = document.getElementById('fxg-chart-label');
+      const lastEl = document.getElementById('fxg-chart-last');
+      const pctEl = document.getElementById('fxg-chart-pct');
+      const s = state.series;
+      if (!s || s.error) {
+        area.innerHTML = '<div class="fx-chart-empty">'+((s && s.error)||'Sin datos')+'</div>';
+        labelEl.textContent = (s && s.label) || '—';
+        lastEl.textContent = ''; pctEl.textContent = '';
+        return;
+      }
+      labelEl.textContent = s.label;
+      lastEl.textContent = fmtPrice(s.last);
+      pctEl.textContent = fmtPct(s.pct_day);
+      pctEl.className = 'pair-pct '+pctClass(s.pct_day);
+      const pts = s.points || [];
+      if (pts.length < 2) {
+        area.innerHTML = '<div class="fx-chart-empty">'+(s.note||'Sin histórico para este timeframe')+'</div>';
+        return;
+      }
+      const W=700, H=240, P={l:50,r:14,t:14,b:24};
+      const innerW=W-P.l-P.r, innerH=H-P.t-P.b;
+      const vs = pts.map(p => p.v);
+      const mn=Math.min.apply(null,vs), mx=Math.max.apply(null,vs);
+      const rg = (mx-mn) || (mx*0.001) || 1;
+      const padR = rg*0.08;
+      const yMin = mn-padR, yMax = mx+padR, yRange = yMax-yMin;
+      const ts = pts.map(p => p.t);
+      const tMin=ts[0], tMax=ts[ts.length-1], tRange = (tMax-tMin) || 1;
+      const xAt = t => P.l + ((t-tMin)/tRange)*innerW;
+      const yAt = v => P.t + (1 - (v-yMin)/yRange)*innerH;
+      const d = pts.map((p,i) => (i===0?'M':'L')+xAt(p.t).toFixed(2)+','+yAt(p.v).toFixed(2)).join(' ');
+      const dArea = d+' L'+xAt(tMax).toFixed(2)+','+(P.t+innerH).toFixed(2)+' L'+xAt(tMin).toFixed(2)+','+(P.t+innerH).toFixed(2)+' Z';
+      const trend = vs[vs.length-1] >= vs[0] ? '#00e5a0' : '#ff6b4a';
+      const fillId = 'fxggrad-'+s.code;
+      const yTicks = [];
+      for (let i=0; i<=4; i++) {
+        const v = yMin + (i/4)*yRange;
+        const y = yAt(v);
+        yTicks.push('<line x1="'+P.l+'" x2="'+(W-P.r)+'" y1="'+y.toFixed(2)+'" y2="'+y.toFixed(2)+'" stroke="#1a2233" stroke-width="1"/>'
+          +'<text x="'+(P.l-6)+'" y="'+(y+3).toFixed(2)+'" fill="#64748b" font-size="9" text-anchor="end">'+fmtPrice(v)+'</text>');
+      }
+      const xTicks = [];
+      const tfFmt = state.selectedTf === '1D'
+        ? (d => d.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' }))
+        : (d => d.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' }));
+      for (let i=0; i<=4; i++) {
+        const t = tMin + (i/4)*tRange;
+        const x = xAt(t);
+        xTicks.push('<text x="'+x.toFixed(2)+'" y="'+(H-8).toFixed(2)+'" fill="#64748b" font-size="9" text-anchor="middle">'+tfFmt(new Date(t))+'</text>');
+      }
+      let prevLine = '';
+      if (s.prev_close && s.prev_close >= yMin && s.prev_close <= yMax) {
+        const yp = yAt(s.prev_close);
+        prevLine = '<line x1="'+P.l+'" x2="'+(W-P.r)+'" y1="'+yp.toFixed(2)+'" y2="'+yp.toFixed(2)+'" stroke="#475569" stroke-width="1" stroke-dasharray="3,3"/>'
+          +'<text x="'+(W-P.r-4)+'" y="'+(yp-3).toFixed(2)+'" fill="#475569" font-size="9" text-anchor="end">prev '+fmtPrice(s.prev_close)+'</text>';
+      }
+      area.innerHTML = '<svg class="fx-chart-svg" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'
+        +'<defs><linearGradient id="'+fillId+'" x1="0" y1="0" x2="0" y2="1">'
+        +'<stop offset="0%" stop-color="'+trend+'" stop-opacity="0.25"/>'
+        +'<stop offset="100%" stop-color="'+trend+'" stop-opacity="0"/></linearGradient></defs>'
+        +yTicks.join('')+prevLine
+        +'<path d="'+dArea+'" fill="url(#'+fillId+')"/>'
+        +'<path d="'+d+'" fill="none" stroke="'+trend+'" stroke-width="1.6"/>'
+        +xTicks.join('')+'</svg>';
+    }
+
+    function renderCrossMatrix() {
+      const table = document.getElementById('fxg-cross-table');
+      const cross = state.cross;
+      if (!cross) return;
+      const codes = cross.codes, labels = cross.labels;
+      let thead = '<tr><th class="row-header">vs</th>';
+      codes.forEach(c => { thead += '<th>'+(labels[c]||c)+'</th>'; });
+      thead += '</tr>';
+      table.querySelector('thead').innerHTML = thead;
+      const rows = codes.map((ci,i) => {
+        let r = '<tr><td class="row-header">'+(labels[ci]||ci)+'</td>';
+        codes.forEach((cj,j) => {
+          if (i===j) { r += '<td class="diag">—</td>'; return; }
+          const v = cross.matrix[i][j]; const pct = cross.pct_matrix[i][j];
+          const vStr = v == null ? '—' : fmtPrice(v);
+          const pStr = pct == null ? '' : fmtPct(pct);
+          r += '<td class="'+bgClass(pct)+'"><span class="cross-val">'+vStr+'</span>'
+             +'<span class="cross-pct '+pctClass(pct)+'">'+pStr+'</span></td>';
+        });
+        r += '</tr>';
+        return r;
+      });
+      table.querySelector('tbody').innerHTML = rows.join('');
+    }
+
+    async function loadSnapshot() {
+      try { state.snapshot = await fetchJSON('/api/fx/snapshot'); renderQuotesTable(); }
+      catch (e) { console.warn('[fxg] snapshot', e); }
+    }
+    async function loadSeries() {
+      try {
+        const tf = state.selectedTf;
+        let url;
+        if (tf === 'HIST') {
+          url = '/api/fx/history?code='+encodeURIComponent(state.selectedCode)+'&days=90&mode=auto';
+          const h = await fetchJSON(url);
+          // Adaptar al formato de series
+          let pts = [];
+          if (h.mode === 'ticks') pts = h.points || [];
+          else pts = (h.rows || []).map(r => ({ t: new Date(r.date+'T00:00:00Z').getTime(), v: r.close }));
+          state.series = { code: h.code, label: h.label+' (histórico 90d)', tf:'HIST', points:pts,
+            last: pts.length ? pts[pts.length-1].v : null, prev_close:null, pct_day:null,
+            data_source:'sqlite' };
+        } else {
+          url = '/api/fx/series?code='+encodeURIComponent(state.selectedCode)+'&tf='+tf;
+          state.series = await fetchJSON(url);
+        }
+        renderChart();
+      } catch (e) {
+        console.warn('[fxg] series', e);
+        state.series = { error: String(e) };
+        renderChart();
+      }
+    }
+    async function loadCross() {
+      try { state.cross = await fetchJSON('/api/fx/cross'); renderCrossMatrix(); }
+      catch (e) { console.warn('[fxg] cross', e); }
+    }
+
+    document.getElementById('fxg-tf-buttons').addEventListener('click', e => {
+      if (!e.target.matches('.fx-tf-btn')) return;
+      document.querySelectorAll('#fxg-tf-buttons .fx-tf-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      state.selectedTf = e.target.dataset.tf;
+      loadSeries();
+    });
+
+    let _fxgStarted = false;
+    function startFxGlobal() {
+      if (_fxgStarted) return;
+      _fxgStarted = true;
+      Promise.all([loadSnapshot(), loadSeries(), loadCross()]);
+      setInterval(() => { loadSnapshot(); loadCross(); loadSeries(); }, REFRESH_MS);
+    }
+
+    // Lazy init: arrancar solo cuando la tab FX se muestre por primera vez
+    window.addEventListener('DOMContentLoaded', () => {
+      const fxTab = document.getElementById('tab-fx');
+      if (!fxTab) return;
+      // Si la tab ya está visible al cargar, arrancar
+      if (fxTab.style.display !== 'none') startFxGlobal();
+      // Observer: dispara cuando se muestre
+      const obs = new MutationObserver(() => {
+        if (fxTab.style.display !== 'none') startFxGlobal();
+      });
+      obs.observe(fxTab, { attributes:true, attributeFilter:['style'] });
+    });
+  })();
+  </script>
 </div><!-- end tab-fx -->
 
 <!-- ════════════════════════════════════════════════════════════════════
