@@ -86,6 +86,21 @@ CREATE TABLE IF NOT EXISTS kv (
     key   TEXT PRIMARY KEY,
     value TEXT
 );
+
+CREATE TABLE IF NOT EXISTS bond_ticks (
+    ts          INTEGER NOT NULL,
+    ticker      TEXT NOT NULL,
+    bond_type   TEXT,
+    price       REAL,
+    bid         REAL,
+    ask         REAL,
+    tir         REAL,
+    tna         REAL,
+    duration    REAL,
+    PRIMARY KEY (ticker, ts)
+);
+CREATE INDEX IF NOT EXISTS idx_bond_ticks_ticker_ts ON bond_ticks(ticker, ts);
+CREATE INDEX IF NOT EXISTS idx_bond_ticks_ts ON bond_ticks(ts);
 """
 
 
@@ -269,6 +284,63 @@ def fx_prune_ticks(keep_days=90):
     cutoff = int((time.time() - keep_days * 86400) * 1000)
     with _DB_LOCK, _conn() as c:
         c.execute("DELETE FROM fx_ticks WHERE ts < ?", (cutoff,))
+
+
+# ══════════════════════════════════════════════════════════════════
+# BOND TICKS — snapshot 1-min de precio/TIR por bono
+# ══════════════════════════════════════════════════════════════════
+def bond_tick_insert_many(rows, ts_ms=None):
+    """Inserta batch de ticks. rows = lista de dicts con:
+       ticker, bond_type, price, bid, ask, tir, tna, duration."""
+    if not rows:
+        return 0
+    ts = int(ts_ms if ts_ms is not None else time.time() * 1000)
+    n = 0
+    with _DB_LOCK, _conn() as c:
+        for r in rows:
+            tk = r.get("ticker")
+            if not tk:
+                continue
+            try:
+                c.execute(
+                    "INSERT INTO bond_ticks(ts, ticker, bond_type, price, bid, ask, tir, tna, duration) "
+                    "VALUES(?,?,?,?,?,?,?,?,?)",
+                    (
+                        ts, tk, r.get("bond_type"),
+                        _f(r.get("price")), _f(r.get("bid")), _f(r.get("ask")),
+                        _f(r.get("tir")), _f(r.get("tna")), _f(r.get("duration")),
+                    ),
+                )
+                n += 1
+            except sqlite3.IntegrityError:
+                pass  # duplicado (mismo ticker+ts)
+    return n
+
+
+def _f(v):
+    try:
+        return float(v) if v is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def bond_series(ticker, since_ts_ms=None, limit=10000):
+    """Devuelve serie de ticks para un bono ordenada por ts asc."""
+    q = "SELECT ts, price, bid, ask, tir, tna, duration FROM bond_ticks WHERE ticker=?"
+    args = [ticker]
+    if since_ts_ms is not None:
+        q += " AND ts >= ?"
+        args.append(int(since_ts_ms))
+    q += " ORDER BY ts ASC LIMIT ?"
+    args.append(int(limit))
+    with _DB_LOCK, _conn() as c:
+        return [dict(r) for r in c.execute(q, args).fetchall()]
+
+
+def bond_prune_ticks(keep_days=60):
+    cutoff = int((time.time() - keep_days * 86400) * 1000)
+    with _DB_LOCK, _conn() as c:
+        c.execute("DELETE FROM bond_ticks WHERE ts < ?", (cutoff,))
 
 
 # ══════════════════════════════════════════════════════════════════

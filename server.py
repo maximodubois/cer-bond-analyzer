@@ -552,6 +552,21 @@ class Handler(SimpleHTTPRequestHandler):
                 self._send_json({"ok": ok, "msg": msg, "stats": storage.stats()})
             except Exception as e:
                 self._send_json({"error": str(e)}, 500)
+        elif self.path.startswith("/api/bond/series"):
+            try:
+                qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                ticker = (qs.get("ticker") or [""])[0].strip()
+                days = int((qs.get("days") or ["1"])[0])
+                if not ticker:
+                    self._send_json({"error": "param 'ticker' requerido"}, 400); return
+                since = int((time.time() - days * 86400) * 1000)
+                rows = storage.bond_series(ticker, since_ts_ms=since, limit=20000)
+                self._send_json({
+                    "ticker": ticker, "days": days, "count": len(rows),
+                    "points": rows,
+                })
+            except Exception as e:
+                self._send_json({"error": str(e)}, 500)
         elif self.path == "/api/health":
             self._send_json({
                 "status": "ok",
@@ -577,6 +592,9 @@ class Handler(SimpleHTTPRequestHandler):
             return
         if self.path == "/api/history/snapshot":
             self._save_snapshot()
+            return
+        if self.path == "/api/bond/ticks":
+            self._save_bond_ticks()
             return
         if self.path == "/login":
             length = int(self.headers.get("Content-Length", 0))
@@ -634,6 +652,25 @@ class Handler(SimpleHTTPRequestHandler):
                 "entries": len(history),
                 "commit": {"ok": commit_ok, "msg": commit_msg},
             })
+        except json.JSONDecodeError as e:
+            self._send_json({"error": f"json invalido: {e}"}, 400)
+        except Exception as e:
+            self._send_json({"error": str(e)}, 500)
+
+    def _save_bond_ticks(self):
+        """POST /api/bond/ticks
+        Body: {ts:int (ms, opt), rows:[{ticker, bond_type, price, bid, ask, tir, tna, duration}, ...]}
+        El cliente computa TIR/duration (toda la lógica financiera vive en JS)
+        y nos lo manda cada ~60s. Persistimos en SQLite.
+        """
+        try:
+            length = int(self.headers.get("Content-Length", 0) or 0)
+            raw = self.rfile.read(length).decode("utf-8") if length else "{}"
+            body = json.loads(raw)
+            rows = body.get("rows") or []
+            ts_ms = body.get("ts")
+            n = storage.bond_tick_insert_many(rows, ts_ms=ts_ms)
+            self._send_json({"ok": True, "inserted": n})
         except json.JSONDecodeError as e:
             self._send_json({"error": f"json invalido: {e}"}, 400)
         except Exception as e:

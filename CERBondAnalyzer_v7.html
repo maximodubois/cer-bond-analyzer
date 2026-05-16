@@ -5426,8 +5426,33 @@ function openBondCalculator(bondType, bondId){
             <canvas id="bc-chart-canvas" style="width:100%;height:340px;display:block"></canvas>
           </div>
           <div id="bc-chart-legend" style="font-size:10px;color:var(--td);margin-top:8px;line-height:1.5"></div>
-          <div style="font-size:10px;color:var(--td);margin-top:6px">
-            <em>Nota:</em> el gráfico intradiario / semanal de precio y TIR se va a agregar en la próxima iteración (necesita historial 1-min que arranca a guardarse desde el próximo deploy).
+
+          <!-- ─── Histórico de precio y TIR (intradía / semanal / mensual) ─── -->
+          <div style="margin-top:16px;border-top:1px solid var(--cb);padding-top:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap">
+              <div class="st" style="margin:0">Histórico de Precio &amp; TIR — ${b.ticker}</div>
+              <div class="bc-univ-buttons" id="bc-hist-tf-buttons">
+                <button class="bc-univ-btn active" data-tf="1D" onclick="_bcSetHistTf('1D')">1D</button>
+                <button class="bc-univ-btn" data-tf="1W" onclick="_bcSetHistTf('1W')">1W</button>
+                <button class="bc-univ-btn" data-tf="1M" onclick="_bcSetHistTf('1M')">1M</button>
+                <button class="bc-univ-btn" data-tf="ALL" onclick="_bcSetHistTf('ALL')">ALL</button>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div>
+                <div style="font-size:10px;color:var(--td);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">Precio</div>
+                <div style="background:var(--bg);border:1px solid var(--cb);border-radius:6px;padding:6px">
+                  <canvas id="bc-hist-price" style="width:100%;height:160px;display:block"></canvas>
+                </div>
+              </div>
+              <div>
+                <div style="font-size:10px;color:var(--td);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">${bondType==='cer'?'TIR Real':'TIR / TNA'}</div>
+                <div style="background:var(--bg);border:1px solid var(--cb);border-radius:6px;padding:6px">
+                  <canvas id="bc-hist-tir" style="width:100%;height:160px;display:block"></canvas>
+                </div>
+              </div>
+            </div>
+            <div id="bc-hist-status" style="font-size:10px;color:var(--td);margin-top:6px"></div>
           </div>
         </div>
       </div>
@@ -5461,10 +5486,13 @@ function openBondCalculator(bondType, bondId){
       if (pts.length) series.push({pts, color, label});
     }
     if (bondType === 'cer') {
-      _pushUniv(BONDS, '#22d3ee', '_tr', '_dur', 'CER (TIR Real)');
       if (_bcChartUniv === 'combo') {
-        // Para TF usamos TIR TEA. Eje Y heterogéneo (real vs nominal): aviso al user.
+        // Combo: CER valuado a TNA TF (nominal pesos) para que ambos cuadren en el mismo eje
+        _pushUniv(BONDS, '#22d3ee', '_tnaTF', '_dur', 'CER @ TNA TF (nom)');
         _pushUniv(FIXED, '#fbbf24', '_tea', '_dur', 'Tasa Fija (TIR TEA)');
+      } else {
+        // Solo CER: rendimiento real (TIR Real TEA)
+        _pushUniv(BONDS, '#22d3ee', '_tr', '_dur', 'CER (TIR Real)');
       }
     } else if (bondType === 'fixed') {
       _pushUniv(FIXED, '#fbbf24', '_tea', '_dur', 'Tasa Fija (TIR TEA)');
@@ -5473,10 +5501,116 @@ function openBondCalculator(bondType, bondId){
     }
     _bcDrawCurveCanvas(cv, series, b);
     if (legend) {
+      // Max/Min duration display
+      const allPts = series.flatMap(s => s.pts);
+      const durs = allPts.map(p => p.x).filter(v => v > 0);
+      const maxDur = durs.length ? Math.max(...durs) : null;
+      const minDur = durs.length ? Math.min(...durs) : null;
       const parts = series.map(s => `<span style="color:${s.color}">●</span> ${s.label} (${s.pts.length})`).join('  ·  ');
       const sel = `<span style="color:#fff;background:${b.color};padding:1px 6px;border-radius:3px;margin-left:8px">${b.ticker}</span>`;
-      legend.innerHTML = parts + ' ' + sel + (bondType==='cer' && _bcChartUniv==='combo' ? '  ·  <em>OJO: CER y TF usan ejes distintos (real vs nominal). Útil para ver formas relativas.</em>' : '');
+      const durLine = maxDur != null
+        ? `<div style="margin-top:4px"><strong style="color:#cbd5e1">Duration:</strong> mín ${minDur.toFixed(2)}y · máx <strong style="color:var(--am)">${maxDur.toFixed(2)}y</strong> · spread ${(maxDur-minDur).toFixed(2)}y</div>`
+        : '';
+      legend.innerHTML = parts + ' ' + sel + durLine;
     }
+    // Dispara render del histórico también
+    _bcRenderHistCharts();
+  }
+
+  // Estado del timeframe del histórico (precio + TIR)
+  let _bcHistTf = '1D';
+  window._bcSetHistTf = function(tf){
+    _bcHistTf = tf;
+    document.querySelectorAll('#bc-hist-tf-buttons .bc-univ-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tf === tf);
+    });
+    _bcRenderHistCharts();
+  };
+
+  async function _bcRenderHistCharts(){
+    const cvPx = document.getElementById('bc-hist-price');
+    const cvTir = document.getElementById('bc-hist-tir');
+    const status = document.getElementById('bc-hist-status');
+    if (!cvPx || !cvTir) return;
+    if (status) status.textContent = 'Cargando…';
+    const days = _bcHistTf === '1D' ? 1 : _bcHistTf === '1W' ? 7 : _bcHistTf === '1M' ? 30 : 365;
+    try {
+      const r = await fetch('/api/bond/series?ticker=' + encodeURIComponent(b.ticker) + '&days=' + days, {credentials:'same-origin'});
+      const j = await r.json();
+      const pts = (j && j.points) || [];
+      const pricePts = pts.filter(p => p.price != null).map(p => ({t: p.ts, v: p.price}));
+      const tirPts = pts.filter(p => p.tir != null).map(p => ({t: p.ts, v: p.tir}));
+      _bcDrawSparkline(cvPx, pricePts, b.color || '#22d3ee', 'Precio');
+      _bcDrawSparkline(cvTir, tirPts, '#fbbf24', bondType==='cer' ? 'TIR Real %' : 'TIR %');
+      if (status) {
+        if (pts.length === 0) {
+          status.textContent = 'Sin datos históricos para este timeframe (acumulando — snapshots cada ~1 min, queda histórico a partir del próximo deploy).';
+        } else {
+          const ts0 = new Date(pts[0].ts), tsN = new Date(pts[pts.length-1].ts);
+          status.textContent = `${pts.length} puntos · ${ts0.toLocaleString('es-AR')} → ${tsN.toLocaleString('es-AR')}`;
+        }
+      }
+    } catch (e) {
+      _bcDrawSparkline(cvPx, [], b.color || '#22d3ee', 'Precio');
+      _bcDrawSparkline(cvTir, [], '#fbbf24', 'TIR');
+      if (status) status.textContent = 'Error cargando histórico: ' + e;
+    }
+  }
+
+  function _bcDrawSparkline(cv, pts, color, label){
+    const dpr = window.devicePixelRatio || 1;
+    const W = cv.clientWidth || 300, H = cv.clientHeight || 160;
+    cv.width = W*dpr; cv.height = H*dpr;
+    const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0);
+    c.clearRect(0,0,W,H);
+    if (!pts || pts.length < 2) {
+      c.fillStyle = '#475569'; c.font = "10px 'IBM Plex Mono',monospace"; c.textAlign='center';
+      c.fillText(label + ' — sin datos suficientes', W/2, H/2);
+      return;
+    }
+    const pad = {t:10, r:8, b:18, l:38};
+    const vs = pts.map(p => p.v), ts = pts.map(p => p.t);
+    const vMin = Math.min(...vs), vMax = Math.max(...vs);
+    const vRange = (vMax - vMin) || (Math.abs(vMax)*0.001) || 1;
+    const yPad = vRange*0.1;
+    const yMin = vMin - yPad, yMax = vMax + yPad, yR = yMax - yMin;
+    const tMin = ts[0], tMax = ts[ts.length-1], tR = (tMax-tMin) || 1;
+    const xP = t => pad.l + (t-tMin)/tR*(W-pad.l-pad.r);
+    const yP = v => pad.t + (1 - (v-yMin)/yR)*(H-pad.t-pad.b);
+    // grid horizontal
+    c.strokeStyle='#1a2233'; c.lineWidth=0.5;
+    for (let i=0; i<=3; i++) {
+      const v = yMin + (yR)*i/3, py = yP(v);
+      c.beginPath(); c.moveTo(pad.l, py); c.lineTo(W-pad.r, py); c.stroke();
+      c.fillStyle='#64748b'; c.font="9px 'IBM Plex Mono',monospace"; c.textAlign='right';
+      c.fillText(v.toFixed(2), pad.l-4, py+3);
+    }
+    // x ticks
+    c.fillStyle='#64748b'; c.font="8px 'IBM Plex Mono',monospace"; c.textAlign='center';
+    const xFmt = _bcHistTf === '1D'
+      ? d => d.toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})
+      : d => d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
+    for (let i=0; i<=3; i++) {
+      const t = tMin + tR*i/3;
+      c.fillText(xFmt(new Date(t)), xP(t), H-6);
+    }
+    // line + area
+    const d = pts.map((p,i) => (i===0?'M':'L') + xP(p.t).toFixed(2) + ',' + yP(p.v).toFixed(2)).join(' ');
+    const trend = vs[vs.length-1] >= vs[0] ? '#00e5a0' : '#ff6b4a';
+    c.save();
+    c.strokeStyle = trend; c.lineWidth = 1.5;
+    const p2 = new Path2D(d);
+    c.stroke(p2);
+    // Fill area
+    c.globalAlpha = 0.15;
+    c.fillStyle = trend;
+    const dArea = d + ` L${xP(tMax).toFixed(2)},${yP(yMin).toFixed(2)} L${xP(tMin).toFixed(2)},${yP(yMin).toFixed(2)} Z`;
+    c.fill(new Path2D(dArea));
+    c.restore();
+    // Last value label
+    const last = pts[pts.length-1];
+    c.fillStyle = trend; c.font="bold 10px 'IBM Plex Mono',monospace"; c.textAlign='right';
+    c.fillText(last.v.toFixed(2), W-pad.r, pad.t+10);
   }
 
   function _bcDrawCurveCanvas(cv, series, currentBond){
@@ -5513,7 +5647,7 @@ function openBondCalculator(bondType, bondId){
       c.fillStyle='#64748b'; c.textAlign='center'; c.font="9px 'IBM Plex Mono',monospace";
       c.fillText(x.toFixed(1)+'y', px, H-14);
     }
-    // Para cada serie: ajusta NSS/LOG y dibuja líneas tenues
+    // Para cada serie: ajusta NSS/LOG y dibuja líneas + labels al borde
     series.forEach(s => {
       const fitPts = s.pts.map(p => ({x:p.x, y:p.y}));
       if (fitPts.length >= 2) {
@@ -5523,7 +5657,7 @@ function openBondCalculator(bondType, bondId){
         const steps = 80;
         const dx = (xMax - 0.1) / steps;
         if (logFit) {
-          c.save(); c.setLineDash([4,3]); c.strokeStyle=s.color+'88'; c.lineWidth=1.2;
+          c.save(); c.setLineDash([5,3]); c.strokeStyle=s.color+'aa'; c.lineWidth=1.5;
           c.beginPath(); let first=true;
           for (let i=0; i<=steps; i++) {
             const x = 0.1 + i*dx;
@@ -5533,9 +5667,15 @@ function openBondCalculator(bondType, bondId){
             first ? (c.moveTo(px,py), first=false) : c.lineTo(px,py);
           }
           c.stroke(); c.restore();
+          // Label LOG al borde derecho
+          const yEdge = logFit.predict(xMax);
+          if (isFinite(yEdge) && yEdge >= yMin && yEdge <= yMax) {
+            c.fillStyle=s.color; c.font="bold 9px 'IBM Plex Mono',monospace"; c.textAlign='left';
+            c.fillText('LOG', W-pad.r-22, yP(yEdge)+3);
+          }
         }
         if (nssFit) {
-          c.save(); c.strokeStyle=s.color+'cc'; c.lineWidth=1.6;
+          c.save(); c.strokeStyle=s.color; c.lineWidth=2;
           c.beginPath(); let first=true;
           for (let i=0; i<=steps; i++) {
             const x = Math.max(0.1, 0.1 + i*dx);
@@ -5545,6 +5685,12 @@ function openBondCalculator(bondType, bondId){
             first ? (c.moveTo(px,py), first=false) : c.lineTo(px,py);
           }
           c.stroke(); c.restore();
+          // Label NSS al borde derecho
+          const yEdge = nssFit.predict(xMax);
+          if (isFinite(yEdge) && yEdge >= yMin && yEdge <= yMax) {
+            c.fillStyle=s.color; c.font="bold 9px 'IBM Plex Mono',monospace"; c.textAlign='left';
+            c.fillText('NSS', W-pad.r-22, yP(yEdge)-8);
+          }
         }
       }
       // Puntos
@@ -7448,10 +7594,46 @@ function startPricePolling(){
   fetchPricesFromServer();
   const interval=(parseFloat(document.getElementById("gSheetInterval").value)||10)*1000;
   _priceTimer=setInterval(fetchPricesFromServer,Math.max(interval,3000));
+  // Bond ticks 1-min scheduler (CER/FIXED/TAMAR/USD): captura price/TIR/dur snapshot
+  if(!window._bondTickTimer){
+    window._bondTickTimer=setInterval(()=>{ try{ pushBondTicks(); }catch(e){} }, 60000);
+    setTimeout(()=>{ try{ pushBondTicks(); }catch(e){} }, 8000); // primer push tras settle
+  }
+}
+
+// Empuja snapshot de precio/TIR/dur de todos los bonos al servidor (SQLite).
+// Los metrics (TIR, dur) provienen de los últimos cálculos cacheados en los
+// objetos b._tn/b._tr/b._dur (recalculados al renderizar las tablas).
+function pushBondTicks(){
+  const rows=[];
+  const addUniv=(arr, bondType, yieldKey)=>{
+    if(!Array.isArray(arr)) return;
+    arr.forEach(b=>{
+      const lp=_livePrices[b.ticker]||{};
+      const px=lp.last||lp.mid||lp.bid||lp.ask||null;
+      if(px==null && b[yieldKey]==null) return; // nada útil
+      rows.push({
+        ticker:b.ticker, bond_type:bondType,
+        price:px, bid:lp.bid||null, ask:lp.ask||null,
+        tir:b[yieldKey]??null, tna:b._tnaTF??b._tna??null, duration:b._dur??null,
+      });
+    });
+  };
+  addUniv(typeof BONDS!=='undefined'?BONDS:null, 'cer', '_tr');
+  addUniv(typeof FIXED!=='undefined'?FIXED:null, 'fixed', '_tea');
+  addUniv(typeof TAMAR_BONDS!=='undefined'?TAMAR_BONDS:null, 'tamar', '_tn');
+  if(typeof USD_BONDS!=='undefined') addUniv(USD_BONDS, 'usd', '_tea');
+  if(!rows.length) return;
+  fetch('/api/bond/ticks',{
+    method:'POST', credentials:'same-origin',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ts:Date.now(), rows})
+  }).catch(()=>{});
 }
 
 function stopPricePolling(){
   if(_priceTimer){clearInterval(_priceTimer);_priceTimer=null}
+  if(window._bondTickTimer){clearInterval(window._bondTickTimer);window._bondTickTimer=null}
   _priceConnected=false;
   document.getElementById("connStatus").innerHTML='<span class="live-badge off"></span>Desconectado';
   document.getElementById("btnConnect").style.display="";
