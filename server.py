@@ -27,6 +27,9 @@ import urllib.parse
 from http.server import HTTPServer, ThreadingHTTPServer, SimpleHTTPRequestHandler
 from http.cookies import SimpleCookie
 
+import storage
+import fx_module
+
 # ══════════════════════════════════════════════════════════════════
 # CONFIG
 # ══════════════════════════════════════════════════════════════════
@@ -410,41 +413,18 @@ button:hover{opacity:0.85}
 
 
 # ══════════════════════════════════════════════════════════════════
-# HISTORY DB — snapshots diarios + GitHub commit
+# HISTORY DB — wrappers que ahora apuntan a SQLite (storage.py)
 # ══════════════════════════════════════════════════════════════════
 def history_read():
-    """Lee data/history.json. Si no existe o está corrupto, devuelve []."""
-    try:
-        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return data if isinstance(data, list) else []
-    except (FileNotFoundError, json.JSONDecodeError):
-        return []
-
-def history_write(history):
-    """Escribe atómicamente a data/history.json."""
-    os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
-    tmp = HISTORY_FILE + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(history, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, HISTORY_FILE)
+    """Compat: lista de snapshots desde SQLite."""
+    return storage.bond_snapshots_all(limit=365)
 
 def history_upsert(snapshot):
-    """Inserta o reemplaza el snapshot del día. Una entrada por fecha."""
-    with _HISTORY_LOCK:
-        history = history_read()
-        date = snapshot.get("date")
-        if not date:
-            return None, "snapshot.date requerido"
-        # Reemplaza el del día si existe, sino agrega
-        history = [s for s in history if s.get("date") != date]
-        history.append(snapshot)
-        # Ordena por fecha ascendente y limita a 365 días
-        history.sort(key=lambda s: s.get("date") or "")
-        if len(history) > 365:
-            history = history[-365:]
-        history_write(history)
-        return history, None
+    """Upsert vía SQLite. Devuelve (lista_completa, err)."""
+    total, err = storage.bond_snapshot_upsert(snapshot)
+    if err:
+        return None, err
+    return storage.bond_snapshots_all(limit=365), None
 
 def github_commit_history(history, commit_message=None):
     """Comitea data/history.json al repo via API. Requiere GITHUB_TOKEN."""
@@ -530,6 +510,48 @@ class Handler(SimpleHTTPRequestHandler):
             self._proxy_pib()
         elif self.path == "/api/history":
             self._send_json({"history": history_read()})
+        elif self.path == "/api/fx/snapshot":
+            try:
+                self._send_json(fx_module.get_snapshot())
+            except Exception as e:
+                self._send_json({"error": str(e)}, 500)
+        elif self.path.startswith("/api/fx/series"):
+            try:
+                qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                code = (qs.get("code") or [""])[0].strip()
+                tf = (qs.get("tf") or ["1D"])[0].strip()
+                if not code:
+                    self._send_json({"error": "param 'code' requerido"}, 400); return
+                self._send_json(fx_module.get_series(code, tf))
+            except Exception as e:
+                self._send_json({"error": str(e)}, 500)
+        elif self.path == "/api/fx/cross":
+            try:
+                self._send_json(fx_module.get_cross_matrix())
+            except Exception as e:
+                self._send_json({"error": str(e)}, 500)
+        elif self.path == "/api/fx/status":
+            try:
+                self._send_json(fx_module.get_status())
+            except Exception as e:
+                self._send_json({"error": str(e)}, 500)
+        elif self.path.startswith("/api/fx/history"):
+            try:
+                qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                code = (qs.get("code") or [""])[0].strip()
+                days = int((qs.get("days") or ["30"])[0])
+                mode = (qs.get("mode") or ["auto"])[0].strip()
+                if not code:
+                    self._send_json({"error": "param 'code' requerido"}, 400); return
+                self._send_json(fx_module.get_history(code, days=days, mode=mode))
+            except Exception as e:
+                self._send_json({"error": str(e)}, 500)
+        elif self.path == "/api/storage/commit":
+            try:
+                ok, msg = storage.commit_db_to_github(min_interval_sec=60)
+                self._send_json({"ok": ok, "msg": msg, "stats": storage.stats()})
+            except Exception as e:
+                self._send_json({"error": str(e)}, 500)
         elif self.path == "/api/health":
             self._send_json({
                 "status": "ok",
@@ -539,6 +561,8 @@ class Handler(SimpleHTTPRequestHandler):
                 "githubCommit": bool(GITHUB_TOKEN),
                 "githubRepo": GITHUB_REPO if GITHUB_TOKEN else None,
                 "historyEntries": len(history_read()),
+                "fx": fx_module.get_status(),
+                "storage": storage.stats(),
             })
         elif self.path == "/login":
             self._send_html(LOGIN_HTML.replace("__ERR__", ""))
@@ -600,9 +624,10 @@ class Handler(SimpleHTTPRequestHandler):
                 return
             commit_ok, commit_msg = (False, "skipped (no token)")
             if GITHUB_TOKEN:
-                commit_ok, commit_msg = github_commit_history(
-                    history,
-                    commit_message=f"data: snapshot {snap.get('date')}"
+                # Commit del .db (no del JSON viejo): captura bonds + fx_ticks juntos
+                commit_ok, commit_msg = storage.commit_db_to_github(
+                    message=f"data: snapshot bonds {snap.get('date')}",
+                    min_interval_sec=60,
                 )
             self._send_json({
                 "ok": True,
@@ -665,6 +690,29 @@ class Handler(SimpleHTTPRequestHandler):
             super().log_message(fmt, *args)
 
 
+def _start_fx_scheduler():
+    """Thread daemon: cada hora dispara hourly_tick() (snapshot FX + commit DB)."""
+    def loop():
+        # Pequeña espera al arranque para que init_sheets + restore terminen
+        time.sleep(30)
+        while True:
+            try:
+                result = fx_module.hourly_tick()
+                print(f"[fx-scheduler] {result}")
+            except Exception as e:
+                print(f"[fx-scheduler] error: {e}")
+            # Prune ticks viejos una vez por día (a la hora 03 UTC aprox)
+            try:
+                if _dt.datetime.utcnow().hour == 3:
+                    storage.fx_prune_ticks(keep_days=90)
+            except Exception:
+                pass
+            time.sleep(3600)
+    t = threading.Thread(target=loop, name="fx-scheduler", daemon=True)
+    t.start()
+    return t
+
+
 def main():
     print("\n" + "=" * 60)
     print("  CER Bond Analyzer v7 — Production Server")
@@ -674,6 +722,13 @@ def main():
         print(f"✓ Auth enabled (PIN set via AUTH_PIN env var)")
     else:
         print("⚠ No AUTH_PIN set — running without authentication")
+
+    # Init SQLite (restore from GitHub if missing, migrate history.json one-shot)
+    try:
+        storage.init_db()
+        print(f"✓ Storage: {storage.stats()}")
+    except Exception as e:
+        print(f"⚠ Storage init failed: {e}")
 
     sheets_ok = init_sheets()
     if not sheets_ok:
@@ -697,6 +752,11 @@ def main():
     # y las concurrentes recibían body vacío → "Unexpected end of JSON input".
     server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     print(f"\n✓ Server running on port {PORT}")
+
+    # FX scheduler: snapshot horario + commit DB a GitHub
+    if fx_module.TWELVEDATA_API_KEY or True:
+        _start_fx_scheduler()
+        print("✓ FX scheduler iniciado (snapshot + commit cada 1h)")
 
     is_railway = os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("PORT")
     if not is_railway:
