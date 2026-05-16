@@ -11519,6 +11519,19 @@ function renderFX(){
 
   // ── Yesterday's close points (gray overlay) ──────────────────
   const spotClose=(_livePrices["DLR/SPOT"]||{}).close||0;
+
+  // Warning si el close del spot está raro (vacío o desviación > 8% vs spot actual)
+  if (spot > 0) {
+    if (!spotClose) {
+      console.warn('[fx-curves] DLR/SPOT.close = 0 → la curva de ayer no se renderiza');
+    } else {
+      const dev = Math.abs(spotClose/spot - 1) * 100;
+      if (dev > 8) {
+        console.warn('[fx-curves] DLR/SPOT.close ('+spotClose.toFixed(2)+') difiere '+dev.toFixed(1)+'% del spot actual ('+spot.toFixed(2)+'). Verificá la columna "close" de DLR/SPOT en la Sheet.');
+      }
+    }
+  }
+
   const dlPointsPrev=[];
   if(spotClose>0){
     DL_BONDS.forEach(b=>{
@@ -11529,7 +11542,10 @@ function renderFX(){
       const days=DB(settle,matDate);
       if(days<=0) return;
       const tnaPrev=(100*spotClose/pxClose-1)*365/days*100;
-      if(isFinite(tnaPrev)) dlPointsPrev.push({x:days,y:tnaPrev,label:b.ticker,color:'#475569'});
+      if(isFinite(tnaPrev)) dlPointsPrev.push({
+        x:days, y:tnaPrev, label:b.ticker, color:'#475569',
+        _diag: {pxClose, spotClose, days, ticker:b.ticker}
+      });
     });
   }
   const futPointsPrev=[];
@@ -11542,7 +11558,10 @@ function renderFX(){
       const days=DB(today,expDate);
       if(days<=0) return;
       const tnaPrev=(pxClose/spotClose-1)*365/days*100;
-      if(isFinite(tnaPrev)) futPointsPrev.push({x:days,y:tnaPrev,label:f.ticker.replace("DLR/",""),color:'#475569'});
+      if(isFinite(tnaPrev)) futPointsPrev.push({
+        x:days, y:tnaPrev, label:f.ticker.replace("DLR/",""), color:'#475569',
+        _diag: {pxClose, spotClose, days, ticker:f.ticker}
+      });
     });
   }
 
@@ -12108,6 +12127,11 @@ function drawFxCurveChart(canvasId,points,maxX,prevPoints=[],seriesColor='#94a3b
       c.beginPath();c.arc(px,py,4,0,Math.PI*2);
       c.fillStyle="rgba(100,116,139,0.35)";c.fill();
       c.strokeStyle="rgba(100,116,139,0.6)";c.lineWidth=1;c.stroke();
+      // Registrar hit-point prev con diagnóstico
+      _fxChartHits[canvasId].push({
+        sx:px, sy:py, r:9, label:p.label, type:_curveType, isPrev:true,
+        diag: p._diag || null, y: p.y
+      });
     });
   }
 
@@ -12185,12 +12209,11 @@ function drawFxCurveChart(canvasId,points,maxX,prevPoints=[],seriesColor='#94a3b
         const d = Math.hypot(h.sx-x, h.sy-y);
         if (d < h.r && d < bestD) { best = h; bestD = d; }
       });
-      if (!best) return;
+      if (!best || best.isPrev) return; // prev solo tooltip, no abre calc
       if (best.type === 'dl') {
         const b = (typeof DL_BONDS !== 'undefined') ? DL_BONDS.find(x => x.ticker === best.label) : null;
         if (b) openFxCalculator('dl', b.id);
       } else {
-        // Para futuros, label viene sin el prefijo "DLR/" (ver línea de futPoints)
         const f = (typeof ROFEX_FUTURES !== 'undefined')
           ? ROFEX_FUTURES.find(x => x.ticker.replace('DLR/','') === best.label) : null;
         if (f) openFxCalculator('fut', f.id);
@@ -12200,8 +12223,28 @@ function drawFxCurveChart(canvasId,points,maxX,prevPoints=[],seriesColor='#94a3b
       const rect = cv.getBoundingClientRect();
       const x = ev.clientX - rect.left, y = ev.clientY - rect.top;
       const hits = _fxChartHits[canvasId] || [];
-      const over = hits.some(h => Math.hypot(h.sx-x, h.sy-y) < h.r);
-      cv.style.cursor = over ? 'pointer' : 'default';
+      let best = null, bestD = Infinity;
+      hits.forEach(h => {
+        const d = Math.hypot(h.sx-x, h.sy-y);
+        if (d < h.r && d < bestD) { best = h; bestD = d; }
+      });
+      if (best) {
+        cv.style.cursor = best.isPrev ? 'help' : 'pointer';
+        if (best.isPrev && best.diag) {
+          const d = best.diag;
+          cv.title = best.label + ' (AYER)\n'
+            + 'pxClose: ' + (d.pxClose ? d.pxClose.toFixed(2) : '—') + '\n'
+            + 'spotClose (DLR/SPOT.close): ' + (d.spotClose ? d.spotClose.toFixed(2) : '—') + '\n'
+            + 'días: ' + d.days + '\n'
+            + 'TNA = ' + best.y.toFixed(2) + '%\n'
+            + 'Si el TNA no cuadra, revisá la columna "close" del ticker en la Sheet.';
+        } else {
+          cv.title = best.label + ' — click para abrir calculadora';
+        }
+      } else {
+        cv.style.cursor = 'default';
+        cv.title = '';
+      }
     });
   }
 }
