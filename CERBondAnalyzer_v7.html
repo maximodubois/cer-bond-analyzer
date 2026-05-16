@@ -458,6 +458,9 @@
   .fxc-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px}
   .fxc-modal{background:var(--card);border:1px solid var(--cb);border-radius:12px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.7)}
   .fxc-header{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 20px;border-bottom:1px solid var(--cb)}
+  .fxc-tabbtn{background:transparent;border:none;color:#94a3b8;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;padding:8px 14px;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.12s}
+  .fxc-tabbtn:hover{color:#e2e8f0}
+  .fxc-tabbtn.active{color:#fbbf24;border-bottom-color:#fbbf24}
   .fxc-body{padding:16px 20px}
   .fxc-inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
   .fxc-kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
@@ -1840,6 +1843,18 @@
     #fx-global table.fx-cross-bbg td.hm-n3 { background:rgba(255,107,74,0.20); color:#fca5a5; }
     #fx-global table.fx-cross-bbg td.hm-n4 { background:rgba(255,107,74,0.32); color:#fee2e2; font-weight:600; }
     #fx-global table.fx-cross-bbg td.hm-n5 { background:rgba(255,107,74,0.45); color:#0a0f1a; font-weight:700; }
+
+    /* ── Brecha / Canje strip ───────────────────────────── */
+    #fx-global .fxg-bc-card { background:#0a0f1a; border:1px solid #1a2540; border-radius:6px;
+      padding:10px 12px; }
+    #fx-global .fxg-bc-l { font-size:9px; color:#64748b; text-transform:uppercase;
+      letter-spacing:0.7px; margin-bottom:6px; }
+    #fx-global .fxg-bc-v { font-size:18px; font-weight:700; font-variant-numeric:tabular-nums;
+      color:#e2e8f0; letter-spacing:0.3px; }
+    #fx-global .fxg-bc-card[data-k="brecha"] .fxg-bc-v,
+    #fx-global .fxg-bc-card[data-k="canje"] .fxg-bc-v { color:#fbbf24; }
+    #fx-global .fxg-bc-card[data-k="spot"] .fxg-bc-v { color:#00e5a0; }
+    #fx-global .fxg-bc-card[data-k="mep"] .fxg-bc-v { color:#4da6ff; }
   </style>
 
   <div class="card">
@@ -1876,6 +1891,25 @@
           <div id="fxg-chart-area"><div class="fx-chart-empty">Seleccioná una moneda</div></div>
         </div>
         <div class="fx-cross-wrap fx-pane">
+          <!-- Brecha & Canje strip -->
+          <div id="fxg-bc-strip" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
+            <div class="fxg-bc-card" data-k="spot">
+              <div class="fxg-bc-l">USD OFICIAL (DLR/SPOT)</div>
+              <div class="fxg-bc-v" id="fxg-bc-spot">—</div>
+            </div>
+            <div class="fxg-bc-card" data-k="mep">
+              <div class="fxg-bc-l">USD MEP (AL30/AL30D CI)</div>
+              <div class="fxg-bc-v" id="fxg-bc-mep">—</div>
+            </div>
+            <div class="fxg-bc-card" data-k="brecha">
+              <div class="fxg-bc-l">BRECHA MEP / Oficial</div>
+              <div class="fxg-bc-v" id="fxg-bc-brecha">—</div>
+            </div>
+            <div class="fxg-bc-card" data-k="canje">
+              <div class="fxg-bc-l">CANJE CCL / MEP <span id="fxg-bc-canje-ccl" style="font-size:9px;color:#64748b;margin-left:6px"></span></div>
+              <div class="fxg-bc-v" id="fxg-bc-canje">—</div>
+            </div>
+          </div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap">
             <h4 style="margin:0">Currency Cross Rates — WCRS Style</h4>
             <div class="fx-mode-buttons" id="fxg-mode-buttons">
@@ -2160,8 +2194,89 @@
       }
     }
 
+    // Códigos que aparecen en la matriz cruzada (ARS solo el oficial).
+    const CROSS_INCLUDE = new Set(['ARS_OF','BRL','MXN','CLP','JPY','EURUSD']);
+
+    // Override de valores ARS con los calculados localmente (AL30/AL30D, AL30/AL30C, DLR/SPOT)
+    function applyLocalArsOverrides(snap) {
+      if (!snap || !snap.items) return snap;
+      let localSpot=0, localMep=0, localCcl=0;
+      try { localSpot = (typeof getFxSpot==='function') ? getFxSpot() : 0; } catch(e){}
+      try { localMep  = (typeof getFxMep==='function')  ? getFxMep()  : 0; } catch(e){}
+      try { localCcl  = (typeof getFxCcl==='function')  ? getFxCcl()  : 0; } catch(e){}
+      snap.items.forEach(it => {
+        if (it.code === 'ARS_OF' && localSpot > 0) {
+          it.last = localSpot; it.data_source = 'DLR/SPOT'; it.label = 'USD/ARS Oficial';
+        } else if (it.code === 'ARS_MEP' && localMep > 0) {
+          it.last = localMep; it.data_source = 'AL30/AL30D'; it.label = 'USD/ARS MEP';
+        } else if (it.code === 'ARS_CCL' && localCcl > 0) {
+          it.last = localCcl; it.data_source = 'AL30/AL30C'; it.label = 'USD/ARS CCL';
+        }
+      });
+      return snap;
+    }
+
+    // Calcula matriz cruzada del lado cliente sobre el snapshot filtrado
+    function computeCrossClient(snap) {
+      if (!snap) return null;
+      const items = snap.items.filter(it => CROSS_INCLUDE.has(it.code) && it.last != null);
+      const codes = ['USD', ...items.map(it => it.code)];
+      const labels = { 'USD':'USD' };
+      const pct = { 'USD': 0.0 };
+      const usdPerUnit = { 'USD': 1.0 };
+      items.forEach(it => {
+        labels[it.code] = it.label;
+        pct[it.code] = it.pct_day;
+        if (it.quote_convention === 'x_per_usd' && it.last > 0)      usdPerUnit[it.code] = 1.0/it.last;
+        else if (it.quote_convention === 'usd_per_x' && it.last > 0) usdPerUnit[it.code] = it.last;
+        else usdPerUnit[it.code] = null;
+      });
+      const n = codes.length;
+      const matrix = Array.from({length:n}, () => Array(n).fill(null));
+      const pctMatrix = Array.from({length:n}, () => Array(n).fill(null));
+      const appr = (code, p) => {
+        if (p == null) return null;
+        if (code === 'USD') return 0.0;
+        const it = items.find(x => x.code===code) || {};
+        return it.quote_convention === 'usd_per_x' ? p : -p;
+      };
+      for (let i=0; i<n; i++) for (let j=0; j<n; j++) {
+        if (i===j) { matrix[i][j]=1.0; pctMatrix[i][j]=0.0; continue; }
+        const ui = usdPerUnit[codes[i]], uj = usdPerUnit[codes[j]];
+        if (ui && uj) matrix[i][j] = uj/ui;
+        const ai = appr(codes[i], pct[codes[i]]);
+        const aj = appr(codes[j], pct[codes[j]]);
+        if (ai != null && aj != null) pctMatrix[i][j] = aj - ai;
+      }
+      return { ts: snap.ts, codes, labels, matrix, pct_matrix: pctMatrix, pct_day_vs_usd: pct };
+    }
+
+    function renderBrechaCanje() {
+      let bc = null;
+      try { bc = (typeof getFxBrechaCanje === 'function') ? getFxBrechaCanje() : null; } catch(e){}
+      if (!bc) return;
+      const sp = document.getElementById('fxg-bc-spot');
+      const mp = document.getElementById('fxg-bc-mep');
+      const br = document.getElementById('fxg-bc-brecha');
+      const ca = document.getElementById('fxg-bc-canje');
+      const cclLbl = document.getElementById('fxg-bc-canje-ccl');
+      if (sp) sp.textContent = bc.spot ? '$ '+bc.spot.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+      if (mp) mp.textContent = bc.mep  ? '$ '+bc.mep.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})  : '—';
+      if (br) br.textContent = bc.brecha != null ? fmtPct(bc.brecha) : '—';
+      if (ca) ca.textContent = bc.canje  != null ? fmtPct(bc.canje)  : (bc.ccl ? '—' : 'sin AL30C');
+      if (cclLbl) cclLbl.textContent = bc.ccl ? ('CCL $'+bc.ccl.toFixed(2)) : '';
+    }
+
     async function loadSnapshot() {
-      try { state.snapshot = await fetchJSON('/api/fx/snapshot'); renderQuotesTable(); }
+      try {
+        const snap = await fetchJSON('/api/fx/snapshot');
+        applyLocalArsOverrides(snap);
+        state.snapshot = snap;
+        state.cross = computeCrossClient(snap);
+        renderQuotesTable();
+        renderCrossMatrix();
+        renderBrechaCanje();
+      }
       catch (e) { console.warn('[fxg] snapshot', e); }
     }
     async function loadSeries() {
@@ -2190,8 +2305,8 @@
       }
     }
     async function loadCross() {
-      try { state.cross = await fetchJSON('/api/fx/cross'); renderCrossMatrix(); }
-      catch (e) { console.warn('[fxg] cross', e); }
+      // Cross matrix se computa client-side a partir de loadSnapshot()
+      // (ver computeCrossClient + applyLocalArsOverrides). Mantener noop por compat.
     }
 
     document.getElementById('fxg-tf-buttons').addEventListener('click', e => {
@@ -2538,8 +2653,8 @@ const ROFEX_FUTURES=[
   {id:"DLR/MAR27", ticker:"DLR/MAR27", name:"DLR Mar-27", exp:"2027-03-31", color:"#7C3009"},
 ];
 
-// ═══ FX EXTRA TICKERS (spot, MEP) ═
-const FX_EXTRA_TICKERS=["DLR/SPOT","AL30 CI","AL30D CI"];
+// ═══ FX EXTRA TICKERS (spot, MEP, CCL) ═
+const FX_EXTRA_TICKERS=["DLR/SPOT","AL30 CI","AL30D CI","AL30C CI"];
 
 // ═══ INTRADAY DATA STORAGE ════════
 let _intradaySpot=[];   // [{t:Date, v:number}]
@@ -11310,6 +11425,20 @@ function getFxMep(){
   if(al30&&al30.last&&al30d&&al30d.last&&al30d.last>0) return al30.last/al30d.last;
   return 0;
 }
+function getFxCcl(){
+  const al30=_livePrices["AL30 CI"];
+  const al30c=_livePrices["AL30C CI"];
+  if(al30&&al30.last&&al30c&&al30c.last&&al30c.last>0) return al30.last/al30c.last;
+  return 0;
+}
+function getFxBrechaCanje(){
+  const sp=getFxSpot(), mep=getFxMep(), ccl=getFxCcl();
+  return {
+    spot: sp, mep: mep, ccl: ccl,
+    brecha: (sp&&mep) ? (mep/sp - 1)*100 : null,
+    canje:  (mep&&ccl) ? (ccl/mep - 1)*100 : null,
+  };
+}
 
 function renderFX(){
   const spot=getFxSpot();
@@ -11488,6 +11617,18 @@ function openFxCalculator(type, id){
   const overlay=document.createElement('div');
   overlay.id='fxCalcModal';
   overlay.className='fxc-overlay';
+  // Buscar futuro "comparable" para Sintético (DL): el de fecha más cercana al vto del bono
+  let _compFut = null;
+  if (type === 'dl' && typeof ROFEX_FUTURES !== 'undefined' && days > 0) {
+    let bestDelta = Infinity;
+    ROFEX_FUTURES.forEach(f => {
+      const fd = new Date(f.exp+"T00:00:00");
+      const delta = Math.abs(fd - endDate);
+      const fp = (_livePrices[f.ticker]||{}).last;
+      if (fp && delta < bestDelta) { _compFut = f; bestDelta = delta; }
+    });
+  }
+
   overlay.innerHTML=`
     <div class="fxc-modal" onclick="event.stopPropagation()">
       <div class="fxc-header">
@@ -11499,7 +11640,14 @@ function openFxCalculator(type, id){
         </div>
         <button class="bc-close" onclick="document.getElementById('fxCalcModal')?.remove()">&times;</button>
       </div>
-      <div class="fxc-body">
+
+      ${type==='dl' ? `
+      <div class="fxc-tabs" style="display:flex;gap:4px;padding:0 14px;border-bottom:1px solid #1a2540;margin-bottom:10px">
+        <button id="fxc-tab-spot" class="fxc-tabbtn active" onclick="_fxcSwitchTab('spot')">SPOT / TNA</button>
+        <button id="fxc-tab-synth" class="fxc-tabbtn" onclick="_fxcSwitchTab('synth')">SINTÉTICO (DL vs Futuro)</button>
+      </div>` : ''}
+
+      <div class="fxc-body" id="fxc-pane-spot">
 
         <!-- Row 1: PX + SPOT -->
         <div class="fxc-inputs">
@@ -11560,6 +11708,64 @@ function openFxCalculator(type, id){
           ${lp.ask?`<span style="cursor:pointer;color:var(--acl)" onclick="_fxcSetPx(${lp.ask})">usar OFFER</span>`:''}
         </div>
       </div>
+
+      ${type==='dl' ? `
+      <!-- ═══════ Pane SINTÉTICO (DL vs Futuro) ═══════ -->
+      <div class="fxc-body" id="fxc-pane-synth" style="display:none">
+        <div class="bc-sub" style="margin-bottom:10px">
+          Estrategia: comprás <strong style="color:${color}">${ticker}</strong> y vendés el futuro DLR comparable.
+          El retorno queda <em>locked</em> en pesos. Tocá cualquier campo, los otros recalculan.
+        </div>
+
+        <!-- Selector de futuro comparable -->
+        <div class="fxc-inputs" style="margin-bottom:10px">
+          <div class="ig" style="grid-column:span 2">
+            <label>Futuro ROFEX comparable</label>
+            <select id="fxsy-fut" style="font-size:13px;font-family:'IBM Plex Mono',monospace;padding:6px"></select>
+          </div>
+        </div>
+
+        <!-- Inputs principales -->
+        <div class="fxc-inputs">
+          <div class="ig">
+            <label>PX DL  (% VN) <span class="fxc-badge fxc-badge-live" style="margin-left:6px">LIVE</span></label>
+            <input type="number" id="fxsy-pxdl" step="0.01"
+              style="font-size:15px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right;color:${color}">
+          </div>
+          <div class="ig">
+            <label>PX Futuro  (ARS/USD) <span class="fxc-badge fxc-badge-live" style="margin-left:6px">LIVE</span></label>
+            <input type="number" id="fxsy-pxfut" step="0.01"
+              style="font-size:15px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right;color:#f97316">
+          </div>
+        </div>
+
+        <div class="fxc-inputs">
+          <div class="ig">
+            <label>TNA sintética ARS  (% anual) — editable</label>
+            <input type="number" id="fxsy-tna" step="0.01"
+              style="font-size:15px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right;color:#fbbf24">
+          </div>
+          <div class="ig">
+            <label>Tasa pesos comparable  (% TNA)</label>
+            <input type="number" id="fxsy-rate" step="0.1" value="30"
+              style="font-size:13px;font-family:'IBM Plex Mono',monospace;text-align:right;color:#94a3b8">
+          </div>
+        </div>
+
+        <div class="fxc-kpis">
+          <div class="fxc-kpi">
+            <div class="bv" id="fxsy-k-tea" style="color:#fbbf24">—</div>
+            <div class="bl">TEA Sintética (%)</div>
+          </div>
+          <div class="fxc-kpi">
+            <div class="bv" id="fxsy-k-spread" style="color:#22d3ee">—</div>
+            <div class="bl">Spread vs tasa pesos (pp TNA)</div>
+          </div>
+        </div>
+
+        <div id="fxsy-detail" style="font-size:11px;color:#94a3b8;line-height:1.6;margin-top:10px;
+          background:#0a0f1a;border:1px solid #1a2540;border-radius:6px;padding:10px"></div>
+      </div>` : ''}
     </div>`;
 
   document.body.appendChild(overlay);
@@ -11644,6 +11850,127 @@ function openFxCalculator(type, id){
     _fxcRecalc('px');
   });
 
+  // ═══ Sintético tab (solo DL) ════════════════════════════════════
+  if (type === 'dl') {
+    // Tab switcher
+    window._fxcSwitchTab = function(t){
+      const ps = document.getElementById('fxc-pane-spot');
+      const py = document.getElementById('fxc-pane-synth');
+      const bs = document.getElementById('fxc-tab-spot');
+      const by = document.getElementById('fxc-tab-synth');
+      if (!ps||!py) return;
+      ps.style.display = (t==='spot')  ? '' : 'none';
+      py.style.display = (t==='synth') ? '' : 'none';
+      if (bs) bs.classList.toggle('active', t==='spot');
+      if (by) by.classList.toggle('active', t==='synth');
+    };
+
+    // Poblar combo de futuros con días al vto
+    const futSel = document.getElementById('fxsy-fut');
+    if (futSel && typeof ROFEX_FUTURES !== 'undefined') {
+      const opts = ROFEX_FUTURES.map(f => {
+        const fd = new Date(f.exp+'T00:00:00');
+        const d = DB(today, fd);
+        const px = (_livePrices[f.ticker]||{}).last;
+        const sel = (_compFut && f.id===_compFut.id) ? ' selected' : '';
+        const lbl = f.ticker.replace('DLR/','') + '  ·  ' + d + 'd' + (px ? '  ·  $'+px.toFixed(2) : '  ·  s/px');
+        return `<option value="${f.id}"${sel}>${lbl}</option>`;
+      });
+      futSel.innerHTML = opts.join('');
+    }
+
+    function _synthCurrentFut() {
+      if (typeof ROFEX_FUTURES === 'undefined') return null;
+      const id = (document.getElementById('fxsy-fut')||{}).value;
+      return ROFEX_FUTURES.find(f => f.id === id) || null;
+    }
+    function _synthDays(fut) {
+      if (!fut) return days;
+      const fd = new Date(fut.exp+'T00:00:00');
+      return DB(today, fd);
+    }
+    function _synthLoadLive() {
+      // PX DL = last del bono, PX Fut = last del futuro seleccionado
+      const pxdl = livePx || 0;
+      const fut = _synthCurrentFut();
+      const pxfut = fut ? ((_livePrices[fut.ticker]||{}).last||0) : 0;
+      document.getElementById('fxsy-pxdl').value  = pxdl ? pxdl.toFixed(2) : '';
+      document.getElementById('fxsy-pxfut').value = pxfut ? pxfut.toFixed(2) : '';
+      _synthRecalc('px');
+    }
+    let _synthUpdating = false;
+    function _synthRecalc(source) {
+      if (_synthUpdating) return;
+      _synthUpdating = true;
+      try {
+        const pxdl  = parseFloat(document.getElementById('fxsy-pxdl').value)  || 0;
+        const pxfut = parseFloat(document.getElementById('fxsy-pxfut').value) || 0;
+        const tnaIn = parseFloat(document.getElementById('fxsy-tna').value)   || 0;
+        const rate  = parseFloat(document.getElementById('fxsy-rate').value)  || 0;
+        const fut   = _synthCurrentFut();
+        const dSyn  = _synthDays(fut);
+        if (dSyn <= 0) return;
+
+        // Estrategia: compro DL a pxdl (% VN), me liquida 100 USD a tipo de cambio
+        // del vto. Vendo futuro a pxfut (locked FX). ARS recibidos al vto = 100*pxfut.
+        // ARS pagados hoy = pxdl. TNA ARS = (100*pxfut/pxdl - 1) * 365/dSyn * 100.
+        let tnaCalc = null;
+        if (source !== 'tna') {
+          if (pxdl > 0 && pxfut > 0) {
+            tnaCalc = (100*pxfut/pxdl - 1) * 365 / dSyn * 100;
+            document.getElementById('fxsy-tna').value = tnaCalc.toFixed(4);
+          }
+        } else {
+          // TNA editada → resolver el más coherente (PX DL fijo, PxFut se ajusta)
+          if (pxdl > 0 && tnaIn) {
+            const pxFutCalc = pxdl * (1 + tnaIn/100*dSyn/365) / 100;
+            document.getElementById('fxsy-pxfut').value = pxFutCalc.toFixed(4);
+            tnaCalc = tnaIn;
+          }
+        }
+
+        // TEA = (1 + TNA*d/365)^(365/d) - 1
+        let teaPct = null, spread = null;
+        const tnaFinal = tnaCalc != null ? tnaCalc : tnaIn;
+        if (tnaFinal && dSyn > 0) {
+          teaPct = (Math.pow(1 + tnaFinal/100*dSyn/365, 365/dSyn) - 1) * 100;
+          if (rate) spread = tnaFinal - rate;
+        }
+        document.getElementById('fxsy-k-tea').textContent = teaPct != null ? teaPct.toFixed(2)+'%' : '—';
+        const spEl = document.getElementById('fxsy-k-spread');
+        if (spread != null) {
+          spEl.textContent = (spread>0?'+':'') + spread.toFixed(2) + ' pp';
+          spEl.style.color = spread > 0 ? '#00e5a0' : '#ff6b4a';
+        } else {
+          spEl.textContent = '—'; spEl.style.color = '#94a3b8';
+        }
+        const det = document.getElementById('fxsy-detail');
+        if (det) {
+          const futLbl = fut ? fut.ticker.replace('DLR/','') : '—';
+          det.innerHTML =
+            '<div><strong style="color:#cbd5e1">Bono:</strong> '+ticker+' (vto '+item.mat+', días '+dSyn+')</div>'
+           +'<div><strong style="color:#cbd5e1">Futuro:</strong> '+futLbl+(fut?(' (exp '+fut.exp+')'):'')+'</div>'
+           +'<div><strong style="color:#cbd5e1">Mecánica:</strong> ARS hoy = '+(pxdl?pxdl.toFixed(2):'—')
+           +'  →  ARS al vto = 100 × '+(pxfut?pxfut.toFixed(2):'—')+' = '+(pxfut?(100*pxfut).toFixed(2):'—')+'</div>'
+           +'<div><strong style="color:#cbd5e1">TNA ARS sintética:</strong> '+(tnaFinal?tnaFinal.toFixed(2)+'%':'—')
+           +'   ·   <strong style="color:#cbd5e1">TEA:</strong> '+(teaPct!=null?teaPct.toFixed(2)+'%':'—')+'</div>';
+        }
+      } finally { _synthUpdating = false; }
+    }
+
+    // Listeners
+    ['fxsy-pxdl','fxsy-pxfut','fxsy-rate'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', () => _synthRecalc('px'));
+    });
+    const tnaEl = document.getElementById('fxsy-tna');
+    if (tnaEl) tnaEl.addEventListener('input', () => _synthRecalc('tna'));
+    const futSel2 = document.getElementById('fxsy-fut');
+    if (futSel2) futSel2.addEventListener('change', _synthLoadLive);
+
+    _synthLoadLive();
+  }
+
   // ESC to close
   const _fxcKey=e=>{ if(e.key==='Escape'){ document.getElementById('fxCalcModal')?.remove(); _fxCalcCtx=null; document.removeEventListener('keydown',_fxcKey); } };
   document.addEventListener('keydown',_fxcKey);
@@ -11721,9 +12048,15 @@ function syncFxCalcModal(){
   }
 }
 
+// Map: canvasId → array de {x,y,label,sx,sy,r,type,id} para hit-test del click
+const _fxChartHits = {};
+
 function drawFxCurveChart(canvasId,points,maxX,prevPoints=[],seriesColor='#94a3b8'){
   const cv=document.getElementById(canvasId);
   if(!cv)return;
+  // Determinar tipo de curva (dl|fut) por canvas
+  const _curveType = canvasId.indexOf('Fut')>=0 ? 'fut' : 'dl';
+  _fxChartHits[canvasId] = [];
   const ct=cv.parentElement;
   const valid=points.filter(p=>p.x>0&&p.x<=maxX&&isFinite(p.y));
   const validPrev=(prevPoints||[]).filter(p=>p.x>0&&p.x<=maxX&&isFinite(p.y));
@@ -11835,7 +12168,42 @@ function drawFxCurveChart(canvasId,points,maxX,prevPoints=[],seriesColor='#94a3b
     c.fillText(p.label,px,py-10);
     c.fillStyle="#94a3b8";c.font="8px 'IBM Plex Mono',monospace";
     c.fillText(p.y.toFixed(1)+"%",px,py+16);
+    // Registrar hit-point (en CSS px, no en dpr-scaled)
+    _fxChartHits[canvasId].push({sx:px, sy:py, r:11, label:p.label, type:_curveType});
   });
+
+  // Attach click handler (idempotente: solo una vez por canvas)
+  if (!cv.dataset.fxClickWired) {
+    cv.dataset.fxClickWired = '1';
+    cv.style.cursor = 'pointer';
+    cv.addEventListener('click', ev => {
+      const rect = cv.getBoundingClientRect();
+      const x = ev.clientX - rect.left, y = ev.clientY - rect.top;
+      const hits = _fxChartHits[canvasId] || [];
+      let best = null, bestD = Infinity;
+      hits.forEach(h => {
+        const d = Math.hypot(h.sx-x, h.sy-y);
+        if (d < h.r && d < bestD) { best = h; bestD = d; }
+      });
+      if (!best) return;
+      if (best.type === 'dl') {
+        const b = (typeof DL_BONDS !== 'undefined') ? DL_BONDS.find(x => x.ticker === best.label) : null;
+        if (b) openFxCalculator('dl', b.id);
+      } else {
+        // Para futuros, label viene sin el prefijo "DLR/" (ver línea de futPoints)
+        const f = (typeof ROFEX_FUTURES !== 'undefined')
+          ? ROFEX_FUTURES.find(x => x.ticker.replace('DLR/','') === best.label) : null;
+        if (f) openFxCalculator('fut', f.id);
+      }
+    });
+    cv.addEventListener('mousemove', ev => {
+      const rect = cv.getBoundingClientRect();
+      const x = ev.clientX - rect.left, y = ev.clientY - rect.top;
+      const hits = _fxChartHits[canvasId] || [];
+      const over = hits.some(h => Math.hypot(h.sx-x, h.sy-y) < h.r);
+      cv.style.cursor = over ? 'pointer' : 'default';
+    });
+  }
 }
 
 function drawIntradayChart(canvasId,data,title,color,endHour){
