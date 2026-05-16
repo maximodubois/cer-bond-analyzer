@@ -1807,6 +1807,39 @@
     #fx-global table.fx-cross td.bg-pos-strong { background:rgba(0,229,160,0.12); }
     #fx-global table.fx-cross td.bg-neg { background:rgba(255,107,74,0.04); }
     #fx-global table.fx-cross td.bg-neg-strong { background:rgba(255,107,74,0.12); }
+
+    /* ── Bloomberg WCRS style ─────────────────────────────── */
+    #fx-global .fx-mode-buttons { display:flex; gap:3px; }
+    #fx-global .fx-mode-btn { background:#0c1220; border:1px solid #1e2d44; color:#94a3b8;
+      padding:4px 12px; font-size:10px; font-family:inherit; font-weight:700; cursor:pointer;
+      border-radius:4px; transition:all 0.12s; letter-spacing:0.8px; }
+    #fx-global .fx-mode-btn:hover { color:#e2e8f0; border-color:#2a3d5a; }
+    #fx-global .fx-mode-btn.active { background:#fbbf24; color:#0a0f1a; border-color:#fbbf24; }
+    #fx-global table.fx-cross-bbg { font-size:11px; font-family:'IBM Plex Mono',monospace; }
+    #fx-global table.fx-cross-bbg th { background:#0a0f1a; color:#fbbf24; font-weight:700;
+      font-size:11px; letter-spacing:0.8px; padding:8px 10px; text-transform:uppercase;
+      border:1px solid #1a2540; text-align:center; min-width:62px; }
+    #fx-global table.fx-cross-bbg th.row-header { color:#94a3b8; font-size:9px; }
+    #fx-global table.fx-cross-bbg td { padding:7px 10px; border:1px solid #131a28;
+      text-align:right; font-variant-numeric:tabular-nums; font-size:11px; min-width:62px;
+      color:#e2e8f0; transition:background 0.08s; }
+    #fx-global table.fx-cross-bbg td.row-header { background:#0a0f1a !important; color:#fbbf24;
+      font-weight:700; text-align:center; letter-spacing:0.8px; font-size:11px;
+      text-transform:uppercase; position:sticky; left:0; z-index:2; border-right:2px solid #1a2540; }
+    #fx-global table.fx-cross-bbg td.diag { background:#080c14; color:#1e2d44; }
+    #fx-global table.fx-cross-bbg td:hover:not(.diag):not(.row-header) {
+      background:#1a2540 !important; color:#fff; cursor:default; }
+    /* Heatmap más fuerte para modo Bloomberg */
+    #fx-global table.fx-cross-bbg td.hm-p5 { background:rgba(0,229,160,0.45); color:#0a0f1a; font-weight:700; }
+    #fx-global table.fx-cross-bbg td.hm-p4 { background:rgba(0,229,160,0.32); color:#e2e8f0; font-weight:600; }
+    #fx-global table.fx-cross-bbg td.hm-p3 { background:rgba(0,229,160,0.20); color:#a7f3d0; }
+    #fx-global table.fx-cross-bbg td.hm-p2 { background:rgba(0,229,160,0.12); color:#86efac; }
+    #fx-global table.fx-cross-bbg td.hm-p1 { background:rgba(0,229,160,0.05); color:#cbd5e1; }
+    #fx-global table.fx-cross-bbg td.hm-n1 { background:rgba(255,107,74,0.05); color:#cbd5e1; }
+    #fx-global table.fx-cross-bbg td.hm-n2 { background:rgba(255,107,74,0.12); color:#fca5a5; }
+    #fx-global table.fx-cross-bbg td.hm-n3 { background:rgba(255,107,74,0.20); color:#fca5a5; }
+    #fx-global table.fx-cross-bbg td.hm-n4 { background:rgba(255,107,74,0.32); color:#fee2e2; font-weight:600; }
+    #fx-global table.fx-cross-bbg td.hm-n5 { background:rgba(255,107,74,0.45); color:#0a0f1a; font-weight:700; }
   </style>
 
   <div class="card">
@@ -1843,15 +1876,21 @@
           <div id="fxg-chart-area"><div class="fx-chart-empty">Seleccioná una moneda</div></div>
         </div>
         <div class="fx-cross-wrap fx-pane">
-          <h4>Matriz cruzada (estilo WCR) — fila por columna · %día abajo</h4>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap">
+            <h4 style="margin:0">Currency Cross Rates — WCRS Style</h4>
+            <div class="fx-mode-buttons" id="fxg-mode-buttons">
+              <button class="fx-mode-btn active" data-mode="price">PRECIO</button>
+              <button class="fx-mode-btn" data-mode="pct">%DÍA</button>
+            </div>
+          </div>
           <div class="fx-cross-scroll">
-            <table class="fx-cross" id="fxg-cross-table">
-              <thead><tr><th class="row-header"></th></tr></thead>
+            <table class="fx-cross fx-cross-bbg" id="fxg-cross-table">
+              <thead><tr><th class="row-header">vs</th></tr></thead>
               <tbody></tbody>
             </table>
           </div>
-          <div style="font-size:9px;color:#64748b;margin-top:6px;line-height:1.4">
-            Cada celda: <strong style="color:#cbd5e1">precio</strong> = cuántas unidades de la fila se necesitan para comprar 1 de la columna. <strong style="color:#cbd5e1">%día</strong> = apreciación de la columna vs la fila.
+          <div style="font-size:9px;color:#64748b;margin-top:6px;line-height:1.4" id="fxg-cross-legend">
+            <strong style="color:#cbd5e1">PRECIO</strong>: unidades de la <em>fila</em> por 1 unidad de la <em>columna</em>. Verde = columna se apreció vs fila en el día · Rojo = se depreció.
           </div>
         </div>
       </div>
@@ -1861,7 +1900,16 @@
   <script id="fxg-script">
   (function () {
     'use strict';
-    const state = { snapshot:null, selectedCode:'BRL', selectedTf:'1D', series:null, cross:null };
+    const state = { snapshot:null, selectedCode:'BRL', selectedTf:'1D', series:null, cross:null, crossMode:'price' };
+
+    // Códigos cortos estilo Bloomberg WCRS (ARS Of → ARSof, etc)
+    const BBG_CODE = {
+      'USD':'USD',
+      'ARS_OF':'ARS·OF',  'ARS_MAY':'ARS·MAY', 'ARS_MEP':'ARS·MEP',
+      'ARS_CCL':'ARS·CCL','ARS_BLUE':'ARS·BLU',
+      'BRL':'BRL', 'MXN':'MXN', 'CLP':'CLP', 'JPY':'JPY', 'EURUSD':'EUR'
+    };
+    function bbgCode(code) { return BBG_CODE[code] || code; }
     const REFRESH_MS = 30000;
 
     function fmtPrice(v) {
@@ -2049,29 +2097,67 @@
         +xTicks.join('')+'</svg>';
     }
 
+    // Heatmap stepped por nivel de %día (5 verdes / 5 rojos)
+    function heatClass(pct) {
+      if (pct == null || isNaN(pct)) return '';
+      const a = Math.abs(pct);
+      let lvl;
+      if (a < 0.05) lvl = 0;
+      else if (a < 0.15) lvl = 1;
+      else if (a < 0.4) lvl = 2;
+      else if (a < 0.8) lvl = 3;
+      else if (a < 1.5) lvl = 4;
+      else lvl = 5;
+      if (lvl === 0) return '';
+      return (pct > 0 ? 'hm-p' : 'hm-n') + lvl;
+    }
+
     function renderCrossMatrix() {
       const table = document.getElementById('fxg-cross-table');
+      const legend = document.getElementById('fxg-cross-legend');
       const cross = state.cross;
       if (!cross) return;
       const codes = cross.codes, labels = cross.labels;
-      let thead = '<tr><th class="row-header">vs</th>';
-      codes.forEach(c => { thead += '<th>'+(labels[c]||c)+'</th>'; });
+      const mode = state.crossMode;
+
+      // Header: códigos cortos estilo Bloomberg
+      let thead = '<tr><th class="row-header">'+(mode==='price'?'PRICE':'%DAY')+'</th>';
+      codes.forEach(c => { thead += '<th title="'+(labels[c]||c)+'">'+bbgCode(c)+'</th>'; });
       thead += '</tr>';
       table.querySelector('thead').innerHTML = thead;
+
+      // Body: una sola métrica por celda (price o pct). El heatmap usa SIEMPRE el pct.
       const rows = codes.map((ci,i) => {
-        let r = '<tr><td class="row-header">'+(labels[ci]||ci)+'</td>';
+        let r = '<tr><td class="row-header" title="'+(labels[ci]||ci)+'">'+bbgCode(ci)+'</td>';
         codes.forEach((cj,j) => {
           if (i===j) { r += '<td class="diag">—</td>'; return; }
-          const v = cross.matrix[i][j]; const pct = cross.pct_matrix[i][j];
-          const vStr = v == null ? '—' : fmtPrice(v);
-          const pStr = pct == null ? '' : fmtPct(pct);
-          r += '<td class="'+bgClass(pct)+'"><span class="cross-val">'+vStr+'</span>'
-             +'<span class="cross-pct '+pctClass(pct)+'">'+pStr+'</span></td>';
+          const v = cross.matrix[i][j];
+          const pct = cross.pct_matrix[i][j];
+          const hm = heatClass(pct);
+          let cellVal;
+          if (mode === 'price') {
+            cellVal = (v == null) ? '—' : fmtPrice(v);
+          } else {
+            cellVal = (pct == null) ? '—' : fmtPct(pct);
+          }
+          const tip = (labels[ci]||ci)+' → '+(labels[cj]||cj)
+            + (v!=null ? '  ·  ' + fmtPrice(v) : '')
+            + (pct!=null ? '  ·  ' + fmtPct(pct) : '');
+          r += '<td class="'+hm+'" title="'+tip+'">'+cellVal+'</td>';
         });
         r += '</tr>';
         return r;
       });
       table.querySelector('tbody').innerHTML = rows.join('');
+
+      // Legend dinámica
+      if (legend) {
+        if (mode === 'price') {
+          legend.innerHTML = '<strong style="color:#fbbf24">PRECIO</strong>: unidades de la <em>fila</em> por 1 unidad de la <em>columna</em>. Color = %día de la columna vs la fila (verde apreciación, rojo depreciación).';
+        } else {
+          legend.innerHTML = '<strong style="color:#fbbf24">%DÍA</strong>: apreciación (+) o depreciación (−) de la <em>columna</em> respecto a la <em>fila</em> en el día. Hover para ver el precio.';
+        }
+      }
     }
 
     async function loadSnapshot() {
@@ -2114,6 +2200,14 @@
       e.target.classList.add('active');
       state.selectedTf = e.target.dataset.tf;
       loadSeries();
+    });
+
+    document.getElementById('fxg-mode-buttons').addEventListener('click', e => {
+      if (!e.target.matches('.fx-mode-btn')) return;
+      document.querySelectorAll('#fxg-mode-buttons .fx-mode-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      state.crossMode = e.target.dataset.mode;
+      renderCrossMatrix();
     });
 
     let _fxgStarted = false;
