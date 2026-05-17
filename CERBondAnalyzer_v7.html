@@ -2628,7 +2628,7 @@
         <div class="note" style="margin:4px 0 0 0;font-size:10px">
           <b>COLOCAR</b> (lend): vendo 24hs (cobro mañana) y compro CI (entrego hoy). Tasa = (BID_24hs / ASK_CI − 1) × 365/d.<br>
           <b>TOMAR</b> (borrow): vendo CI (recibo hoy) y compro 24hs (devuelvo mañana). Tasa = (ASK_24hs / BID_CI − 1) × 365/d.<br>
-          Días considerando feriados/finsem hasta SBD(hoy,1). Bid/Ask depth=1 vía Primary API.
+          Días considerando feriados/finsem hasta SBD(hoy,1). <b>Fuente:</b> Google Sheet (bid/ask/size por columna · CI y 24hs).
         </div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
@@ -2674,7 +2674,8 @@
         <label>Días (d)</label>
         <input type="number" id="atSearchDays" min="1" step="1" value="1" style="font-size:12px;width:60px;text-align:right">
       </div>
-      <button class="btn-api btn-sm" onclick="atSearchFetchLive()">↻ Live (Primary)</button>
+      <button class="btn-api btn-sm" onclick="atSearchFetchLive()" title="Lee del Google Sheet (instantáneo)">↻ Sheet</button>
+      <button class="btn-api btn-sm" onclick="atSearchFetchPrimary()" title="Consulta Primary depth=1 (real-time, ~1.5s)">↻ Primary</button>
       <button class="btn-api btn-sm" onclick="atSearchRecalc()">▶ Recalcular</button>
       <span id="atSearchInfo" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;text-align:right">—</span>
     </div>
@@ -8021,12 +8022,13 @@ let _fxCalcUpdating=false;
 
 function getAllTickers(){
   const tickers=[];
-  BONDS.forEach(b=>tickers.push(b.ticker));
-  FIXED.forEach(f=>tickers.push(f.ticker));
-  TAMAR_BONDS.forEach(t=>tickers.push(t.ticker));
+  BONDS.forEach(b=>{ tickers.push(b.ticker); tickers.push(b.ticker+' 24hs'); });    // CER + 24hs para arbitraje
+  FIXED.forEach(f=>{ tickers.push(f.ticker); tickers.push(f.ticker+' 24hs'); });    // Tasa Fija + 24hs
+  TAMAR_BONDS.forEach(t=>{ tickers.push(t.ticker); tickers.push(t.ticker+' 24hs'); });
   if (typeof USD_BONDS !== 'undefined') USD_BONDS.forEach(u=>{
     tickers.push(u.ticker);                  // versión ARS (referencia / brecha implícita)
     tickers.push(usdBondPriceTicker(u));     // versión D (USD directo, base para TIR)
+    tickers.push(u.ticker+' 24hs');          // arbitraje CI vs 24hs en ARS
   });
   DL_BONDS.forEach(d=>tickers.push(d.ticker));
   ROFEX_FUTURES.forEach(r=>tickers.push(r.ticker));
@@ -8090,6 +8092,10 @@ async function fetchPricesFromServer(){
     syncBondCalcModal();
     // Refresh Run de Mercado si la tab Posiciones está visible
     try { if (document.getElementById('tab-positions')?.style.display !== 'none') renderRun(); } catch(_e){}
+    // Auto-refresh Arbitraje Tasas si está visible (rápido — solo lee del Sheet ya cacheado)
+    try {
+      if (document.getElementById('tab-arbtasas')?.style.display !== 'none' && !_atScanRunning && _atLastScan) atRunScan();
+    } catch(_e){}
     // Hook para callbacks externos que dependen de _livePrices (axes, etc.)
     if(Array.isArray(window._postPriceUpdate)){
       window._postPriceUpdate.forEach(fn=>{ try{fn()}catch(e){} });
@@ -12601,6 +12607,26 @@ function _atDaysToT1(){
   return DB(today,t1);
 }
 
+// Lee book {bid:{price,size}, ofr:{price,size}} desde _livePrices (Google Sheets).
+// Prueba múltiples convenciones de naming hasta encontrar el ticker correcto.
+// settle: 'CI' | '24hs'
+function _atGetBookFromSheet(ticker, settle){
+  const variants = (settle === 'CI')
+    ? [ticker, ticker + ' CI']                                    // CI: sin suffix o con " CI"
+    : [ticker + ' 24hs', ticker + ' 24', ticker + ' 24h', ticker + '-24hs', ticker + '_24hs'];
+  for (const tk of variants) {
+    const lp = _livePrices[tk];
+    if (lp && (lp.bid > 0 || lp.ask > 0)) {
+      return {
+        bid: lp.bid > 0 ? {price: lp.bid, size: lp.bidSize || 0} : null,
+        ofr: lp.ask > 0 ? {price: lp.ask, size: lp.askSize || 0} : null,
+        _ticker: tk,
+      };
+    }
+  }
+  return null;
+}
+
 function atGetUniverse(){
   const v=document.getElementById('atUnivPreset')?.value||'both';
   if (v==='custom') return _atCustom.slice();
@@ -12637,31 +12663,27 @@ function atRemoveCustom(tk){
   atRenderUniverseChips();
 }
 
-async function atRunScan(){
-  if(_atScanRunning){ alert('Ya en curso'); return; }
+// Escaneo SINCRÓNICO desde Google Sheets (instantáneo).
+// Lee _livePrices con múltiples variantes de naming para CI y 24hs.
+// Si querés bid/ask depth-5 real-time, usá el buscador con "↻ Primary depth=5" abajo.
+function atRunScan(){
+  if(_atScanRunning) return;
   const univ=atGetUniverse();
   if(!univ.length){ alert('Universo vacío'); return; }
   _atScanRunning=true;
-  const btn=document.getElementById('atRunBtn'); if(btn){ btn.disabled=true; btn.textContent='Escaneando…'; }
-  const prog=document.getElementById('atProgress'); const pbar=prog?.querySelector('div');
-  if (prog) prog.style.display='block';
+  const btn=document.getElementById('atRunBtn'); if(btn){ btn.disabled=true; btn.textContent='Procesando…'; }
   const info=document.getElementById('atInfo');
   const days=_atDaysToT1();
-  const total=univ.length*2;
-  let done=0;
   const rows=[];
+  let foundCi=0, found24=0;
   for(const tk of univ){
-    if (info) info.textContent=`Consultando ${tk} CI…`;
-    let ci=null, t24=null;
-    try { ci = (typeof _qtFetchOneSettle==='function') ? await _qtFetchOneSettle(tk,'CI') : null; } catch(_e){}
-    done++; if(pbar) pbar.style.width=(done/total*100)+'%';
-    await new Promise(r=>setTimeout(r,500));
-    if (info) info.textContent=`Consultando ${tk} 24hs…`;
-    try { t24 = (typeof _qtFetchOneSettle==='function') ? await _qtFetchOneSettle(tk,'24hs') : null; } catch(_e){}
-    done++; if(pbar) pbar.style.width=(done/total*100)+'%';
-    await new Promise(r=>setTimeout(r,500));
-    if (!ci || !t24){ rows.push({tk, error:true}); continue; }
-    const tomar = (ci.bid?.price && t24.ofr?.price) ? ((t24.ofr.price/ci.bid.price)-1)*365/days*100 : null;
+    const ci = _atGetBookFromSheet(tk, 'CI');
+    const t24 = _atGetBookFromSheet(tk, '24hs');
+    if (ci) foundCi++;
+    if (t24) found24++;
+    if (!ci && !t24) { rows.push({tk, error:true, reason:'no data Sheet'}); continue; }
+    if (!ci || !t24)  { rows.push({tk, error:true, reason: !ci?'sin CI':'sin 24hs'}); continue; }
+    const tomar   = (ci.bid?.price && t24.ofr?.price) ? ((t24.ofr.price/ci.bid.price)-1)*365/days*100 : null;
     const colocar = (t24.bid?.price && ci.ofr?.price) ? ((t24.bid.price/ci.ofr.price)-1)*365/days*100 : null;
     rows.push({
       tk, days,
@@ -12670,12 +12692,18 @@ async function atRunScan(){
       t24_bid:t24.bid?.price||null, t24_bid_size:t24.bid?.size||null,
       t24_ofr:t24.ofr?.price||null, t24_ofr_size:t24.ofr?.size||null,
       tomar, colocar,
+      _ciTicker: ci._ticker, _t24Ticker: t24._ticker,
     });
   }
   _atLastScan={ts:Date.now(), days, rows};
   _atRenderTop5();
-  if (prog) prog.style.display='none';
-  if (info) info.textContent = `✓ ${rows.length} bonos · ${days}d hasta 24hs · ${new Date().toLocaleTimeString('es-AR')}`;
+  if (info) {
+    let msg = `✓ ${univ.length} tickers · CI: ${foundCi} · 24hs: ${found24} · ${days}d · ${new Date().toLocaleTimeString('es-AR')}  ·  fuente: Sheet`;
+    if (found24 === 0 && foundCi > 0) {
+      msg += `  ·  ⚠ No hay columnas 24hs en el Sheet. Agregá "<TICKER> 24hs" con bid/ask/size.`;
+    }
+    info.textContent = msg;
+  }
   if (btn){ btn.disabled=false; btn.textContent='▶ Re-escanear'; }
   _atScanRunning=false;
 }
@@ -12733,10 +12761,36 @@ function atPopulateSearchTickers(){
   sel.innerHTML=all.map(b=>`<option value="${b.t}">${b.label}</option>`).join('');
 }
 
-async function atSearchFetchLive(){
+// Carga desde Sheet (instantáneo). Default. Sin API call.
+function atSearchFetchLive(){
   const tk=document.getElementById('atSearchTicker')?.value;
   if(!tk){ return; }
-  const info=document.getElementById('atSearchInfo'); if (info) info.textContent='Consultando…';
+  const info=document.getElementById('atSearchInfo');
+  const ci  = _atGetBookFromSheet(tk, 'CI');
+  const t24 = _atGetBookFromSheet(tk, '24hs');
+  if (ci) {
+    if (ci.bid){ document.getElementById('atCiBid').value=ci.bid.price?.toFixed(2)||''; document.getElementById('atCiBidSize').value=ci.bid.size||''; }
+    if (ci.ofr){ document.getElementById('atCiAsk').value=ci.ofr.price?.toFixed(2)||''; document.getElementById('atCiAskSize').value=ci.ofr.size||''; }
+  }
+  if (t24) {
+    if (t24.bid){ document.getElementById('at24Bid').value=t24.bid.price?.toFixed(2)||''; document.getElementById('at24BidSize').value=t24.bid.size||''; }
+    if (t24.ofr){ document.getElementById('at24Ask').value=t24.ofr.price?.toFixed(2)||''; document.getElementById('at24AskSize').value=t24.ofr.size||''; }
+  }
+  if (info) {
+    const lbls=[];
+    if (ci) lbls.push('CI←' + ci._ticker);
+    if (t24) lbls.push('24h←' + t24._ticker);
+    if (!ci && !t24) info.textContent = tk + ' · sin datos en Sheet';
+    else info.textContent = lbls.join(' · ') + ' · ' + new Date().toLocaleTimeString('es-AR');
+  }
+  atSearchRecalc();
+}
+
+// Fallback: bid/ask del Primary depth=1 (slow, real-time depth completa).
+async function atSearchFetchPrimary(){
+  const tk=document.getElementById('atSearchTicker')?.value;
+  if(!tk){ return; }
+  const info=document.getElementById('atSearchInfo'); if (info) info.textContent='Consultando Primary…';
   try {
     const ci=(typeof _qtFetchOneSettle==='function')?await _qtFetchOneSettle(tk,'CI'):null;
     const t24=(typeof _qtFetchOneSettle==='function')?await _qtFetchOneSettle(tk,'24hs'):null;
@@ -12748,10 +12802,8 @@ async function atSearchFetchLive(){
       if (t24.bid){ document.getElementById('at24Bid').value=t24.bid.price?.toFixed(2)||''; document.getElementById('at24BidSize').value=t24.bid.size||''; }
       if (t24.ofr){ document.getElementById('at24Ask').value=t24.ofr.price?.toFixed(2)||''; document.getElementById('at24AskSize').value=t24.ofr.size||''; }
     }
-    if (info) info.textContent=tk+' · '+new Date().toLocaleTimeString('es-AR');
-  } catch(e) {
-    if (info) info.textContent='Error: '+e;
-  }
+    if (info) info.textContent = tk + ' Primary · ' + new Date().toLocaleTimeString('es-AR');
+  } catch(e) { if (info) info.textContent = 'Error Primary: ' + e; }
   atSearchRecalc();
 }
 
