@@ -2733,6 +2733,44 @@
       </div>
     </div>
   </div>
+
+  <!-- C. Cheap / Rich Screener vs curva fiteada (NSS / LOG) -->
+  <div class="card">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+      <div>
+        <div class="st" style="margin:0">🎯 Cheap / Rich Screener — Residuales vs curva fiteada</div>
+        <div class="note" style="margin:4px 0 0 0;font-size:10px">
+          Para cada bono del universo: TIR mercado vs TIR <strong>NSS</strong> (preferida) y <strong>LOG</strong>. Residual = mkt − curva en bps.<br>
+          <span style="color:var(--ac)">CHEAP</span> = TIR mercado &gt; curva (rinde más de lo esperado → potencialmente subvaluado). <span style="color:var(--neg)">RICH</span> = TIR mercado &lt; curva (rinde menos → potencialmente sobrevaluado). Z-score normaliza vs el universo.
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="atRvUniv" onchange="atRenderCheapRich()" style="padding:4px 8px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;font-size:11px;font-family:'IBM Plex Mono',monospace">
+          <option value="cer">CER (TIR Real)</option>
+          <option value="fixed">Tasa Fija (TEA)</option>
+          <option value="usd">USD Sov (TEA USD)</option>
+          <option value="tamar">TAMAR (TIR Nom)</option>
+        </select>
+        <button class="btn-api btn-sm" onclick="atRenderCheapRich()">▶ Refrescar</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;max-height:480px">
+      <table id="atCheapRichTbl" style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px">
+        <thead><tr style="color:var(--td);font-size:9.5px;text-transform:uppercase;letter-spacing:0.06em;background:#0a0f1a;position:sticky;top:0">
+          <th style="text-align:left;padding:6px 8px">Ticker</th>
+          <th style="text-align:right;padding:6px 8px">Dur (y)</th>
+          <th style="text-align:right;padding:6px 8px">TIR Mkt</th>
+          <th style="text-align:right;padding:6px 8px">NSS</th>
+          <th style="text-align:right;padding:6px 8px">LOG</th>
+          <th style="text-align:right;padding:6px 8px">Resid NSS (bps)</th>
+          <th style="text-align:right;padding:6px 8px">Z-score</th>
+          <th style="text-align:center;padding:6px 8px">Señal</th>
+        </tr></thead>
+        <tbody id="atCheapRichBody"><tr><td colspan="8" style="text-align:center;color:var(--tm);padding:14px">Calculá los bonos del universo primero (cualquier render de tabla los actualiza).</td></tr></tbody>
+      </table>
+    </div>
+    <div id="atCheapRichInfo" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;margin-top:6px">—</div>
+  </div>
 </div><!-- end tab-arbtasas -->
 
 <div class="card" style="border-color:rgba(71,85,105,0.2);margin-top:10px">
@@ -8094,7 +8132,10 @@ async function fetchPricesFromServer(){
     try { if (document.getElementById('tab-positions')?.style.display !== 'none') renderRun(); } catch(_e){}
     // Auto-refresh Arbitraje Tasas si está visible (rápido — solo lee del Sheet ya cacheado)
     try {
-      if (document.getElementById('tab-arbtasas')?.style.display !== 'none' && !_atScanRunning && _atLastScan) atRunScan();
+      if (document.getElementById('tab-arbtasas')?.style.display !== 'none') {
+        if (!_atScanRunning && _atLastScan) atRunScan();
+        if (typeof atRenderCheapRich === 'function') atRenderCheapRich();
+      }
     } catch(_e){}
     // Hook para callbacks externos que dependen de _livePrices (axes, etc.)
     if(Array.isArray(window._postPriceUpdate)){
@@ -12867,6 +12908,96 @@ function atInitTab(){
   }
   // Re-render top5 si hay scan previo (al volver al tab)
   if (_atLastScan) _atRenderTop5();
+  // Cheap/Rich screener
+  atRenderCheapRich();
+}
+
+// ═══ CHEAP / RICH SCREENER vs curva fiteada ═══════════════════
+function atRenderCheapRich(){
+  const univKey = document.getElementById('atRvUniv')?.value || 'cer';
+  const cfg = {
+    cer:   { arr:(typeof BONDS!=='undefined')?BONDS:[],         yKey:'_tr',  label:'TIR Real' },
+    fixed: { arr:(typeof FIXED!=='undefined')?FIXED:[],         yKey:'_tea', label:'TEA' },
+    usd:   { arr:(typeof USD_BONDS!=='undefined')?USD_BONDS:[], yKey:'_tea', label:'TEA USD' },
+    tamar: { arr:(typeof TAMAR_BONDS!=='undefined')?TAMAR_BONDS:[], yKey:'_tn', label:'TIR Nom' },
+  }[univKey] || { arr:[], yKey:'_tr', label:'—' };
+
+  const items = cfg.arr
+    .filter(b => b && b._ok && b._dur > 0 && b[cfg.yKey] != null && isFinite(b[cfg.yKey]));
+  const body = document.getElementById('atCheapRichBody');
+  const info = document.getElementById('atCheapRichInfo');
+  if (!body) return;
+  if (items.length < 2) {
+    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--tm);padding:14px">Necesitás ≥2 bonos calculados para fitear curva. Andá al tab del universo y tocá "Calculá" o conectá precios.</td></tr>';
+    if (info) info.textContent = '0 bonos disponibles';
+    return;
+  }
+
+  // Fit NSS y LOG sobre el universo entero
+  const pts = items.map(b => ({x:b._dur, y:b[cfg.yKey]}));
+  let logFit=null, nssFit=null;
+  try { logFit = (typeof logRegression==='function') ? logRegression(pts) : null; } catch(e){}
+  try { nssFit = (pts.length >= 3 && typeof fitNSS==='function') ? fitNSS(pts) : null; } catch(e){}
+
+  // Computar residuales + z-score
+  const rows = items.map(b => {
+    const mkt = b[cfg.yKey];
+    const nss = nssFit ? nssFit.predict(b._dur) : null;
+    const log = logFit ? logFit.predict(b._dur) : null;
+    const refFit = nss != null && isFinite(nss) ? nss : log;
+    const resid = (refFit != null && isFinite(refFit)) ? (mkt - refFit) : null;  // pp
+    return { b, mkt, nss, log, resid, residBps: resid != null ? resid * 100 : null };
+  });
+
+  // Z-score sobre los residuales válidos
+  const validResids = rows.map(r=>r.residBps).filter(v=>v!=null && isFinite(v));
+  const mean = validResids.length ? validResids.reduce((s,v)=>s+v,0)/validResids.length : 0;
+  const sd = validResids.length>1
+    ? Math.sqrt(validResids.reduce((s,v)=>s+(v-mean)**2,0)/(validResids.length-1))
+    : 0;
+  rows.forEach(r => {
+    r.z = (r.residBps != null && sd > 0) ? (r.residBps - mean) / sd : null;
+  });
+
+  // Ordenar por residual desc (los más CHEAP arriba)
+  rows.sort((a,b)=>{
+    if (a.residBps == null) return 1;
+    if (b.residBps == null) return -1;
+    return b.residBps - a.residBps;
+  });
+
+  // Señal: |z| > 1.5 = CHEAP/RICH significativo; entre = FAIR
+  const signalBadge = (r) => {
+    if (r.z == null) return '<span style="color:var(--td)">—</span>';
+    const az = Math.abs(r.z);
+    if (r.z > 1.5)  return '<span style="background:rgba(0,229,160,0.18);color:var(--ac);padding:1px 6px;border-radius:3px;font-weight:700;font-size:9px">★ CHEAP</span>';
+    if (r.z > 0.5)  return '<span style="color:var(--ac);font-size:10px">cheap</span>';
+    if (r.z < -1.5) return '<span style="background:rgba(255,107,74,0.18);color:var(--neg);padding:1px 6px;border-radius:3px;font-weight:700;font-size:9px">★ RICH</span>';
+    if (r.z < -0.5) return '<span style="color:var(--neg);font-size:10px">rich</span>';
+    return '<span style="color:var(--td);font-size:10px">fair</span>';
+  };
+
+  // Bond type para el click handler
+  const bondType = univKey === 'cer' ? 'cer' : univKey === 'fixed' ? 'fixed' : univKey === 'usd' ? 'usd' : 'tamar';
+
+  body.innerHTML = rows.map(r => {
+    const cls = r.residBps == null ? 'var(--td)' : r.residBps > 0 ? 'var(--ac)' : 'var(--neg)';
+    return `<tr style="border-bottom:1px solid #131a28;cursor:pointer" onclick="openBondCalculator('${bondType}','${r.b.id}')">
+      <td style="padding:5px 8px;font-weight:700;color:${r.b.color||'var(--t)'}">${r.b.ticker}</td>
+      <td style="padding:5px 8px;text-align:right">${r.b._dur.toFixed(2)}</td>
+      <td style="padding:5px 8px;text-align:right;font-weight:600">${r.mkt.toFixed(2)}%</td>
+      <td style="padding:5px 8px;text-align:right;color:var(--td)">${r.nss!=null && isFinite(r.nss) ? r.nss.toFixed(2)+'%' : '—'}</td>
+      <td style="padding:5px 8px;text-align:right;color:var(--td)">${r.log!=null && isFinite(r.log) ? r.log.toFixed(2)+'%' : '—'}</td>
+      <td style="padding:5px 8px;text-align:right;font-weight:600;color:${cls}">${r.residBps!=null ? (r.residBps>=0?'+':'')+r.residBps.toFixed(0) : '—'}</td>
+      <td style="padding:5px 8px;text-align:right;color:${cls}">${r.z!=null ? (r.z>=0?'+':'')+r.z.toFixed(2) : '—'}</td>
+      <td style="padding:5px 8px;text-align:center">${signalBadge(r)}</td>
+    </tr>`;
+  }).join('');
+
+  if (info) {
+    const fits = [nssFit?'NSS':null, logFit?'LOG':null].filter(Boolean).join(' + ');
+    info.textContent = `${items.length} bonos · ${cfg.label} · fit: ${fits||'—'} · μ resid: ${mean.toFixed(1)}bps · σ: ${sd.toFixed(1)}bps · ${new Date().toLocaleTimeString('es-AR')}`;
+  }
 }
 
 // ═══ FX TAB: RENDER + INTRADAY ═══════════════════════════════
