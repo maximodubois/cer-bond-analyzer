@@ -1244,6 +1244,43 @@
   <div id="atCheapRichInfo" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;margin-top:6px">—</div>
 </div>
 
+
+<!-- ── YIELD CURVE ANIMATION (sobre snapshots SQLite) ────────────── -->
+<div class="card qt-card">
+  <div class="qt-hd">
+    <div>
+      <div class="st" style="margin:0">🎬 Yield Curve Animation — Evolución temporal</div>
+      <div class="note" style="margin:4px 0 0 0;font-size:10px">
+        Slider de tiempo sobre snapshots 1-min guardados en SQLite. Mueve la barra para ver cómo evolucionó la curva. Play para animar. Compara con "hoy" (línea de referencia).
+      </div>
+    </div>
+    <div class="qt-controls">
+      <select id="ycaUniv" onchange="ycaLoadTimestamps()" style="padding:4px 8px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;font-size:11px;font-family:'IBM Plex Mono',monospace">
+        <option value="cer">CER</option>
+        <option value="fixed">Tasa Fija</option>
+        <option value="usd">USD Sov</option>
+      </select>
+      <select id="ycaDays" onchange="ycaLoadTimestamps()" style="padding:4px 8px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;font-size:11px">
+        <option value="1">Último 1d</option>
+        <option value="3">3d</option>
+        <option value="7" selected>7d</option>
+        <option value="30">30d</option>
+      </select>
+      <button class="btn-api btn-sm" id="ycaPlayBtn" onclick="ycaTogglePlay()">▶ Play</button>
+      <button class="btn-api btn-sm" onclick="ycaLoadTimestamps()">↻ Reload</button>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+    <input type="range" id="ycaSlider" min="0" max="0" value="0" step="1" oninput="ycaSliderChange()"
+           style="flex:1;accent-color:var(--acl)">
+    <span id="ycaTsLabel" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--t);min-width:160px;text-align:right">—</span>
+  </div>
+  <div style="background:var(--bg);border:1px solid var(--cb);border-radius:8px;padding:10px">
+    <canvas id="ycaCanvas" style="width:100%;height:340px;display:block"></canvas>
+  </div>
+  <div id="ycaInfo" style="font-size:10px;color:var(--td);margin-top:6px;font-family:'IBM Plex Mono',monospace">—</div>
+</div>
+
 </div><!-- end tab-quantplus -->
 
 <!-- TAB: LIVE SCREEN -->
@@ -2803,6 +2840,46 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       BEI EXPLÍCITO — Breakeven Inflation: CER vs Tasa Fija por tenor
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="card" id="beiCard" style="margin-top:14px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+      <div>
+        <div class="st" style="margin:0">📈 Breakeven Inflation — Curva CER vs Tasa Fija</div>
+        <div class="note" style="margin:4px 0 0 0;font-size:10px">
+          Para cada duración fiteada: BEI = ((1 + TIR Nominal LECAP) / (1 + TIR Real CER) − 1) × 100. Es la inflación implícita anual que iguala los rendimientos. <b>Si tu expectativa de inflación es MAYOR al BEI → conviene CER</b>. Si es MENOR → conviene Tasa Fija. Curvas fiteadas NSS sobre BONDS (CER TIR Real) y FIXED (TEA).
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <button class="btn-api btn-sm" onclick="renderBeiChart()">▶ Recalcular</button>
+        <span id="beiTs" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace">—</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:14px">
+      <!-- Chart -->
+      <div style="background:var(--bg);border:1px solid var(--cb);border-radius:8px;padding:10px">
+        <canvas id="beiChartCanvas" style="width:100%;height:320px;display:block"></canvas>
+        <div id="beiChartLegend" style="font-size:10px;color:var(--td);margin-top:6px;line-height:1.5"></div>
+      </div>
+      <!-- Tabla por tenor -->
+      <div>
+        <table id="beiTable" style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px">
+          <thead><tr style="color:var(--td);font-size:9.5px;text-transform:uppercase;letter-spacing:0.06em;background:#0a0f1a">
+            <th style="text-align:left;padding:6px 8px">Tenor</th>
+            <th style="text-align:right;padding:6px 8px" title="TIR Real CER fiteada NSS al tenor">CER TIR Real</th>
+            <th style="text-align:right;padding:6px 8px" title="TEA Tasa Fija fiteada NSS al tenor">TF TEA</th>
+            <th style="text-align:right;padding:6px 8px" title="Breakeven inflation = (1+TF)/(1+CER)-1">BEI</th>
+          </tr></thead>
+          <tbody id="beiTableBody"><tr><td colspan="4" style="text-align:center;color:var(--tm);padding:14px">Calculá CER y Tasa Fija primero</td></tr></tbody>
+        </table>
+        <div style="font-size:9px;color:var(--td);margin-top:8px;line-height:1.5">
+          <b>Tip:</b> compará BEI vs el REM (Relevamiento de Expectativas BCRA). Si BEI &gt; REM, el mercado pricea MÁS inflación que el consenso de economistas → CER over/underpriced según el lado.
+        </div>
+      </div>
+    </div>
   </div>
 </div><!-- end tab-cer -->
 
@@ -5312,11 +5389,11 @@ function switchTab(tab){
   if(tab==="resumen") renderResumen();
   if(tab==="livescreen") { try{ renderRun(); }catch(_e){} }
   if(tab==="positions"){ renderPositions(); renderBlotter(); renderAxes(); try{renderAgenda()}catch(_e){} }
-  if(tab==="quantplus"){ try{ qtInit(); }catch(_e){console.warn('[qt]',_e)} try{ atRenderCheapRich(); }catch(_e){} }
+  if(tab==="quantplus"){ try{ qtInit(); }catch(_e){console.warn('[qt]',_e)} try{ atRenderCheapRich(); }catch(_e){} try{ ycaLoadTimestamps(); }catch(_e){} }
   if(tab==="pases") buildPaseSelect();
   if(tab==="quantplus") refreshQuantPlus();
   if(tab==="fx") renderFX();
-  if(tab==="cer"){ try{ renderCERTab(); }catch(e){ console.warn('[cer-tab]',e); } }
+  if(tab==="cer"){ try{ renderCERTab(); }catch(e){ console.warn('[cer-tab]',e); } try{ renderBeiChart(); }catch(e){} }
   if(tab==="bonares"){ try{ renderBonares(); }catch(e){ console.warn('[bonares]',e); } }
   if(tab==="arbtasas"){ try{ atInitTab(); }catch(e){ console.warn('[arbtasas]',e); } }
   setTimeout(initSortableTables,100);
@@ -8414,6 +8491,12 @@ async function fetchPricesFromServer(){
     try {
       if (document.getElementById('tab-quantplus')?.style.display !== 'none') {
         if (typeof atRenderCheapRich === 'function') atRenderCheapRich();
+      }
+    } catch(_e){}
+    // Auto-refresh BEI chart si tab CER está visible
+    try {
+      if (document.getElementById('tab-cer')?.style.display !== 'none') {
+        if (typeof renderBeiChart === 'function') renderBeiChart();
       }
     } catch(_e){}
     // Hook para callbacks externos que dependen de _livePrices (axes, etc.)
@@ -12957,6 +13040,332 @@ function _bnDrawDualLawCurve(cv, ptsAR, ptsNY, maxX){
   }
   drawSerie(ptsAR, '#22d3ee', 'AR');
   drawSerie(ptsNY, '#fbbf24', 'NY');
+}
+
+// ═══ BEI EXPLÍCITO — Breakeven Inflation por tenor ═══════════
+const BEI_TENORS = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0]; // años de duration
+
+function renderBeiChart(){
+  const tbody = document.getElementById('beiTableBody');
+  const cv = document.getElementById('beiChartCanvas');
+  const legend = document.getElementById('beiChartLegend');
+  const tsEl = document.getElementById('beiTs');
+  if (!tbody || !cv) return;
+
+  // Fit NSS sobre CER (_tr) y FIXED (_tea), bonos activos con dur válida.
+  const cerPts = (typeof BONDS!=='undefined' ? BONDS : [])
+    .filter(b => b && b._ok && b._dur > 0 && b._tr != null && isFinite(b._tr))
+    .map(b => ({x: b._dur, y: b._tr}));
+  const tfPts = (typeof FIXED!=='undefined' ? FIXED : [])
+    .filter(f => f && f._ok && f._dur > 0 && f._tea != null && isFinite(f._tea))
+    .map(f => ({x: f._dur, y: f._tea}));
+
+  if (cerPts.length < 2 || tfPts.length < 2) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--tm);padding:14px">Necesito ≥2 CER y ≥2 Tasa Fija calculados. Conectá precios y andá a Calculadoras.</td></tr>';
+    const c=cv.getContext('2d'); c.clearRect(0,0,cv.width,cv.height);
+    return;
+  }
+
+  let cerNss=null, tfNss=null;
+  try { cerNss = (cerPts.length>=3 && typeof fitNSS==='function') ? fitNSS(cerPts) : null; } catch(e){}
+  try { tfNss  = (tfPts.length>=3  && typeof fitNSS==='function') ? fitNSS(tfPts)  : null; } catch(e){}
+  let cerLog=null, tfLog=null;
+  try { cerLog = typeof logRegression==='function' ? logRegression(cerPts) : null; } catch(e){}
+  try { tfLog  = typeof logRegression==='function' ? logRegression(tfPts)  : null; } catch(e){}
+
+  function predict(fit, fallback, x){
+    if (fit) { const v = fit.predict(x); if (isFinite(v)) return v; }
+    return fallback ? fallback.predict(x) : null;
+  }
+
+  // Construir filas de la tabla
+  const rows = BEI_TENORS.map(t => {
+    const cer = predict(cerNss, cerLog, t);
+    const tf  = predict(tfNss,  tfLog,  t);
+    let bei = null;
+    if (cer != null && tf != null) {
+      // BEI = ((1+tf/100) / (1+cer/100) - 1) * 100
+      bei = ((1 + tf/100) / (1 + cer/100) - 1) * 100;
+    }
+    return { t, cer, tf, bei };
+  });
+  tbody.innerHTML = rows.map(r => `<tr style="border-bottom:1px solid #131a28">
+    <td style="padding:5px 8px;color:#cbd5e1;font-weight:600">${r.t.toFixed(2)}y</td>
+    <td style="padding:5px 8px;text-align:right;color:#22d3ee">${r.cer!=null ? r.cer.toFixed(2)+'%' : '—'}</td>
+    <td style="padding:5px 8px;text-align:right;color:#fbbf24">${r.tf!=null  ? r.tf.toFixed(2)+'%'  : '—'}</td>
+    <td style="padding:5px 8px;text-align:right;font-weight:700;color:#00e5a0">${r.bei!=null ? r.bei.toFixed(2)+'%' : '—'}</td>
+  </tr>`).join('');
+
+  // Draw chart: 3 curvas (CER, TF, BEI). BEI eje derecho separado para que se vea bien.
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth || 600, H = cv.clientHeight || 320;
+  cv.width = W*dpr; cv.height = H*dpr;
+  const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0);
+  c.clearRect(0,0,W,H);
+  const pad = {t:14, r:50, b:30, l:48};
+
+  // Sampling fino para curvas
+  const xMax = Math.max(...BEI_TENORS, 3.5);
+  const steps = 100;
+  const dx = xMax / steps;
+  const cerCurve = [], tfCurve = [], beiCurve = [];
+  for (let i = 1; i <= steps; i++) {
+    const x = i*dx;
+    const cer = predict(cerNss, cerLog, x);
+    const tf  = predict(tfNss,  tfLog,  x);
+    if (cer != null) cerCurve.push({x, y: cer});
+    if (tf  != null) tfCurve.push({x, y: tf});
+    if (cer != null && tf != null) {
+      const bei = ((1 + tf/100) / (1 + cer/100) - 1) * 100;
+      beiCurve.push({x, y: bei});
+    }
+  }
+
+  // Y range eje izq: CER + TF
+  const allY = cerCurve.concat(tfCurve).map(p=>p.y);
+  const yMin = Math.min(...allY) - 1, yMax = Math.max(...allY) + 1;
+  const yR = yMax - yMin || 1;
+  // Y range eje derecho: BEI
+  const beiY = beiCurve.map(p=>p.y);
+  const bMin = beiY.length ? Math.min(...beiY) - 0.5 : 0;
+  const bMax = beiY.length ? Math.max(...beiY) + 0.5 : 1;
+  const bR = bMax - bMin || 1;
+
+  const xP = x => pad.l + (x/xMax) * (W - pad.l - pad.r);
+  const yP = y => pad.t + (1 - (y-yMin)/yR) * (H - pad.t - pad.b);
+  const yPB = y => pad.t + (1 - (y-bMin)/bR) * (H - pad.t - pad.b);
+
+  // Grid + eje Y izq
+  c.strokeStyle = '#1a2233'; c.lineWidth = 0.5;
+  for (let i = 0; i <= 5; i++) {
+    const v = yMin + yR*i/5, py = yP(v);
+    c.beginPath(); c.moveTo(pad.l, py); c.lineTo(W-pad.r, py); c.stroke();
+    c.fillStyle = '#64748b'; c.font = "9px 'IBM Plex Mono',monospace"; c.textAlign = 'right';
+    c.fillText(v.toFixed(1)+'%', pad.l-4, py+3);
+  }
+  // Eje Y der (BEI)
+  for (let i = 0; i <= 5; i++) {
+    const v = bMin + bR*i/5, py = yPB(v);
+    c.fillStyle = '#00e5a0'; c.textAlign = 'left';
+    c.fillText(v.toFixed(1)+'%', W-pad.r+4, py+3);
+  }
+  // Eje X
+  c.fillStyle = '#64748b'; c.textAlign = 'center';
+  for (let i = 0; i <= 5; i++) {
+    const x = (xMax*i)/5, px = xP(x);
+    c.fillText(x.toFixed(1)+'y', px, H-12);
+  }
+
+  function drawCurve(pts, color, width, dashed, yFn){
+    if (!pts.length) return;
+    c.save();
+    c.strokeStyle = color; c.lineWidth = width;
+    if (dashed) c.setLineDash([5,3]);
+    c.beginPath();
+    pts.forEach((p,i) => { const x=xP(p.x), y=yFn(p.y); if(i===0) c.moveTo(x,y); else c.lineTo(x,y); });
+    c.stroke();
+    c.restore();
+  }
+  drawCurve(cerCurve, '#22d3ee', 2, false, yP);
+  drawCurve(tfCurve,  '#fbbf24', 2, false, yP);
+  drawCurve(beiCurve, '#00e5a0', 2.5, false, yPB);
+
+  // Dots por bono (CER + TF)
+  cerPts.forEach(p => {
+    const x=xP(p.x), y=yP(p.y);
+    c.beginPath(); c.arc(x,y,3.5,0,Math.PI*2); c.fillStyle='#22d3ee'; c.fill();
+    c.strokeStyle='#080c14'; c.lineWidth=1; c.stroke();
+  });
+  tfPts.forEach(p => {
+    const x=xP(p.x), y=yP(p.y);
+    c.beginPath(); c.arc(x,y,3.5,0,Math.PI*2); c.fillStyle='#fbbf24'; c.fill();
+    c.strokeStyle='#080c14'; c.lineWidth=1; c.stroke();
+  });
+
+  // Labels al borde derecho
+  if (cerCurve.length) {
+    const last = cerCurve[cerCurve.length-1];
+    c.fillStyle='#22d3ee'; c.font="bold 9px 'IBM Plex Mono',monospace"; c.textAlign='left';
+    c.fillText('CER ' + last.y.toFixed(1)+'%', W-pad.r+4, yP(last.y)+3);
+  }
+  if (tfCurve.length) {
+    const last = tfCurve[tfCurve.length-1];
+    c.fillStyle='#fbbf24'; c.fillText('TF ' + last.y.toFixed(1)+'%', W-pad.r+4, yP(last.y)+3);
+  }
+
+  if (legend) {
+    legend.innerHTML = `<span style="color:#22d3ee">●</span> CER TIR Real (NSS, eje izq) &nbsp;·&nbsp;
+      <span style="color:#fbbf24">●</span> Tasa Fija TEA (NSS, eje izq) &nbsp;·&nbsp;
+      <span style="color:#00e5a0">●</span> <strong>BEI</strong> = inflación implícita (eje DERECHO)`;
+  }
+  if (tsEl) tsEl.textContent = `${cerPts.length} CER · ${tfPts.length} TF · ${new Date().toLocaleTimeString('es-AR')}`;
+}
+
+// ═══ YIELD CURVE ANIMATION ═══════════════════════════════════
+let _ycaTimestamps = [];
+let _ycaPlaying = false;
+let _ycaTimer = null;
+let _ycaCurrentRows = null;
+let _ycaLatestRows = null;  // referencia "hoy"
+
+async function ycaLoadTimestamps(){
+  const univ = document.getElementById('ycaUniv')?.value || 'cer';
+  const days = parseInt(document.getElementById('ycaDays')?.value || '7');
+  try {
+    const r = await fetch('/api/curve/timestamps?days='+days+'&bond_type='+univ+'&bucket=15', {credentials:'same-origin'});
+    const j = await r.json();
+    _ycaTimestamps = j.timestamps || [];
+    const slider = document.getElementById('ycaSlider');
+    slider.min = 0;
+    slider.max = Math.max(0, _ycaTimestamps.length - 1);
+    slider.value = _ycaTimestamps.length - 1;  // arrancar en el más reciente
+    // Cargar referencia "hoy" (último frame)
+    if (_ycaTimestamps.length) {
+      const lastTs = _ycaTimestamps[_ycaTimestamps.length - 1];
+      const r2 = await fetch('/api/curve/snapshot?ts='+lastTs+'&bond_type='+univ, {credentials:'same-origin'});
+      const j2 = await r2.json();
+      _ycaLatestRows = j2.rows || [];
+    }
+    ycaSliderChange();
+    document.getElementById('ycaInfo').textContent = `${_ycaTimestamps.length} frames disponibles · ${univ.toUpperCase()} · últimos ${days}d`;
+  } catch(e) {
+    document.getElementById('ycaInfo').textContent = 'Error: ' + e;
+  }
+}
+
+async function ycaSliderChange(){
+  if (!_ycaTimestamps.length) return;
+  const idx = parseInt(document.getElementById('ycaSlider').value);
+  const ts = _ycaTimestamps[idx];
+  const univ = document.getElementById('ycaUniv')?.value || 'cer';
+  const lbl = document.getElementById('ycaTsLabel');
+  if (lbl) lbl.textContent = new Date(ts).toLocaleString('es-AR');
+  try {
+    const r = await fetch('/api/curve/snapshot?ts='+ts+'&bond_type='+univ, {credentials:'same-origin'});
+    const j = await r.json();
+    _ycaCurrentRows = j.rows || [];
+    ycaDraw();
+  } catch(e) {}
+}
+
+function ycaDraw(){
+  const cv = document.getElementById('ycaCanvas');
+  if (!cv) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth || 600, H = cv.clientHeight || 340;
+  cv.width = W*dpr; cv.height = H*dpr;
+  const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0);
+  c.clearRect(0,0,W,H);
+  const pad = {t:14, r:50, b:30, l:48};
+
+  const rows = (_ycaCurrentRows||[]).filter(r => r.tir != null && r.duration != null && r.duration > 0);
+  const refRows = (_ycaLatestRows||[]).filter(r => r.tir != null && r.duration != null && r.duration > 0);
+  if (!rows.length) {
+    c.fillStyle='#475569'; c.font="11px 'IBM Plex Mono',monospace"; c.textAlign='center';
+    c.fillText('Sin datos en este frame', W/2, H/2);
+    return;
+  }
+
+  const all = rows.concat(refRows);
+  const xs = all.map(r=>r.duration), ys = all.map(r=>r.tir);
+  const xMax = Math.max(...xs) * 1.1;
+  const yMin = Math.min(...ys) - 1, yMax = Math.max(...ys) + 1, yR = yMax-yMin;
+  const xP = x => pad.l + (x/xMax) * (W-pad.l-pad.r);
+  const yP = y => pad.t + (1-(y-yMin)/yR) * (H-pad.t-pad.b);
+
+  // Grid
+  c.strokeStyle='#1a2233'; c.lineWidth=0.5;
+  for (let i=0; i<=5; i++) {
+    const v = yMin + yR*i/5, py = yP(v);
+    c.beginPath(); c.moveTo(pad.l, py); c.lineTo(W-pad.r, py); c.stroke();
+    c.fillStyle='#64748b'; c.font="9px 'IBM Plex Mono',monospace"; c.textAlign='right';
+    c.fillText(v.toFixed(1)+'%', pad.l-4, py+3);
+  }
+  for (let i=0; i<=5; i++) {
+    const x = xMax*i/5, px = xP(x);
+    c.fillStyle='#64748b'; c.textAlign='center';
+    c.fillText(x.toFixed(1)+'y', px, H-12);
+  }
+
+  // Referencia "hoy" (gris, tenue)
+  if (refRows.length >= 2) {
+    const sorted = [...refRows].sort((a,b)=>a.duration-b.duration);
+    try {
+      const fit = (typeof fitNSS==='function' && sorted.length>=3) ? fitNSS(sorted.map(r=>({x:r.duration,y:r.tir}))) :
+                  (typeof logRegression==='function') ? logRegression(sorted.map(r=>({x:r.duration,y:r.tir}))) : null;
+      if (fit) {
+        c.save(); c.strokeStyle='rgba(100,116,139,0.7)'; c.lineWidth=1.4; c.setLineDash([4,3]);
+        c.beginPath(); let first=true;
+        for (let i=0; i<=80; i++) {
+          const x = 0.1 + (xMax-0.1)*i/80;
+          const y = fit.predict(x);
+          if (!isFinite(y)) { first=true; continue; }
+          const px = xP(x), py = yP(y);
+          first ? (c.moveTo(px,py),first=false) : c.lineTo(px,py);
+        }
+        c.stroke(); c.restore();
+      }
+    } catch(e){}
+    // Dots gris
+    sorted.forEach(r => {
+      const x=xP(r.duration), y=yP(r.tir);
+      c.beginPath(); c.arc(x,y,3,0,Math.PI*2); c.fillStyle='rgba(100,116,139,0.4)'; c.fill();
+    });
+  }
+
+  // Frame actual (cyan, sólido)
+  const sortedNow = [...rows].sort((a,b)=>a.duration-b.duration);
+  try {
+    const fit = (typeof fitNSS==='function' && sortedNow.length>=3) ? fitNSS(sortedNow.map(r=>({x:r.duration,y:r.tir}))) :
+                (typeof logRegression==='function') ? logRegression(sortedNow.map(r=>({x:r.duration,y:r.tir}))) : null;
+    if (fit) {
+      c.save(); c.strokeStyle='#22d3ee'; c.lineWidth=2;
+      c.beginPath(); let first=true;
+      for (let i=0; i<=80; i++) {
+        const x = 0.1 + (xMax-0.1)*i/80;
+        const y = fit.predict(x);
+        if (!isFinite(y)) { first=true; continue; }
+        const px = xP(x), py = yP(y);
+        first ? (c.moveTo(px,py),first=false) : c.lineTo(px,py);
+      }
+      c.stroke(); c.restore();
+    }
+  } catch(e){}
+  // Dots
+  sortedNow.forEach(r => {
+    const x=xP(r.duration), y=yP(r.tir);
+    c.beginPath(); c.arc(x,y,4,0,Math.PI*2); c.fillStyle='#22d3ee'; c.fill();
+    c.strokeStyle='#080c14'; c.lineWidth=1; c.stroke();
+    c.fillStyle='#94a3b8'; c.font="8px 'IBM Plex Mono',monospace"; c.textAlign='center';
+    c.fillText(r.ticker, x, y-7);
+  });
+
+  // Legend
+  c.fillStyle='#22d3ee'; c.font="bold 9px 'IBM Plex Mono',monospace"; c.textAlign='left';
+  c.fillText('● Frame actual', pad.l+10, pad.t+12);
+  c.fillStyle='#94a3b8';
+  c.fillText('● Referencia "hoy" (último frame)', pad.l+10, pad.t+24);
+}
+
+function ycaTogglePlay(){
+  _ycaPlaying = !_ycaPlaying;
+  const btn = document.getElementById('ycaPlayBtn');
+  if (btn) btn.textContent = _ycaPlaying ? '⏸ Pause' : '▶ Play';
+  if (_ycaTimer) { clearInterval(_ycaTimer); _ycaTimer = null; }
+  if (_ycaPlaying) {
+    _ycaTimer = setInterval(() => {
+      const slider = document.getElementById('ycaSlider');
+      let v = parseInt(slider.value);
+      v = (v + 1) % _ycaTimestamps.length;
+      slider.value = v;
+      ycaSliderChange();
+      if (v === _ycaTimestamps.length - 1) {
+        // Llegó al final, pausar
+        _ycaPlaying = false; if (_ycaTimer) { clearInterval(_ycaTimer); _ycaTimer = null; }
+        if (btn) btn.textContent = '▶ Play';
+      }
+    }, 200);  // 200ms por frame = ~5 frames/seg
+  }
 }
 
 // ═══ BONARES TAB: render tabla + curva USD + spreads AR-NY ═══

@@ -566,6 +566,29 @@ class Handler(SimpleHTTPRequestHandler):
                 self._send_json({"ok": ok, "msg": msg, "stats": storage.stats()})
             except Exception as e:
                 self._send_json({"error": str(e)}, 500)
+        elif self.path.startswith("/api/curve/snapshot"):
+            # Devuelve snapshot del universo en un timestamp dado (para yield
+            # curve animation). Params: ts (ms), bond_type (cer|fixed|tamar|usd)
+            try:
+                qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                ts_ms = int((qs.get("ts") or [str(int(time.time()*1000))])[0])
+                bond_type = (qs.get("bond_type") or [None])[0]
+                rows = storage.bond_snapshot_at(ts_ms, bond_type=bond_type, max_age_min=15)
+                self._send_json({"ts": ts_ms, "bond_type": bond_type, "rows": rows})
+            except Exception as e:
+                self._send_json({"error": str(e)}, 500)
+        elif self.path.startswith("/api/curve/timestamps"):
+            # Lista de timestamps disponibles bucketizados. Alimenta el slider.
+            try:
+                qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                days = int((qs.get("days") or ["7"])[0])
+                bond_type = (qs.get("bond_type") or [None])[0]
+                bucket_min = int((qs.get("bucket") or ["15"])[0])
+                since = int((time.time() - days * 86400) * 1000)
+                tss = storage.bond_snapshot_timestamps(bond_type=bond_type, since_ts_ms=since, bucket_min=bucket_min)
+                self._send_json({"days": days, "bond_type": bond_type, "bucket_min": bucket_min, "count": len(tss), "timestamps": tss})
+            except Exception as e:
+                self._send_json({"error": str(e)}, 500)
         elif self.path.startswith("/api/bond/series"):
             try:
                 qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)

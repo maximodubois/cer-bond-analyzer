@@ -325,6 +325,54 @@ def _f(v):
         return None
 
 
+def bond_snapshot_at(ts_ms, bond_type=None, max_age_min=5):
+    """Devuelve "snapshot" del universo en un tiempo dado:
+    para cada ticker, el tick más cercano a ts_ms (dentro de max_age_min minutos).
+    Útil para yield curve animation: dado un timestamp, qué tenía el mercado.
+    Si bond_type, filtra por tipo.
+    """
+    ts = int(ts_ms)
+    max_delta = int(max_age_min * 60 * 1000)
+    q = """
+        SELECT ticker, bond_type, price, bid, ask, tir, tna, duration, ts
+        FROM bond_ticks
+        WHERE ts BETWEEN ? AND ?
+    """
+    args = [ts - max_delta, ts + max_delta]
+    if bond_type:
+        q += " AND bond_type = ?"
+        args.append(bond_type)
+    q += " ORDER BY ticker, ABS(ts - ?) ASC"
+    args.append(ts)
+    with _DB_LOCK, _conn() as c:
+        rows = c.execute(q, args).fetchall()
+    # Dedupe por ticker (primer match = más cercano)
+    seen = set(); out = []
+    for r in rows:
+        if r["ticker"] in seen: continue
+        seen.add(r["ticker"]); out.append(dict(r))
+    return out
+
+
+def bond_snapshot_timestamps(bond_type=None, since_ts_ms=None, bucket_min=15, limit=500):
+    """Devuelve lista de timestamps con datos disponibles, bucketizados.
+    Útil para alimentar un slider de tiempo (yield curve animation).
+    Cada bucket de bucket_min minutos representa un "frame" disponible.
+    """
+    q = "SELECT DISTINCT (ts / ?) AS bucket, MIN(ts) AS ts FROM bond_ticks WHERE 1=1"
+    args = [int(bucket_min * 60 * 1000)]
+    if since_ts_ms is not None:
+        q += " AND ts >= ?"
+        args.append(int(since_ts_ms))
+    if bond_type:
+        q += " AND bond_type = ?"
+        args.append(bond_type)
+    q += " GROUP BY bucket ORDER BY bucket ASC LIMIT ?"
+    args.append(int(limit))
+    with _DB_LOCK, _conn() as c:
+        return [r["ts"] for r in c.execute(q, args).fetchall()]
+
+
 def bond_series(ticker, since_ts_ms=None, limit=10000):
     """Devuelve serie de ticks para un bono ordenada por ts asc."""
     q = "SELECT ts, price, bid, ask, tir, tna, duration FROM bond_ticks WHERE ticker=?"
