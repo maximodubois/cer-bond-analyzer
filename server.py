@@ -610,6 +610,9 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path == "/api/bond/ticks":
             self._save_bond_ticks()
             return
+        if self.path == "/api/fx/calc_ticks":
+            self._save_fx_calc_ticks()
+            return
         if self.path == "/login":
             length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(length).decode("utf-8")
@@ -666,6 +669,43 @@ class Handler(SimpleHTTPRequestHandler):
                 "entries": len(history),
                 "commit": {"ok": commit_ok, "msg": commit_msg},
             })
+        except json.JSONDecodeError as e:
+            self._send_json({"error": f"json invalido: {e}"}, 400)
+        except Exception as e:
+            self._send_json({"error": str(e)}, 500)
+
+    def _save_fx_calc_ticks(self):
+        """POST /api/fx/calc_ticks
+        Body: {ts:int(ms,opt), rows:[{code, price, pct_day?, source?}, ...]}
+        Para ARS_OF/MEP/CCL calculados client-side desde DLR/SPOT y AL30 series.
+        Se guarda en fx_ticks (mismo schema que TwelveData/DolarAPI) — coexisten
+        por timestamp distinto.
+        """
+        try:
+            length = int(self.headers.get("Content-Length", 0) or 0)
+            raw = self.rfile.read(length).decode("utf-8") if length else "{}"
+            body = json.loads(raw)
+            rows = body.get("rows") or []
+            ts_ms = body.get("ts")
+            n = 0
+            for r in rows:
+                code = r.get("code")
+                price = r.get("price")
+                if not code or price is None:
+                    continue
+                try:
+                    ok = storage.fx_tick_insert(
+                        code=code, price=price,
+                        prev_close=None,
+                        pct_day=r.get("pct_day"),
+                        source=r.get("source") or "calc",
+                        ts_ms=ts_ms,
+                    )
+                    if ok:
+                        n += 1
+                except Exception:
+                    pass
+            self._send_json({"ok": True, "inserted": n})
         except json.JSONDecodeError as e:
             self._send_json({"error": f"json invalido: {e}"}, 400)
         except Exception as e:
@@ -771,6 +811,30 @@ def _start_fx_scheduler():
     return t
 
 
+def _start_fx_minute_snapshot():
+    """Thread daemon: cada 60s dispara fx_module.get_snapshot() para snapshotear
+    DolarAPI (Oficial, Mayorista, MEP, CCL, Blue) y TwelveData (con su propia
+    cadencia interna) al fx_ticks table — incluso si nadie tiene la tab FX abierta.
+    """
+    def loop():
+        time.sleep(45)  # arrancar después del scheduler horario
+        while True:
+            try:
+                snap = fx_module.get_snapshot()
+                # get_snapshot ya persiste vía _persist_dolarapi + _td_refresh_if_due
+                ok = sum(1 for it in (snap.get('items') or []) if not it.get('error') and it.get('last') is not None)
+                # Log solo cada 15 min para no llenar logs
+                m = _dt.datetime.utcnow().minute
+                if m % 15 == 0:
+                    print(f"[fx-minute] snapshot ok ({ok} items)")
+            except Exception as e:
+                print(f"[fx-minute] error: {e}")
+            time.sleep(60)
+    t = threading.Thread(target=loop, name="fx-minute-snapshot", daemon=True)
+    t.start()
+    return t
+
+
 def main():
     print("\n" + "=" * 60)
     print("  CER Bond Analyzer v7 — Production Server")
@@ -815,6 +879,10 @@ def main():
     if fx_module.TWELVEDATA_API_KEY or True:
         _start_fx_scheduler()
         print("✓ FX scheduler iniciado (snapshot + commit cada 1h)")
+    # FX minute snapshot: dispara fx_module.get_snapshot() cada 60s para
+    # persistir DolarAPI (Of/May/MEP/CCL/Blue) sin depender de polling cliente.
+    _start_fx_minute_snapshot()
+    print("✓ FX minute scheduler iniciado (DolarAPI + TD persistence cada 60s)")
 
     is_railway = os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("PORT")
     if not is_railway:

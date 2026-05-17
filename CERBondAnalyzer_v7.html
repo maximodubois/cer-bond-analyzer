@@ -8152,11 +8152,51 @@ function startPricePolling(){
   fetchPricesFromServer();
   const interval=(parseFloat(document.getElementById("gSheetInterval").value)||10)*1000;
   _priceTimer=setInterval(fetchPricesFromServer,Math.max(interval,3000));
-  // Bond ticks 1-min scheduler (CER/FIXED/TAMAR/USD): captura price/TIR/dur snapshot
+  // Bond ticks + FX calculados 1-min scheduler.
+  // Captura price/TIR/dur de todos los bonos + ARS_OF/MEP/CCL calculados.
   if(!window._bondTickTimer){
-    window._bondTickTimer=setInterval(()=>{ try{ pushBondTicks(); }catch(e){} }, 60000);
-    setTimeout(()=>{ try{ pushBondTicks(); }catch(e){} }, 8000); // primer push tras settle
+    window._bondTickTimer=setInterval(()=>{
+      try{ pushBondTicks(); }catch(e){}
+      try{ pushFxCalcTicks(); }catch(e){}
+    }, 60000);
+    setTimeout(()=>{
+      try{ pushBondTicks(); }catch(e){}
+      try{ pushFxCalcTicks(); }catch(e){}
+    }, 8000); // primer push tras settle
   }
+}
+
+// Empuja snapshot de los ARS calculados client-side a fx_ticks.
+// ARS_MAY (Mayorista = DLR/SPOT del Sheet wholesale)
+// ARS_MEP (AL30/AL30D calc)
+// ARS_CCL (AL30/AL30C calc)
+// ARS_OF (Oficial Minorista BCRA) y ARS_BLUE se persisten server-side via
+// scheduler 60s + DolarAPI (no se pueden calcular client-side).
+function pushFxCalcTicks(){
+  const rows = [];
+  try {
+    if (typeof getFxSpot === 'function') {
+      const v = getFxSpot();
+      // DLR/SPOT del Sheet ES la cotización mayorista (A3500). Para tener un
+      // intradía denso, lo empujamos como ARS_MAY (DolarAPI también pushea
+      // ARS_MAY pero más espaciado).
+      if (v > 0) rows.push({code:'ARS_MAY', price:v, source:'DLR/SPOT'});
+    }
+    if (typeof getFxMep === 'function') {
+      const v = getFxMep();
+      if (v > 0) rows.push({code:'ARS_MEP', price:v, source:'AL30/AL30D'});
+    }
+    if (typeof getFxCcl === 'function') {
+      const v = getFxCcl();
+      if (v > 0) rows.push({code:'ARS_CCL', price:v, source:'AL30/AL30C'});
+    }
+  } catch(e){}
+  if (!rows.length) return;
+  fetch('/api/fx/calc_ticks',{
+    method:'POST', credentials:'same-origin',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ts:Date.now(), rows})
+  }).catch(()=>{});
 }
 
 // Empuja snapshot de precio/TIR/dur de todos los bonos al servidor (SQLite).
