@@ -521,6 +521,7 @@
   <button class="tab-btn" onclick="switchTab('databcra')">BCRA</button>
   <button class="tab-btn" onclick="switchTab('cer')" style="color:var(--gn);font-weight:700">CER</button>
   <button class="tab-btn" onclick="switchTab('bonares')" style="color:#22d3ee;font-weight:700">BONARES</button>
+  <button class="tab-btn" onclick="switchTab('arbtasas')" style="color:#fbbf24;font-weight:700">ARB. TASAS</button>
 </div>
 </div>
 
@@ -1232,6 +1233,75 @@
 
 <!-- TAB: POSITIONS -->
 <div id="tab-positions" style="display:none">
+
+  <!-- ════════════════════════════════════════════════════════════════
+       RUN DE MERCADO — bid/ask/mid live + TIR/TNA por punta
+       ════════════════════════════════════════════════════════════════ -->
+  <style>
+    #runCard .run-tbl{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px}
+    #runCard .run-tbl th{text-align:right;padding:6px 8px;border-bottom:1px solid #1a2540;color:var(--td);font-size:9.5px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;background:#0a0f1a;position:sticky;top:0}
+    #runCard .run-tbl th:first-child, #runCard .run-tbl th:nth-child(2){text-align:left}
+    #runCard .run-tbl td{padding:5px 8px;border-bottom:1px solid #131a28;text-align:right;font-variant-numeric:tabular-nums}
+    #runCard .run-tbl td:first-child{text-align:left;font-weight:700}
+    #runCard .run-tbl td:nth-child(2){text-align:left;color:var(--td);font-size:10px}
+    #runCard .run-tbl tr:hover{background:#131a28;cursor:pointer}
+    #runCard .run-bid{color:var(--pos)}
+    #runCard .run-ask{color:var(--neg)}
+    #runCard .run-mid{color:#fbbf24}
+    #runCard .run-tir-cell{font-weight:600}
+    #runCard .run-vol{color:var(--td);font-size:10px}
+    #runCard .run-stale{opacity:0.4}
+  </style>
+  <div class="card" id="runCard" style="margin-top:10px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+      <div>
+        <div class="st" style="margin:0">📡 Run de Mercado — Bid / Mid / Ask con TIR por punta</div>
+        <div style="font-size:10px;color:var(--td);margin-top:2px">
+          Pricing live de Google Sheets. TIR/TNA recalculadas en cada punta con los flows del bono. Click en fila → calculadora completa.
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;gap:2px">
+          <button class="bc-univ-btn active" data-rununiv="cer" onclick="runSetUniv('cer')">CER</button>
+          <button class="bc-univ-btn" data-rununiv="fixed" onclick="runSetUniv('fixed')">Tasa Fija</button>
+          <button class="bc-univ-btn" data-rununiv="tamar" onclick="runSetUniv('tamar')">TAMAR</button>
+          <button class="bc-univ-btn" data-rununiv="usd" onclick="runSetUniv('usd')">USD</button>
+        </div>
+        <label style="font-size:10px;color:var(--td);display:flex;align-items:center;gap:4px">
+          Ordenar:
+          <select id="runSort" onchange="renderRun()" style="padding:3px 6px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:3px;font-size:10px">
+            <option value="dur">Duration ↑</option>
+            <option value="dur-d">Duration ↓</option>
+            <option value="tir">TIR ↑</option>
+            <option value="tir-d">TIR ↓</option>
+            <option value="ticker">Ticker</option>
+          </select>
+        </label>
+        <span id="runTs" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace">—</span>
+      </div>
+    </div>
+    <div style="overflow-x:auto;max-height:450px">
+      <table class="run-tbl">
+        <thead>
+          <tr>
+            <th>Ticker</th>
+            <th>Vto / Días</th>
+            <th class="num">Bid Size</th>
+            <th class="num" style="color:var(--pos)">BID</th>
+            <th class="num" style="color:#fbbf24">MID</th>
+            <th class="num" style="color:var(--neg)">ASK</th>
+            <th class="num">Ask Size</th>
+            <th class="num" style="color:var(--pos)">TIR BID</th>
+            <th class="num" style="color:#fbbf24">TIR MID</th>
+            <th class="num" style="color:var(--neg)">TIR ASK</th>
+            <th class="num">Spread (bps)</th>
+            <th class="num">Dur</th>
+          </tr>
+        </thead>
+        <tbody id="runBody"><tr><td colspan="12" style="text-align:center;color:var(--tm);padding:14px">Conectá el polling de precios para ver el run.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
 
   <!-- ════════════════════════════════════════════════════════════════
        AGENDA — Libreta de traders/contrapartes (alimenta Blotter autocomplete)
@@ -2543,6 +2613,124 @@
     </div>
   </div>
 </div><!-- end tab-bonares -->
+
+<!-- ════════════════════════════════════════════════════════════════════
+     TAB: ARBITRAJE TASAS — CI vs 24hs (tomar/colocar) + buscador
+     ════════════════════════════════════════════════════════════════════ -->
+<div id="tab-arbtasas" style="display:none">
+  <!-- A. Top 5 TOMAR / COLOCAR auto -->
+  <div class="card">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="st" style="margin:0">Top tasas implícitas CI ↔ 24hs</div>
+        <div class="note" style="margin:4px 0 0 0;font-size:10px">
+          <b>COLOCAR</b> (lend): vendo 24hs (cobro mañana) y compro CI (entrego hoy). Tasa = (BID_24hs / ASK_CI − 1) × 365/d.<br>
+          <b>TOMAR</b> (borrow): vendo CI (recibo hoy) y compro 24hs (devuelvo mañana). Tasa = (ASK_24hs / BID_CI − 1) × 365/d.<br>
+          Días considerando feriados/finsem hasta SBD(hoy,1). Bid/Ask depth=1 vía Primary API.
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <select id="atUnivPreset" style="padding:4px 8px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;font-size:11px;font-family:'IBM Plex Mono',monospace">
+          <option value="cer">CER</option>
+          <option value="fixed">Tasa Fija</option>
+          <option value="both" selected>CER + Tasa Fija</option>
+          <option value="custom">Custom (manual)</option>
+        </select>
+        <button class="btn-api btn-sm" onclick="atRunScan()" id="atRunBtn">▶ Escanear</button>
+        <button class="btn-api btn-sm" onclick="atAddCustom()" id="atAddCustomBtn" style="display:none">＋ Agregar</button>
+      </div>
+    </div>
+    <div id="atUniverseChips" style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:4px;font-family:'IBM Plex Mono',monospace;font-size:10px"></div>
+    <div class="qt-progress" id="atProgress" style="display:none;height:4px;background:#0a0f1a;border-radius:2px;overflow:hidden;margin-bottom:6px"><div style="height:100%;background:var(--acl);width:0;transition:width 0.2s"></div></div>
+    <div id="atInfo" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;margin-bottom:6px">—</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div>
+        <div style="font-size:11px;color:var(--ac);text-transform:uppercase;letter-spacing:0.07em;font-weight:700;margin-bottom:4px">▲ TOP 5 COLOCAR — tasa más alta</div>
+        <div id="atColocarTbl"></div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--neg);text-transform:uppercase;letter-spacing:0.07em;font-weight:700;margin-bottom:4px">▼ TOP 5 TOMAR — tasa más baja</div>
+        <div id="atTomarTbl"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B. Buscador por bono: book CI / 24hs + precios editables -->
+  <div class="card">
+    <div class="st" style="margin-bottom:8px">Buscador — qué tasa armás con cada precio</div>
+    <div class="note" style="font-size:10px;margin-bottom:10px">
+      Elegí un bono y tocá los precios. Te calculo la tasa implícita
+      para <b style="color:var(--ac)">COLOCAR</b> y <b style="color:var(--neg)">TOMAR</b> en cada combinación.
+      Click en "↻ Live" trae bid/ask depth=1 de Primary y rellena los inputs.
+    </div>
+    <div style="display:grid;grid-template-columns:auto auto auto auto 1fr;gap:8px;align-items:end;margin-bottom:10px">
+      <div class="ig">
+        <label>Bono</label>
+        <select id="atSearchTicker" style="font-size:12px;font-family:'IBM Plex Mono',monospace;padding:5px;min-width:120px"></select>
+      </div>
+      <div class="ig">
+        <label>Días (d)</label>
+        <input type="number" id="atSearchDays" min="1" step="1" value="1" style="font-size:12px;width:60px;text-align:right">
+      </div>
+      <button class="btn-api btn-sm" onclick="atSearchFetchLive()">↻ Live (Primary)</button>
+      <button class="btn-api btn-sm" onclick="atSearchRecalc()">▶ Recalcular</button>
+      <span id="atSearchInfo" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;text-align:right">—</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <!-- CI book -->
+      <div style="background:#0a0f1a;border:1px solid #1a2540;border-radius:8px;padding:10px">
+        <div style="font-size:11px;color:var(--acl);text-transform:uppercase;font-weight:700;letter-spacing:0.07em;margin-bottom:6px">CI · hoy</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="ig"><label>BID precio</label>
+            <input type="number" step="0.01" id="atCiBid" oninput="atSearchRecalc()" style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right;color:var(--pos)"></div>
+          <div class="ig"><label>BID size</label>
+            <input type="number" step="1" id="atCiBidSize" style="font-size:11px;font-family:'IBM Plex Mono',monospace;text-align:right"></div>
+          <div class="ig"><label>OFFER precio</label>
+            <input type="number" step="0.01" id="atCiAsk" oninput="atSearchRecalc()" style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right;color:var(--neg)"></div>
+          <div class="ig"><label>OFFER size</label>
+            <input type="number" step="1" id="atCiAskSize" style="font-size:11px;font-family:'IBM Plex Mono',monospace;text-align:right"></div>
+        </div>
+        <div style="margin-top:6px;font-size:10px;color:var(--td)">Mid: <strong id="atCiMid" style="color:var(--t)">—</strong></div>
+      </div>
+      <!-- 24h book -->
+      <div style="background:#0a0f1a;border:1px solid #1a2540;border-radius:8px;padding:10px">
+        <div style="font-size:11px;color:var(--fx);text-transform:uppercase;font-weight:700;letter-spacing:0.07em;margin-bottom:6px">24hs · T+1 hábil</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="ig"><label>BID precio</label>
+            <input type="number" step="0.01" id="at24Bid" oninput="atSearchRecalc()" style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right;color:var(--pos)"></div>
+          <div class="ig"><label>BID size</label>
+            <input type="number" step="1" id="at24BidSize" style="font-size:11px;font-family:'IBM Plex Mono',monospace;text-align:right"></div>
+          <div class="ig"><label>OFFER precio</label>
+            <input type="number" step="0.01" id="at24Ask" oninput="atSearchRecalc()" style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:right;color:var(--neg)"></div>
+          <div class="ig"><label>OFFER size</label>
+            <input type="number" step="1" id="at24AskSize" style="font-size:11px;font-family:'IBM Plex Mono',monospace;text-align:right"></div>
+        </div>
+        <div style="margin-top:6px;font-size:10px;color:var(--td)">Mid: <strong id="at24Mid" style="color:var(--t)">—</strong></div>
+      </div>
+    </div>
+    <!-- Resultado -->
+    <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div style="background:#0a0f1a;border:1px solid var(--ac);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:var(--td);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px">COLOCAR (bid24/askCI)</div>
+        <div id="atColocarRate" style="font-size:22px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--ac)">—</div>
+        <div id="atColocarTea" style="font-size:10px;color:var(--td);margin-top:4px">—</div>
+        <div id="atColocarSize" style="font-size:9px;color:var(--td);margin-top:2px">—</div>
+      </div>
+      <div style="background:#0a0f1a;border:1px solid var(--cb);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:var(--td);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px">MID-MID</div>
+        <div id="atMidRate" style="font-size:22px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--t)">—</div>
+        <div id="atMidTea" style="font-size:10px;color:var(--td);margin-top:4px">—</div>
+        <div style="font-size:9px;color:var(--td);margin-top:2px">ref. teórica</div>
+      </div>
+      <div style="background:#0a0f1a;border:1px solid var(--neg);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:var(--td);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px">TOMAR (ask24/bidCI)</div>
+        <div id="atTomarRate" style="font-size:22px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--neg)">—</div>
+        <div id="atTomarTea" style="font-size:10px;color:var(--td);margin-top:4px">—</div>
+        <div id="atTomarSize" style="font-size:9px;color:var(--td);margin-top:2px">—</div>
+      </div>
+    </div>
+  </div>
+</div><!-- end tab-arbtasas -->
 
 <div class="card" style="border-color:rgba(71,85,105,0.2);margin-top:10px">
   <div class="st">Metodología</div>
@@ -4835,7 +5023,7 @@ function drawImplInflChart(results){
 // ═══ INIT ══════════════════════════
 // ═══ TABS ═════════════════════════════════════════════════════════
 function switchTab(tab){
-  ["calculadoras","resumen","analysis","quantplus","livescreen","positions","pases","databcra","fx","cer","bonares"].forEach(t=>{
+  ["calculadoras","resumen","analysis","quantplus","livescreen","positions","pases","databcra","fx","cer","bonares","arbtasas"].forEach(t=>{
     const el=document.getElementById("tab-"+t);
     if(el) el.style.display=t===tab?"":"none";
   });
@@ -4851,18 +5039,20 @@ function switchTab(tab){
       ||(tab==="databcra"&&(txt.includes("data")||txt.includes("bcra")))
       ||(tab==="fx"&&txt==="fx")
       ||(tab==="cer"&&txt==="cer")
-      ||(tab==="bonares"&&txt==="bonares");
+      ||(tab==="bonares"&&txt==="bonares")
+      ||(tab==="arbtasas"&&txt.includes("arb"));
     b.classList.toggle("active",isActive);
   });
   if(tab==="resumen") renderResumen();
   if(tab==="livescreen") buildLiveTable();
-  if(tab==="positions"){ renderPositions(); renderBlotter(); renderAxes(); try{renderAgenda()}catch(_e){} }
+  if(tab==="positions"){ renderPositions(); renderBlotter(); renderAxes(); try{renderAgenda()}catch(_e){} try{renderRun()}catch(_e){} }
   if(tab==="quantplus"){ try{ qtInit(); }catch(_e){console.warn('[qt]',_e)} }
   if(tab==="pases") buildPaseSelect();
   if(tab==="quantplus") refreshQuantPlus();
   if(tab==="fx") renderFX();
   if(tab==="cer"){ try{ renderCERTab(); }catch(e){ console.warn('[cer-tab]',e); } }
   if(tab==="bonares"){ try{ renderBonares(); }catch(e){ console.warn('[bonares]',e); } }
+  if(tab==="arbtasas"){ try{ atInitTab(); }catch(e){ console.warn('[arbtasas]',e); } }
   setTimeout(initSortableTables,100);
 }
 
@@ -7879,6 +8069,8 @@ async function fetchPricesFromServer(){
     _syncCaucionRateToInputs();
     syncFxCalcModal();
     syncBondCalcModal();
+    // Refresh Run de Mercado si la tab Posiciones está visible
+    try { if (document.getElementById('tab-positions')?.style.display !== 'none') renderRun(); } catch(_e){}
     // Hook para callbacks externos que dependen de _livePrices (axes, etc.)
     if(Array.isArray(window._postPriceUpdate)){
       window._postPriceUpdate.forEach(fn=>{ try{fn()}catch(e){} });
@@ -12152,6 +12344,132 @@ setTimeout(()=>{
   try{ renderResumen(); }catch(e){}
 },800);
 
+// ═══ RUN DE MERCADO (Posiciones tab) ═══════════════════════════
+let _runUniv='cer';
+function runSetUniv(u){
+  _runUniv=u;
+  document.querySelectorAll('[data-rununiv]').forEach(b=>{
+    b.classList.toggle('active', b.dataset.rununiv===u);
+  });
+  renderRun();
+}
+
+// Computa TIR para un precio dado de un bono (cualquier tipo). Devuelve null si no se puede.
+function _runTirForPrice(b, bondType, settle, price){
+  if (!(price>0)) return null;
+  try {
+    if (bondType === 'cer') {
+      const cerLiqVal = parseFloat(document.getElementById("cerLiq")?.value);
+      const bv = parseFloat(document.getElementById("baseCER")?.value);
+      const bDate = document.getElementById("baseCERDate")?.value;
+      if (!(cerLiqVal && bv && bDate)) return null;
+      const inflMap={};
+      if (typeof IM !== 'undefined') IM.forEach(m=>{inflMap[m.k]=parseFloat(document.getElementById("i_"+m.k)?.value)||0});
+      let getCER=null; try{ getCER=buildCER(bv,bDate,inflMap); }catch(e){ return null; }
+      const cerEm=parseFloat(document.getElementById("ce_"+b.id)?.value)||b.cerEm;
+      const flows=getBondSchedule(b, settle, getCER, cerLiqVal);
+      if (!flows.length) return null;
+      const r=xirrFromFlows(price, flows, 'nominal'); // TIR Nominal TEA
+      return r!=null ? r*100 : null;
+    } else if (bondType === 'fixed') {
+      const matD=new Date(b.mat+'T00:00:00');
+      const emD=new Date(b.emDate+'T00:00:00');
+      const days=DB(settle,matD);
+      if (b.temIssue==null || days<=0) return null;
+      const months360=days360US(emD,matD)/30;
+      const vf=100*Math.pow(1+b.temIssue, months360);
+      return calcTIRFromPrice(price, vf, days); // TEA
+    } else if (bondType === 'usd') {
+      const flows=usdBondCashflows(b, settle);
+      if (!flows.length) return null;
+      const r=xirrFromFlows(price, flows, 'nominal');
+      return r!=null ? r*100 : null;
+    } else if (bondType === 'tamar') {
+      return b._tn != null ? b._tn : null; // simplificado: usa el cached
+    }
+  } catch(e){}
+  return null;
+}
+
+function renderRun(){
+  const body=document.getElementById('runBody'); if (!body) return;
+  const today=new Date(); today.setHours(0,0,0,0);
+  const sd=document.getElementById("settleDate")?.value;
+  const settle=sd?new Date(sd+"T00:00:00"):ABD(today,1);
+
+  const arrMap={
+    cer:   {arr:(typeof BONDS!=='undefined')?BONDS:[], type:'cer'},
+    fixed: {arr:(typeof FIXED!=='undefined')?FIXED:[], type:'fixed'},
+    tamar: {arr:(typeof TAMAR_BONDS!=='undefined')?TAMAR_BONDS:[], type:'tamar'},
+    usd:   {arr:(typeof USD_BONDS!=='undefined')?USD_BONDS:[], type:'usd'},
+  };
+  const sel=arrMap[_runUniv]||arrMap.cer;
+  const rows=[];
+  sel.arr.forEach(b=>{
+    const lp=_livePrices[b.ticker]||{};
+    const bid=lp.bid||null, ask=lp.ask||null, last=lp.last||null;
+    if (!bid && !ask && !last) return;
+    const mid = (bid && ask) ? (bid+ask)/2 : (bid||ask||last);
+    const matD=new Date(b.mat+'T00:00:00');
+    const days=DB(settle, matD);
+    const tirBid=bid?_runTirForPrice(b, sel.type, settle, bid):null;
+    const tirMid=mid?_runTirForPrice(b, sel.type, settle, mid):null;
+    const tirAsk=ask?_runTirForPrice(b, sel.type, settle, ask):null;
+    // Spread bid-ask en bps de TIR (TIR bid > TIR ask siempre, porque bid<ask en precio)
+    const spreadBps = (tirBid!=null && tirAsk!=null) ? Math.abs(tirBid-tirAsk)*100 : null;
+    const dur = b._dur || null;
+    rows.push({b, bid, ask, mid, days, tirBid, tirMid, tirAsk, spreadBps, dur});
+  });
+
+  // Ordenar
+  const sort=document.getElementById('runSort')?.value||'dur';
+  const cmp=(a,b)=>{
+    if (sort==='dur') return (a.dur??Infinity)-(b.dur??Infinity);
+    if (sort==='dur-d') return (b.dur??-1)-(a.dur??-1);
+    if (sort==='tir') return (a.tirMid??Infinity)-(b.tirMid??Infinity);
+    if (sort==='tir-d') return (b.tirMid??-1)-(a.tirMid??-1);
+    if (sort==='ticker') return a.b.ticker.localeCompare(b.b.ticker);
+    return 0;
+  };
+  rows.sort(cmp);
+
+  if (!rows.length){
+    body.innerHTML='<tr><td colspan="12" style="text-align:center;color:var(--tm);padding:14px">Sin datos live. Conectá precios primero.</td></tr>';
+    return;
+  }
+
+  const fmtVol=v=>!v?'—':v>=1e6?(v/1e6).toFixed(2)+'M':v>=1e3?(v/1e3).toFixed(1)+'K':v.toFixed(0);
+  const fmtPx=v=>v==null?'—':v.toFixed(2);
+  const fmtTir=v=>v==null?'—':v.toFixed(2)+'%';
+  const lp=ticker=>_livePrices[ticker]||{};
+  const calcBondType=sel.type==='cer'?'cer':sel.type==='fixed'?'fixed':sel.type==='usd'?'usd':'tamar';
+
+  body.innerHTML=rows.map(r=>{
+    const liveLp=lp(r.b.ticker);
+    const bidSz=liveLp.bidSize||null;
+    const askSz=liveLp.askSize||null;
+    const ageMs = liveLp.ts ? (Date.now()-liveLp.ts) : null;
+    const staleCls = (ageMs && ageMs > 60000) ? ' run-stale' : '';
+    return `<tr class="${staleCls}" onclick="openBondCalculator('${calcBondType}','${r.b.id}')">
+      <td style="color:${r.b.color||'var(--t)'}">${r.b.ticker}</td>
+      <td>${r.b.mat} · <span style="color:var(--td)">${r.days}d</span></td>
+      <td class="run-vol">${fmtVol(bidSz)}</td>
+      <td class="run-bid">${fmtPx(r.bid)}</td>
+      <td class="run-mid">${fmtPx(r.mid)}</td>
+      <td class="run-ask">${fmtPx(r.ask)}</td>
+      <td class="run-vol">${fmtVol(askSz)}</td>
+      <td class="run-tir-cell run-bid">${fmtTir(r.tirBid)}</td>
+      <td class="run-tir-cell run-mid">${fmtTir(r.tirMid)}</td>
+      <td class="run-tir-cell run-ask">${fmtTir(r.tirAsk)}</td>
+      <td>${r.spreadBps!=null?r.spreadBps.toFixed(0):'—'}</td>
+      <td>${r.dur!=null?r.dur.toFixed(2)+'y':'—'}</td>
+    </tr>`;
+  }).join('');
+
+  const tsEl=document.getElementById('runTs');
+  if (tsEl) tsEl.textContent=new Date().toLocaleTimeString('es-AR');
+}
+
 // ═══ BONARES TAB: render tabla + curva USD + spreads AR-NY ═══
 function renderBonares(){
   if (typeof USD_BONDS === 'undefined') return;
@@ -12235,6 +12553,233 @@ function renderBonares(){
   }).join('');
   const sb=document.getElementById('bnSpreadBody');
   if (sb) sb.innerHTML = spreadHtml || '<div style="color:var(--td)">Sin pares calculables.</div>';
+}
+
+// ═══ ARBITRAJE TASAS TAB ═══════════════════════════════════════
+let _atScanRunning=false;
+let _atCustom=JSON.parse(localStorage.getItem("cer_at_custom_v1")||"[]");
+let _atLastScan=null;
+
+function _atDaysToT1(){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const t1=ABD(today,1);
+  return DB(today,t1);
+}
+
+function atGetUniverse(){
+  const v=document.getElementById('atUnivPreset')?.value||'both';
+  if (v==='custom') return _atCustom.slice();
+  const cer = (typeof BONDS!=='undefined') ? BONDS.map(b=>b.ticker) : [];
+  const fix = (typeof FIXED!=='undefined') ? FIXED.map(f=>f.ticker) : [];
+  if (v==='cer') return cer;
+  if (v==='fixed') return fix;
+  return cer.concat(fix);
+}
+
+function atRenderUniverseChips(){
+  const el=document.getElementById('atUniverseChips'); if(!el) return;
+  const v=document.getElementById('atUnivPreset')?.value||'both';
+  const list=atGetUniverse();
+  if (v==='custom') {
+    if (!list.length){ el.innerHTML='<span style="color:var(--td);font-style:italic">Custom vacío — usá "＋ Agregar" para sumar tickers</span>'; return; }
+    el.innerHTML = list.map(t=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border:1px solid var(--cb);border-radius:3px;background:#0d141d;color:var(--acl);font-weight:700">${t}<button onclick="atRemoveCustom('${t}')" style="background:transparent;border:none;color:var(--neg);cursor:pointer;padding:0;font-size:13px">✕</button></span>`).join('');
+  } else {
+    el.innerHTML = `<span style="color:var(--td)">${list.length} tickers (${v==='cer'?'CER':v==='fixed'?'Tasa Fija':'CER+Tasa Fija'})</span>`;
+  }
+}
+
+function atAddCustom(){
+  const t=prompt('Ticker (ej AL30, TX26):');
+  if(!t) return; const tk=t.toUpperCase().trim();
+  if(!tk) return; if(_atCustom.includes(tk)) return;
+  _atCustom.push(tk);
+  localStorage.setItem("cer_at_custom_v1", JSON.stringify(_atCustom));
+  atRenderUniverseChips();
+}
+function atRemoveCustom(tk){
+  _atCustom=_atCustom.filter(x=>x!==tk);
+  localStorage.setItem("cer_at_custom_v1", JSON.stringify(_atCustom));
+  atRenderUniverseChips();
+}
+
+async function atRunScan(){
+  if(_atScanRunning){ alert('Ya en curso'); return; }
+  const univ=atGetUniverse();
+  if(!univ.length){ alert('Universo vacío'); return; }
+  _atScanRunning=true;
+  const btn=document.getElementById('atRunBtn'); if(btn){ btn.disabled=true; btn.textContent='Escaneando…'; }
+  const prog=document.getElementById('atProgress'); const pbar=prog?.querySelector('div');
+  if (prog) prog.style.display='block';
+  const info=document.getElementById('atInfo');
+  const days=_atDaysToT1();
+  const total=univ.length*2;
+  let done=0;
+  const rows=[];
+  for(const tk of univ){
+    if (info) info.textContent=`Consultando ${tk} CI…`;
+    let ci=null, t24=null;
+    try { ci = (typeof _qtFetchOneSettle==='function') ? await _qtFetchOneSettle(tk,'CI') : null; } catch(_e){}
+    done++; if(pbar) pbar.style.width=(done/total*100)+'%';
+    await new Promise(r=>setTimeout(r,500));
+    if (info) info.textContent=`Consultando ${tk} 24hs…`;
+    try { t24 = (typeof _qtFetchOneSettle==='function') ? await _qtFetchOneSettle(tk,'24hs') : null; } catch(_e){}
+    done++; if(pbar) pbar.style.width=(done/total*100)+'%';
+    await new Promise(r=>setTimeout(r,500));
+    if (!ci || !t24){ rows.push({tk, error:true}); continue; }
+    const tomar = (ci.bid?.price && t24.ofr?.price) ? ((t24.ofr.price/ci.bid.price)-1)*365/days*100 : null;
+    const colocar = (t24.bid?.price && ci.ofr?.price) ? ((t24.bid.price/ci.ofr.price)-1)*365/days*100 : null;
+    rows.push({
+      tk, days,
+      ci_bid:ci.bid?.price||null, ci_bid_size:ci.bid?.size||null,
+      ci_ofr:ci.ofr?.price||null, ci_ofr_size:ci.ofr?.size||null,
+      t24_bid:t24.bid?.price||null, t24_bid_size:t24.bid?.size||null,
+      t24_ofr:t24.ofr?.price||null, t24_ofr_size:t24.ofr?.size||null,
+      tomar, colocar,
+    });
+  }
+  _atLastScan={ts:Date.now(), days, rows};
+  _atRenderTop5();
+  if (prog) prog.style.display='none';
+  if (info) info.textContent = `✓ ${rows.length} bonos · ${days}d hasta 24hs · ${new Date().toLocaleTimeString('es-AR')}`;
+  if (btn){ btn.disabled=false; btn.textContent='▶ Re-escanear'; }
+  _atScanRunning=false;
+}
+
+function _atRenderTop5(){
+  if (!_atLastScan) return;
+  const fmtVol=v=>{ if(!v) return '—'; v=Number(v); return v>=1e6?(v/1e6).toFixed(2)+'M':v>=1e3?(v/1e3).toFixed(1)+'K':v.toFixed(0); };
+  const colocar = _atLastScan.rows.filter(r=>r.colocar!=null).sort((a,b)=>b.colocar-a.colocar).slice(0,5);
+  const tomar   = _atLastScan.rows.filter(r=>r.tomar!=null).sort((a,b)=>a.tomar-b.tomar).slice(0,5);
+  const buildTbl=(rows,kind)=>{
+    if(!rows.length) return '<div style="padding:14px;text-align:center;color:var(--td);font-style:italic">— Sin datos —</div>';
+    let h=`<table class="qt-table" style="width:100%;font-size:11px"><thead><tr style="color:var(--td);font-size:9px;text-transform:uppercase">
+      <th style="text-align:left;padding:4px">Ticker</th>
+      <th style="text-align:right;padding:4px">Tasa TNA</th>
+      <th style="text-align:right;padding:4px">${kind==='tomar'?'BID CI':'ASK CI'}</th>
+      <th style="text-align:right;padding:4px">Vol</th>
+      <th style="text-align:right;padding:4px">${kind==='tomar'?'ASK 24h':'BID 24h'}</th>
+      <th style="text-align:right;padding:4px">Vol</th>
+    </tr></thead><tbody>`;
+    rows.forEach(r=>{
+      const ciPx = kind==='tomar'?r.ci_bid:r.ci_ofr;
+      const ciVol= kind==='tomar'?r.ci_bid_size:r.ci_ofr_size;
+      const t24Px= kind==='tomar'?r.t24_ofr:r.t24_bid;
+      const t24Vol=kind==='tomar'?r.t24_ofr_size:r.t24_bid_size;
+      const rate = r[kind];
+      const cls  = kind==='tomar'?'color:var(--neg)':'color:var(--ac)';
+      h+=`<tr style="border-bottom:1px solid #131a28;cursor:pointer" onclick="atLoadIntoSearch('${r.tk}')">
+        <td style="padding:5px;font-weight:700;color:var(--acl)">${r.tk}</td>
+        <td style="padding:5px;text-align:right;font-weight:700;font-family:'IBM Plex Mono',monospace;${cls}">${rate.toFixed(2)}%</td>
+        <td style="padding:5px;text-align:right;font-family:'IBM Plex Mono',monospace">${ciPx?ciPx.toFixed(2):'—'}</td>
+        <td style="padding:5px;text-align:right;color:var(--td);font-size:10px">${fmtVol(ciVol)}</td>
+        <td style="padding:5px;text-align:right;font-family:'IBM Plex Mono',monospace">${t24Px?t24Px.toFixed(2):'—'}</td>
+        <td style="padding:5px;text-align:right;color:var(--td);font-size:10px">${fmtVol(t24Vol)}</td>
+      </tr>`;
+    });
+    h+='</tbody></table>';
+    return h;
+  };
+  const tEl=document.getElementById('atTomarTbl'); if(tEl) tEl.innerHTML=buildTbl(tomar,'tomar');
+  const cEl=document.getElementById('atColocarTbl'); if(cEl) cEl.innerHTML=buildTbl(colocar,'colocar');
+}
+
+function atLoadIntoSearch(tk){
+  const sel=document.getElementById('atSearchTicker');
+  if (sel) sel.value=tk;
+  atSearchFetchLive();
+}
+
+function atPopulateSearchTickers(){
+  const sel=document.getElementById('atSearchTicker'); if(!sel) return;
+  const cer=(typeof BONDS!=='undefined')?BONDS.map(b=>({t:b.ticker, label:b.ticker+' (CER)'})):[];
+  const fix=(typeof FIXED!=='undefined')?FIXED.map(f=>({t:f.ticker, label:f.ticker+' (TF)'})):[];
+  const usd=(typeof USD_BONDS!=='undefined')?USD_BONDS.map(u=>({t:u.ticker, label:u.ticker+' ('+u.law+')'})):[];
+  const all=cer.concat(fix).concat(usd);
+  sel.innerHTML=all.map(b=>`<option value="${b.t}">${b.label}</option>`).join('');
+}
+
+async function atSearchFetchLive(){
+  const tk=document.getElementById('atSearchTicker')?.value;
+  if(!tk){ return; }
+  const info=document.getElementById('atSearchInfo'); if (info) info.textContent='Consultando…';
+  try {
+    const ci=(typeof _qtFetchOneSettle==='function')?await _qtFetchOneSettle(tk,'CI'):null;
+    const t24=(typeof _qtFetchOneSettle==='function')?await _qtFetchOneSettle(tk,'24hs'):null;
+    if (ci) {
+      if (ci.bid){ document.getElementById('atCiBid').value=ci.bid.price?.toFixed(2)||''; document.getElementById('atCiBidSize').value=ci.bid.size||''; }
+      if (ci.ofr){ document.getElementById('atCiAsk').value=ci.ofr.price?.toFixed(2)||''; document.getElementById('atCiAskSize').value=ci.ofr.size||''; }
+    }
+    if (t24) {
+      if (t24.bid){ document.getElementById('at24Bid').value=t24.bid.price?.toFixed(2)||''; document.getElementById('at24BidSize').value=t24.bid.size||''; }
+      if (t24.ofr){ document.getElementById('at24Ask').value=t24.ofr.price?.toFixed(2)||''; document.getElementById('at24AskSize').value=t24.ofr.size||''; }
+    }
+    if (info) info.textContent=tk+' · '+new Date().toLocaleTimeString('es-AR');
+  } catch(e) {
+    if (info) info.textContent='Error: '+e;
+  }
+  atSearchRecalc();
+}
+
+function atSearchRecalc(){
+  const ciBid=parseFloat(document.getElementById('atCiBid')?.value)||0;
+  const ciAsk=parseFloat(document.getElementById('atCiAsk')?.value)||0;
+  const t24Bid=parseFloat(document.getElementById('at24Bid')?.value)||0;
+  const t24Ask=parseFloat(document.getElementById('at24Ask')?.value)||0;
+  const ciBidSz=parseFloat(document.getElementById('atCiBidSize')?.value)||0;
+  const ciAskSz=parseFloat(document.getElementById('atCiAskSize')?.value)||0;
+  const t24BidSz=parseFloat(document.getElementById('at24BidSize')?.value)||0;
+  const t24AskSz=parseFloat(document.getElementById('at24AskSize')?.value)||0;
+  const days=Math.max(parseInt(document.getElementById('atSearchDays')?.value)||1, 1);
+
+  const ciMid = (ciBid>0 && ciAsk>0) ? (ciBid+ciAsk)/2 : (ciBid||ciAsk);
+  const t24Mid = (t24Bid>0 && t24Ask>0) ? (t24Bid+t24Ask)/2 : (t24Bid||t24Ask);
+  const ciMidEl=document.getElementById('atCiMid'); if (ciMidEl) ciMidEl.textContent = ciMid>0 ? ciMid.toFixed(3) : '—';
+  const t24MidEl=document.getElementById('at24Mid'); if (t24MidEl) t24MidEl.textContent = t24Mid>0 ? t24Mid.toFixed(3) : '—';
+
+  // COLOCAR: vendo 24h@bid_24h, compro CI@ask_CI. Tasa = (bid24/askCI - 1)*365/d
+  const colocar = (t24Bid>0 && ciAsk>0) ? ((t24Bid/ciAsk)-1)*365/days*100 : null;
+  // TOMAR: vendo CI@bid_CI, compro 24h@ask_24h. Tasa = (ask24/bidCI - 1)*365/d
+  const tomar = (t24Ask>0 && ciBid>0) ? ((t24Ask/ciBid)-1)*365/days*100 : null;
+  // MID-MID
+  const mid = (t24Mid>0 && ciMid>0) ? ((t24Mid/ciMid)-1)*365/days*100 : null;
+
+  const fmt=v=>v==null?'—':(v>=0?'+':'')+v.toFixed(2)+'%';
+  const tea=v=>{
+    if(v==null) return '—';
+    const teaVal=(Math.pow(1+v/100*days/365, 365/days)-1)*100;
+    return 'TEA '+teaVal.toFixed(2)+'%';
+  };
+  document.getElementById('atColocarRate').textContent=fmt(colocar);
+  document.getElementById('atColocarTea').textContent=tea(colocar);
+  document.getElementById('atTomarRate').textContent=fmt(tomar);
+  document.getElementById('atTomarTea').textContent=tea(tomar);
+  document.getElementById('atMidRate').textContent=fmt(mid);
+  document.getElementById('atMidTea').textContent=tea(mid);
+
+  // Size info
+  const fmtSz=v=>!v?'—':v>=1e6?(v/1e6).toFixed(2)+'M':v>=1e3?(v/1e3).toFixed(1)+'K':v.toFixed(0);
+  const colMinSz = Math.min(t24BidSz||Infinity, ciAskSz||Infinity);
+  const tomMinSz = Math.min(t24AskSz||Infinity, ciBidSz||Infinity);
+  document.getElementById('atColocarSize').textContent = (isFinite(colMinSz)?'Size limit: '+fmtSz(colMinSz):'sin sizes');
+  document.getElementById('atTomarSize').textContent = (isFinite(tomMinSz)?'Size limit: '+fmtSz(tomMinSz):'sin sizes');
+}
+
+function atInitTab(){
+  atPopulateSearchTickers();
+  atRenderUniverseChips();
+  document.getElementById('atSearchDays').value = _atDaysToT1();
+  // Wire universe selector → toggle "Agregar" + chips
+  const sel=document.getElementById('atUnivPreset');
+  if (sel && !sel.dataset.wired) {
+    sel.dataset.wired='1';
+    sel.addEventListener('change',()=>{
+      const v=sel.value;
+      document.getElementById('atAddCustomBtn').style.display = v==='custom' ? '' : 'none';
+      atRenderUniverseChips();
+    });
+  }
+  // Re-render top5 si hay scan previo (al volver al tab)
+  if (_atLastScan) _atRenderTop5();
 }
 
 // ═══ FX TAB: RENDER + INTRADAY ═══════════════════════════════
