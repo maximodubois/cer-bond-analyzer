@@ -280,10 +280,11 @@ def fx_daily_series(code, days=90):
 
 
 def fx_prune_ticks(keep_days=90):
-    """Borra ticks más viejos que keep_days (los diarios quedan)."""
+    """Borra ticks más viejos que keep_days (los diarios quedan). Devuelve cuántas filas se borraron."""
     cutoff = int((time.time() - keep_days * 86400) * 1000)
     with _DB_LOCK, _conn() as c:
         c.execute("DELETE FROM fx_ticks WHERE ts < ?", (cutoff,))
+        return c.execute("SELECT changes()").fetchone()[0]
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -338,9 +339,68 @@ def bond_series(ticker, since_ts_ms=None, limit=10000):
 
 
 def bond_prune_ticks(keep_days=60):
+    """Borra bond_ticks más viejos que keep_days. Devuelve cuántas filas se borraron."""
     cutoff = int((time.time() - keep_days * 86400) * 1000)
     with _DB_LOCK, _conn() as c:
         c.execute("DELETE FROM bond_ticks WHERE ts < ?", (cutoff,))
+        return c.execute("SELECT changes()").fetchone()[0]
+
+
+def bond_compact_old_ticks(keep_raw_days=7, compact_interval_min=15):
+    """Downsampling tiered:
+    - Ticks más recientes que `keep_raw_days`: se dejan intactos (1-min).
+    - Ticks más viejos: se compactan dejando UNO por bucket de
+      `compact_interval_min` por ticker (el último del bucket).
+
+    Vuelve idempotente: corre una vez al día y mantiene la DB chica.
+    Devuelve cuántas filas se borraron.
+    """
+    cutoff_ms = int((time.time() - keep_raw_days * 86400) * 1000)
+    bucket_ms = int(compact_interval_min * 60 * 1000)
+    with _DB_LOCK, _conn() as c:
+        # Borra todos los ticks viejos EXCEPTO el (ticker, MAX(ts)) por bucket.
+        c.execute(
+            """
+            DELETE FROM bond_ticks
+            WHERE ts < ?
+              AND (ticker, ts) NOT IN (
+                SELECT ticker, MAX(ts)
+                FROM bond_ticks
+                WHERE ts < ?
+                GROUP BY ticker, (ts / ?)
+              )
+            """,
+            (cutoff_ms, cutoff_ms, bucket_ms),
+        )
+        deleted = c.execute("SELECT changes()").fetchone()[0]
+        # VACUUM async (en autocommit con WAL no se puede VACUUM dentro de transacción)
+        try:
+            c.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        except Exception:
+            pass
+    return deleted
+
+
+def fx_compact_old_ticks(keep_raw_days=7, compact_interval_min=15):
+    """Mismo downsampling tiered pero para fx_ticks."""
+    cutoff_ms = int((time.time() - keep_raw_days * 86400) * 1000)
+    bucket_ms = int(compact_interval_min * 60 * 1000)
+    with _DB_LOCK, _conn() as c:
+        c.execute(
+            """
+            DELETE FROM fx_ticks
+            WHERE ts < ?
+              AND (code, ts) NOT IN (
+                SELECT code, MAX(ts)
+                FROM fx_ticks
+                WHERE ts < ?
+                GROUP BY code, (ts / ?)
+              )
+            """,
+            (cutoff_ms, cutoff_ms, bucket_ms),
+        )
+        deleted = c.execute("SELECT changes()").fetchone()[0]
+    return deleted
 
 
 # ══════════════════════════════════════════════════════════════════

@@ -546,6 +546,20 @@ class Handler(SimpleHTTPRequestHandler):
                 self._send_json(fx_module.get_history(code, days=days, mode=mode))
             except Exception as e:
                 self._send_json({"error": str(e)}, 500)
+        elif self.path == "/api/storage/compact":
+            try:
+                bd = storage.bond_compact_old_ticks(keep_raw_days=7, compact_interval_min=15)
+                fxd = storage.fx_compact_old_ticks(keep_raw_days=7, compact_interval_min=15)
+                bp = storage.bond_prune_ticks(keep_days=60)
+                fxp = storage.fx_prune_ticks(keep_days=90)
+                self._send_json({
+                    "ok": True,
+                    "compacted": {"bond": bd, "fx": fxd},
+                    "pruned": {"bond": bp, "fx": fxp},
+                    "stats": storage.stats(),
+                })
+            except Exception as e:
+                self._send_json({"error": str(e)}, 500)
         elif self.path == "/api/storage/commit":
             try:
                 ok, msg = storage.commit_db_to_github(min_interval_sec=60)
@@ -738,12 +752,19 @@ def _start_fx_scheduler():
                 print(f"[fx-scheduler] {result}")
             except Exception as e:
                 print(f"[fx-scheduler] error: {e}")
-            # Prune ticks viejos una vez por día (a la hora 03 UTC aprox)
+            # Mantenimiento diario (~03 UTC):
+            #   - Compactación tiered: ticks > 7d se downsamplean a 1 cada 15 min
+            #   - Prune duro: ticks > 60d se borran (último resort)
+            # Esto mantiene la .db chica para los commits a GitHub (cap 100 MB).
             try:
                 if _dt.datetime.utcnow().hour == 3:
+                    bd = storage.bond_compact_old_ticks(keep_raw_days=7, compact_interval_min=15)
+                    fxd = storage.fx_compact_old_ticks(keep_raw_days=7, compact_interval_min=15)
+                    storage.bond_prune_ticks(keep_days=60)
                     storage.fx_prune_ticks(keep_days=90)
-            except Exception:
-                pass
+                    print(f"[scheduler] daily compact: bond -{bd} fx -{fxd} rows")
+            except Exception as e:
+                print(f"[scheduler] compact error: {e}")
             time.sleep(3600)
     t = threading.Thread(target=loop, name="fx-scheduler", daemon=True)
     t.start()
