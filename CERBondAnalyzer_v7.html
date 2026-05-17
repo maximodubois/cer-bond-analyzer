@@ -2588,14 +2588,16 @@
         <th>Ley</th>
         <th>Vto</th>
         <th class="num">Días</th>
-        <th class="num">Precio</th>
+        <th class="num">Px USD <span style="font-size:9px;color:var(--td)">(D)</span></th>
+        <th class="num">Px ARS</th>
+        <th class="num">FX impl</th>
         <th class="num">TIR USD</th>
         <th class="num">Dur</th>
         <th class="num">Conv</th>
         <th class="num">Próx Cupón</th>
         <th class="num">Próx Amort</th>
       </tr></thead>
-      <tbody id="bnBody"><tr><td colspan="11" style="text-align:center;color:var(--tm);padding:14px">Esperando precios…</td></tr></tbody>
+      <tbody id="bnBody"><tr><td colspan="13" style="text-align:center;color:var(--tm);padding:14px">Esperando precios…</td></tr></tbody>
     </table>
   </div>
 
@@ -2885,6 +2887,16 @@ const USD_BONDS=[
   {id:"AO28", ticker:"AO28", name:"Bonar 2028 (6%)", mat:"2028-10-31", emDate:"2026-02-25", currency:"USD", law:"AR", color:"#dc2626",
    coupons:[{date:"2026-02-25", rate:6.000}], amort:[{date:"2028-10-31", pct:100}]},
 ];
+
+// Bonares/Globales tienen 2 cotizaciones en Bolsar:
+//   - ticker base (ej AL30) en ARS por 100 VN (settlement local)
+//   - ticker + 'D' (ej AL30D) en USD por 100 VN (settlement MEP/cable)
+// Para TIR USD usamos SIEMPRE la versión D (precio directo en USD).
+function usdBondPriceTicker(b){
+  // Permite override explícito si en algún caso el USD ticker difiere.
+  if (b.tickerUsd) return b.tickerUsd;
+  return b.ticker + 'D';
+}
 
 // Cashflows USD: expande coupons (step-up) + amort en flujos semestrales (9-Ene/9-Jul).
 // Devuelve [{date, days, nominal, coupon, capital, residualPre}] desde el settle.
@@ -5564,9 +5576,13 @@ function openBondCalculator(bondType, bondId){
   let settle=t1Settle;
 
   const matD=new Date(b.mat+"T00:00:00");
-  const lp=_livePrices[b.ticker]||{};
+  // Para USD bonds, usamos la versión D (USD directo). Para el resto, el ticker base.
+  const _priceTicker = (bondType==='usd' && typeof usdBondPriceTicker==='function')
+    ? usdBondPriceTicker(b)
+    : b.ticker;
+  const lp=_livePrices[_priceTicker]||{};
   const defaultPx=getCurrentPrice(b.id)||lp.last||lp.bid||lp.ask||'';
-  const typeLabel=bondType==='cer'?'CER':bondType==='tamar'?'TAMAR':bondType==='usd'?('USD · '+(b.law||'AR')):(b.type||'LECAP');
+  const typeLabel=bondType==='cer'?'CER':bondType==='tamar'?'TAMAR':bondType==='usd'?('USD · '+(b.law||'AR')+' · px '+_priceTicker):(b.type||'LECAP');
   const defaultTamarProj=getTamarProjectionDefaultTNA();
   const defaultTamarProjLabel=defaultTamarProj!=null?defaultTamarProj.toFixed(4)+'%':'-';
 
@@ -5820,7 +5836,7 @@ function openBondCalculator(bondType, bondId){
     </div>`;
 
   document.body.appendChild(overlay);
-  _bondCalcCtx={ticker:b.ticker,bondType,bondId:b.id};
+  _bondCalcCtx={ticker:_priceTicker, baseTicker:b.ticker, bondType, bondId:b.id};
   document.getElementById('bcClose').addEventListener('click', ()=>{ delete window._bcSetSettle; delete window._bcSwitchTab; _bondCalcCtx=null; overlay.remove(); });
   overlay.addEventListener('click', e=>{ if(e.target===overlay){ delete window._bcSetSettle; delete window._bcSwitchTab; _bondCalcCtx=null; overlay.remove(); } });
 
@@ -8008,7 +8024,10 @@ function getAllTickers(){
   BONDS.forEach(b=>tickers.push(b.ticker));
   FIXED.forEach(f=>tickers.push(f.ticker));
   TAMAR_BONDS.forEach(t=>tickers.push(t.ticker));
-  if (typeof USD_BONDS !== 'undefined') USD_BONDS.forEach(u=>tickers.push(u.ticker));
+  if (typeof USD_BONDS !== 'undefined') USD_BONDS.forEach(u=>{
+    tickers.push(u.ticker);                  // versión ARS (referencia / brecha implícita)
+    tickers.push(usdBondPriceTicker(u));     // versión D (USD directo, base para TIR)
+  });
   DL_BONDS.forEach(d=>tickers.push(d.ticker));
   ROFEX_FUTURES.forEach(r=>tickers.push(r.ticker));
   FX_EXTRA_TICKERS.forEach(t=>tickers.push(t));
@@ -8101,11 +8120,13 @@ function pushBondTicks(){
   const addUniv=(arr, bondType, yieldKey)=>{
     if(!Array.isArray(arr)) return;
     arr.forEach(b=>{
-      const lp=_livePrices[b.ticker]||{};
+      // Para USD bonds, el precio "verdadero" para TIR es el del ticker D (USD).
+      const tk = (bondType==='usd' && typeof usdBondPriceTicker==='function') ? usdBondPriceTicker(b) : b.ticker;
+      const lp=_livePrices[tk]||{};
       const px=lp.last||lp.mid||lp.bid||lp.ask||null;
       if(px==null && b[yieldKey]==null) return; // nada útil
       rows.push({
-        ticker:b.ticker, bond_type:bondType,
+        ticker:tk, bond_type:bondType,
         price:px, bid:lp.bid||null, ask:lp.ask||null,
         tir:b[yieldKey]??null, tna:b._tnaTF??b._tna??null, duration:b._dur??null,
       });
@@ -12406,7 +12427,8 @@ function renderRun(){
   const sel=arrMap[_runUniv]||arrMap.cer;
   const rows=[];
   sel.arr.forEach(b=>{
-    const lp=_livePrices[b.ticker]||{};
+    const tk = (sel.type==='usd' && typeof usdBondPriceTicker==='function') ? usdBondPriceTicker(b) : b.ticker;
+    const lp=_livePrices[tk]||{};
     const bid=lp.bid||null, ask=lp.ask||null, last=lp.last||null;
     if (!bid && !ask && !last) return;
     const mid = (bid && ask) ? (bid+ask)/2 : (bid||ask||last);
@@ -12445,7 +12467,8 @@ function renderRun(){
   const calcBondType=sel.type==='cer'?'cer':sel.type==='fixed'?'fixed':sel.type==='usd'?'usd':'tamar';
 
   body.innerHTML=rows.map(r=>{
-    const liveLp=lp(r.b.ticker);
+    const tkLive = (sel.type==='usd' && typeof usdBondPriceTicker==='function') ? usdBondPriceTicker(r.b) : r.b.ticker;
+    const liveLp=lp(tkLive);
     const bidSz=liveLp.bidSize||null;
     const askSz=liveLp.askSize||null;
     const ageMs = liveLp.ts ? (Date.now()-liveLp.ts) : null;
@@ -12477,17 +12500,25 @@ function renderBonares(){
   const sd=document.getElementById("settleDate").value;
   const settle=sd?new Date(sd+"T00:00:00"):ABD(today,1);
 
-  // Recalcular metrics para cada USD bond (TIR, dur, conv) según precio live
+  // Recalcular metrics para cada USD bond (TIR, dur, conv) según precio live.
+  // PRICE USD viene de _livePrices[tickerD] (AL30D, GD30D, etc.). El ticker base
+  // (AL30) en ARS lo guardamos para mostrar la "brecha implícita" vs MEP/CCL.
   USD_BONDS.forEach(b=>{
-    const lp=_livePrices[b.ticker]||{};
-    const price=lp.last||lp.mid||lp.bid||lp.ask||0;
-    b._lastPrice=price;
-    const flows=usdBondCashflows(b, settle);
+    const tkUsd = usdBondPriceTicker(b);
+    const lpUsd = _livePrices[tkUsd] || {};
+    const lpArs = _livePrices[b.ticker] || {};
+    const priceUsd = lpUsd.last || lpUsd.mid || lpUsd.bid || lpUsd.ask || 0;
+    const priceArs = lpArs.last || lpArs.mid || lpArs.bid || lpArs.ask || 0;
+    b._lastPriceUsd = priceUsd;
+    b._lastPriceArs = priceArs;
+    // FX implícito = ARS price / USD price (cuando ambos están)
+    b._impliedFx = (priceUsd > 0 && priceArs > 0) ? priceArs / priceUsd : null;
+    const flows = usdBondCashflows(b, settle);
     b._nextFlow = flows.length ? flows[0] : null;
-    if (price>0 && flows.length) {
-      const tirRaw=xirrFromFlows(price, flows, 'nominal');
-      if (tirRaw!=null) {
-        b._tea = tirRaw*100;
+    if (priceUsd > 0 && flows.length) {
+      const tirRaw = xirrFromFlows(priceUsd, flows, 'nominal');
+      if (tirRaw != null) {
+        b._tea = tirRaw * 100;
         b._dur = durationFromFlows(tirRaw, flows, 'nominal');
         b._conv = convexityFromFlows(tirRaw, flows, 'nominal');
         b._ok = true;
@@ -12503,14 +12534,18 @@ function renderBonares(){
     const nf = b._nextFlow;
     const nextCup = nf && nf.coupon>0 ? '$ '+nf.coupon.toFixed(3)+' ('+nf.days+'d)' : '—';
     const nextAmr = nf && nf.capital>0 ? nf.capital.toFixed(2)+'% ('+nf.days+'d)' : '—';
-    const px = b._lastPrice;
+    const pxUsd = b._lastPriceUsd;
+    const pxArs = b._lastPriceArs;
+    const fxImpl = b._impliedFx;
     return `<tr class="fxc-row-clickable" onclick="openBondCalculator('usd','${b.id}')">
       <td class="tk" style="color:${b.color};font-weight:700">${b.ticker}</td>
       <td style="color:#cbd5e1">${b.name}</td>
       <td style="font-size:9px;color:${b.law==='NY'?'#fbbf24':'#22d3ee'}">${b.law}</td>
       <td style="font-size:10px">${b.mat}</td>
       <td class="num">${days}</td>
-      <td class="num">${px?px.toFixed(2):'—'}</td>
+      <td class="num" style="font-weight:600">${pxUsd?pxUsd.toFixed(2):'—'}</td>
+      <td class="num" style="color:var(--td);font-size:10px">${pxArs?pxArs.toLocaleString('es-AR',{maximumFractionDigits:0}):'—'}</td>
+      <td class="num" style="color:#fbbf24;font-size:10px">${fxImpl?fxImpl.toFixed(0):'—'}</td>
       <td class="num" style="color:#22d3ee;font-weight:600">${b._tea!=null?b._tea.toFixed(2)+'%':'—'}</td>
       <td class="num">${b._dur!=null?b._dur.toFixed(2)+'y':'—'}</td>
       <td class="num">${b._conv!=null?b._conv.toFixed(1):'—'}</td>
