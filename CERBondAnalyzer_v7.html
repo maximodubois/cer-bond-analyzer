@@ -9127,9 +9127,11 @@ function _bltFindAsset(ticker){
 
 // TKT helpers
 function _bltArtNow(){
-  // Hora actual en Buenos Aires (UTC-3, sin DST)
-  const now = new Date();
-  return new Date(now.getTime() - now.getTimezoneOffset()*60000 - 3*3600000);
+  // Hora actual en Buenos Aires (UTC-3, sin DST).
+  // Date.getTime() ya devuelve epoch UTC absoluto, así que solo hay que
+  // shiftear -3h. (Versión previa restaba getTimezoneOffset también, lo
+  // que duplicaba la corrección cuando el cliente ya estaba en ART.)
+  return new Date(Date.now() - 3 * 3600000);
 }
 function _bltArtDateStr(d){
   // YYYY-MM-DD en ART
