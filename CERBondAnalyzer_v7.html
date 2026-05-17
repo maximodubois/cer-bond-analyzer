@@ -520,6 +520,7 @@
   <button class="tab-btn" onclick="switchTab('pases')">Pases</button>
   <button class="tab-btn" onclick="switchTab('databcra')">BCRA</button>
   <button class="tab-btn" onclick="switchTab('cer')" style="color:var(--gn);font-weight:700">CER</button>
+  <button class="tab-btn" onclick="switchTab('bonares')" style="color:#22d3ee;font-weight:700">BONARES</button>
 </div>
 </div>
 
@@ -2498,6 +2499,51 @@
   </div>
 </div><!-- end tab-cer -->
 
+<!-- ════════════════════════════════════════════════════════════════════
+     TAB: BONARES — Hard Dollar sovereigns (AL/GD + nuevos Caputo)
+     ════════════════════════════════════════════════════════════════════ -->
+<div id="tab-bonares" style="display:none">
+  <div class="card">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+      <div class="st" style="margin:0">Bonares (AR Law) & Globales (NY Law) — USD Sovereign</div>
+      <div style="font-size:10px;color:var(--td)">
+        Canje 2020 (step-up) + nuevas emisiones Caputo (AN29/AO27/AO28).
+        Click en cualquier fila → calculadora con flujos USD.
+      </div>
+    </div>
+    <table class="lt" id="bnTable">
+      <thead><tr>
+        <th>Ticker</th>
+        <th>Nombre</th>
+        <th>Ley</th>
+        <th>Vto</th>
+        <th class="num">Días</th>
+        <th class="num">Precio</th>
+        <th class="num">TIR USD</th>
+        <th class="num">Dur</th>
+        <th class="num">Conv</th>
+        <th class="num">Próx Cupón</th>
+        <th class="num">Próx Amort</th>
+      </tr></thead>
+      <tbody id="bnBody"><tr><td colspan="11" style="text-align:center;color:var(--tm);padding:14px">Esperando precios…</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- Curva USD + spreads AR vs NY -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div class="card">
+      <div class="st" style="color:#22d3ee">Curva TIR USD — Bonares vs Globales</div>
+      <div class="chart-c" id="bnCurveContainer" style="height:280px"><canvas id="bnCurveChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="st" style="color:#fbbf24">Spread AR − NY (mismo vto)</div>
+      <div id="bnSpreadBody" style="padding:10px;font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.8">
+        <div style="color:var(--td)">Esperando precios para calcular spreads…</div>
+      </div>
+    </div>
+  </div>
+</div><!-- end tab-bonares -->
+
 <div class="card" style="border-color:rgba(71,85,105,0.2);margin-top:10px">
   <div class="st">Metodología</div>
   <div class="method">
@@ -2600,6 +2646,114 @@ const TAMAR_BONDS=[
   {id:"TMG28", ticker:"TMG28", name:"Bono TAMAR 30-Ago-28",type:"BONTAMAR", mat:"2028-08-30", emDate:"2026-04-30", margen1816:690, margen90:690, color:"#3f3300"},
   {id:"TXMJ9", ticker:"TXMJ9", name:"Bono DUAL 30-Jun-29",type:"DUAL", mat:"2029-06-29", emDate:"2026-04-30", margen1816:300, margen90:300, color:"#d946ef"},
 ];
+
+// ═══ USD SOVEREIGN BONDS — Bonares (AR law) + Globales (NY law) ═══
+// Canje 2020 (DNU 391/2020): AL29/GD29 cupón fijo 1%, resto STEP-UP.
+// Cupones se aplican al residual outstanding (post amortizaciones previas).
+// coupons[]: {date:start, rate:annual%} — válido hasta el próximo step.
+// amort[]:   {date, pct} — porcentaje del nominal original (suman 100).
+// Fuente: SEC 424B5 prospectus Aug-2020 + Min Economía AR.
+const USD_BONDS=[
+  // ── Canje 2020 ──
+  {id:"AL29", ticker:"AL29", name:"Bonar 2029 (1%)", mat:"2029-07-09", emDate:"2020-09-04", currency:"USD", law:"AR", color:"#22d3ee",
+   coupons:[{date:"2020-09-04", rate:1.000}],
+   amort:[{date:"2025-01-09",pct:10},{date:"2025-07-09",pct:10},{date:"2026-01-09",pct:10},{date:"2026-07-09",pct:10},{date:"2027-01-09",pct:10},{date:"2027-07-09",pct:10},{date:"2028-01-09",pct:10},{date:"2028-07-09",pct:10},{date:"2029-01-09",pct:10},{date:"2029-07-09",pct:10}]},
+  {id:"GD29", ticker:"GD29", name:"Global 2029 (1%)", mat:"2029-07-09", emDate:"2020-09-04", currency:"USD", law:"NY", color:"#06b6d4",
+   coupons:[{date:"2020-09-04", rate:1.000}],
+   amort:[{date:"2025-01-09",pct:10},{date:"2025-07-09",pct:10},{date:"2026-01-09",pct:10},{date:"2026-07-09",pct:10},{date:"2027-01-09",pct:10},{date:"2027-07-09",pct:10},{date:"2028-01-09",pct:10},{date:"2028-07-09",pct:10},{date:"2029-01-09",pct:10},{date:"2029-07-09",pct:10}]},
+  {id:"AL30", ticker:"AL30", name:"Bonar 2030 Step-Up", mat:"2030-07-09", emDate:"2020-09-04", currency:"USD", law:"AR", color:"#fbbf24",
+   coupons:[{date:"2020-09-04",rate:0.125},{date:"2021-07-09",rate:0.500},{date:"2023-07-09",rate:0.750},{date:"2027-07-09",rate:1.750}],
+   amort:[{date:"2024-07-09",pct:4},{date:"2025-01-09",pct:8},{date:"2025-07-09",pct:8},{date:"2026-01-09",pct:8},{date:"2026-07-09",pct:8},{date:"2027-01-09",pct:8},{date:"2027-07-09",pct:8},{date:"2028-01-09",pct:8},{date:"2028-07-09",pct:8},{date:"2029-01-09",pct:8},{date:"2029-07-09",pct:8},{date:"2030-01-09",pct:8},{date:"2030-07-09",pct:8}]},
+  {id:"GD30", ticker:"GD30", name:"Global 2030 Step-Up", mat:"2030-07-09", emDate:"2020-09-04", currency:"USD", law:"NY", color:"#f59e0b",
+   coupons:[{date:"2020-09-04",rate:0.125},{date:"2021-07-09",rate:0.500},{date:"2023-07-09",rate:0.750},{date:"2027-07-09",rate:1.750}],
+   amort:[{date:"2024-07-09",pct:4},{date:"2025-01-09",pct:8},{date:"2025-07-09",pct:8},{date:"2026-01-09",pct:8},{date:"2026-07-09",pct:8},{date:"2027-01-09",pct:8},{date:"2027-07-09",pct:8},{date:"2028-01-09",pct:8},{date:"2028-07-09",pct:8},{date:"2029-01-09",pct:8},{date:"2029-07-09",pct:8},{date:"2030-01-09",pct:8},{date:"2030-07-09",pct:8}]},
+  {id:"AL35", ticker:"AL35", name:"Bonar 2035 Step-Up", mat:"2035-07-09", emDate:"2020-09-04", currency:"USD", law:"AR", color:"#a78bfa",
+   coupons:[{date:"2020-09-04",rate:0.125},{date:"2021-07-09",rate:1.125},{date:"2022-07-09",rate:1.500},{date:"2023-07-09",rate:3.625},{date:"2024-07-09",rate:4.125},{date:"2027-07-09",rate:4.750},{date:"2028-07-09",rate:5.000}],
+   amort:[{date:"2031-01-09",pct:10},{date:"2031-07-09",pct:10},{date:"2032-01-09",pct:10},{date:"2032-07-09",pct:10},{date:"2033-01-09",pct:10},{date:"2033-07-09",pct:10},{date:"2034-01-09",pct:10},{date:"2034-07-09",pct:10},{date:"2035-01-09",pct:10},{date:"2035-07-09",pct:10}]},
+  {id:"GD35", ticker:"GD35", name:"Global 2035 Step-Up", mat:"2035-07-09", emDate:"2020-09-04", currency:"USD", law:"NY", color:"#8b5cf6",
+   coupons:[{date:"2020-09-04",rate:0.125},{date:"2021-07-09",rate:1.125},{date:"2022-07-09",rate:1.500},{date:"2023-07-09",rate:3.625},{date:"2024-07-09",rate:4.125},{date:"2027-07-09",rate:4.750},{date:"2028-07-09",rate:5.000}],
+   amort:[{date:"2031-01-09",pct:10},{date:"2031-07-09",pct:10},{date:"2032-01-09",pct:10},{date:"2032-07-09",pct:10},{date:"2033-01-09",pct:10},{date:"2033-07-09",pct:10},{date:"2034-01-09",pct:10},{date:"2034-07-09",pct:10},{date:"2035-01-09",pct:10},{date:"2035-07-09",pct:10}]},
+  {id:"AE38", ticker:"AE38", name:"Bonar 2038 Step-Up", mat:"2038-01-09", emDate:"2020-09-04", currency:"USD", law:"AR", color:"#f472b6",
+   coupons:[{date:"2020-09-04",rate:0.125},{date:"2021-07-09",rate:2.000},{date:"2022-07-09",rate:3.875},{date:"2023-07-09",rate:4.250},{date:"2024-07-09",rate:5.000}],
+   amort:Array.from({length:22},(_,i)=>{const d=new Date(2027,6,9);d.setMonth(d.getMonth()+i*6);return {date:d.toISOString().slice(0,10), pct:100/22};})},
+  {id:"GD38", ticker:"GD38", name:"Global 2038 Step-Up", mat:"2038-01-09", emDate:"2020-09-04", currency:"USD", law:"NY", color:"#ec4899",
+   coupons:[{date:"2020-09-04",rate:0.125},{date:"2021-07-09",rate:2.000},{date:"2022-07-09",rate:3.875},{date:"2023-07-09",rate:4.250},{date:"2024-07-09",rate:5.000}],
+   amort:Array.from({length:22},(_,i)=>{const d=new Date(2027,6,9);d.setMonth(d.getMonth()+i*6);return {date:d.toISOString().slice(0,10), pct:100/22};})},
+  {id:"AL41", ticker:"AL41", name:"Bonar 2041 Step-Up", mat:"2041-07-09", emDate:"2020-09-04", currency:"USD", law:"AR", color:"#34d399",
+   coupons:[{date:"2020-09-04",rate:0.125},{date:"2021-07-09",rate:2.500},{date:"2022-07-09",rate:3.500},{date:"2029-07-09",rate:4.875}],
+   amort:Array.from({length:28},(_,i)=>{const d=new Date(2028,0,9);d.setMonth(d.getMonth()+i*6);return {date:d.toISOString().slice(0,10), pct:100/28};})},
+  {id:"GD41", ticker:"GD41", name:"Global 2041 Step-Up", mat:"2041-07-09", emDate:"2020-09-04", currency:"USD", law:"NY", color:"#10b981",
+   coupons:[{date:"2020-09-04",rate:0.125},{date:"2021-07-09",rate:2.500},{date:"2022-07-09",rate:3.500},{date:"2029-07-09",rate:4.875}],
+   amort:Array.from({length:28},(_,i)=>{const d=new Date(2028,0,9);d.setMonth(d.getMonth()+i*6);return {date:d.toISOString().slice(0,10), pct:100/28};})},
+  {id:"GD46", ticker:"GD46", name:"Global 2046 Step-Up", mat:"2046-07-09", emDate:"2020-09-04", currency:"USD", law:"NY", color:"#60a5fa",
+   coupons:[{date:"2020-09-04",rate:0.125},{date:"2021-07-09",rate:1.125},{date:"2022-07-09",rate:1.500},{date:"2023-07-09",rate:3.625},{date:"2024-07-09",rate:4.125},{date:"2027-07-09",rate:4.375},{date:"2028-07-09",rate:5.000}],
+   amort:Array.from({length:44},(_,i)=>{const d=new Date(2025,0,9);d.setMonth(d.getMonth()+i*6);return {date:d.toISOString().slice(0,10), pct:100/44};})},
+
+  // ── Nuevas emisiones Caputo (no canje 2020) ──
+  {id:"AN29", ticker:"AN29", name:"Bonar 2029N (6.5%)", mat:"2029-11-30", emDate:"2025-12-09", currency:"USD", law:"AR", color:"#fb923c",
+   coupons:[{date:"2025-12-09", rate:6.500}], amort:[{date:"2029-11-30", pct:100}]},
+  {id:"AO27", ticker:"AO27", name:"Bonar 2027 (6%)", mat:"2027-10-29", emDate:"2026-02-25", currency:"USD", law:"AR", color:"#ef4444",
+   coupons:[{date:"2026-02-25", rate:6.000}], amort:[{date:"2027-10-29", pct:100}]},
+  {id:"AO28", ticker:"AO28", name:"Bonar 2028 (6%)", mat:"2028-10-31", emDate:"2026-02-25", currency:"USD", law:"AR", color:"#dc2626",
+   coupons:[{date:"2026-02-25", rate:6.000}], amort:[{date:"2028-10-31", pct:100}]},
+];
+
+// Cashflows USD: expande coupons (step-up) + amort en flujos semestrales (9-Ene/9-Jul).
+// Devuelve [{date, days, nominal, coupon, capital, residualPre}] desde el settle.
+// Para AN29/AO27/AO28 (semestral 30-May/30-Nov ó 30-Apr/30-Oct según vto) usamos el vto como ancla.
+function usdBondCashflows(b, settle){
+  const flows=[];
+  const matD = new Date(b.mat+'T00:00:00');
+  if (!matD || matD <= settle) return flows;
+
+  // Generar fechas de pago semestrales hacia atrás desde mat
+  const payDates=[];
+  let d = new Date(matD);
+  while (d > new Date(b.emDate+'T00:00:00')) {
+    payDates.unshift(new Date(d));
+    d = new Date(d); d.setMonth(d.getMonth()-6);
+  }
+  // Coupon lookup: para una fecha de pago, qué tasa anual corresponde (último step <= fecha)
+  function rateForDate(payDate){
+    let r = 0;
+    for (const c of b.coupons) {
+      const cd = new Date(c.date+'T00:00:00');
+      if (cd <= payDate) r = c.rate;
+      else break;
+    }
+    return r/100; // a decimal
+  }
+  // Amort lookup: % del original que se amortiza en una fecha (0 si no)
+  function amortAt(payDate){
+    const ds = payDate.toISOString().slice(0,10);
+    const hit = b.amort.find(a => a.date === ds);
+    return hit ? hit.pct : 0;
+  }
+
+  // Recorrer todas las fechas; trackear residual outstanding %.
+  // El cupón se paga sobre el residual al INICIO del período, ANTES de la amort de ese período.
+  let residual = 100; // % VN outstanding
+  for (let i=0; i<payDates.length; i++) {
+    const pd = payDates[i];
+    const rateAnnual = rateForDate(pd);
+    const coupon = residual * rateAnnual * 0.5; // semestral 30/360
+    const cap = amortAt(pd);
+    const total = coupon + cap;
+    if (pd > settle && total > 0) {
+      flows.push({
+        date: pd,
+        days: DB(settle, pd),
+        nominal: total,
+        coupon: coupon,
+        capital: cap,
+        residualPre: residual,
+      });
+    }
+    residual -= cap;
+    if (residual < 0.0001) residual = 0;
+  }
+  return flows;
+}
 
 // ═══ TAMAR MONTHLY ASSUMPTIONS (TNA%) ═══
 function buildTamarMonths(){
@@ -4681,7 +4835,7 @@ function drawImplInflChart(results){
 // ═══ INIT ══════════════════════════
 // ═══ TABS ═════════════════════════════════════════════════════════
 function switchTab(tab){
-  ["calculadoras","resumen","analysis","quantplus","livescreen","positions","pases","databcra","fx","cer"].forEach(t=>{
+  ["calculadoras","resumen","analysis","quantplus","livescreen","positions","pases","databcra","fx","cer","bonares"].forEach(t=>{
     const el=document.getElementById("tab-"+t);
     if(el) el.style.display=t===tab?"":"none";
   });
@@ -4696,7 +4850,8 @@ function switchTab(tab){
       ||(tab==="pases"&&txt.includes("pase"))
       ||(tab==="databcra"&&(txt.includes("data")||txt.includes("bcra")))
       ||(tab==="fx"&&txt==="fx")
-      ||(tab==="cer"&&txt==="cer");
+      ||(tab==="cer"&&txt==="cer")
+      ||(tab==="bonares"&&txt==="bonares");
     b.classList.toggle("active",isActive);
   });
   if(tab==="resumen") renderResumen();
@@ -4707,6 +4862,7 @@ function switchTab(tab){
   if(tab==="quantplus") refreshQuantPlus();
   if(tab==="fx") renderFX();
   if(tab==="cer"){ try{ renderCERTab(); }catch(e){ console.warn('[cer-tab]',e); } }
+  if(tab==="bonares"){ try{ renderBonares(); }catch(e){ console.warn('[bonares]',e); } }
   setTimeout(initSortableTables,100);
 }
 
@@ -5208,6 +5364,7 @@ function openBondCalculator(bondType, bondId){
   if(window._bcBookTimerId){ clearInterval(window._bcBookTimerId); window._bcBookTimerId=null; }
   const b = bondType==='cer' ? BONDS.find(x=>x.id===bondId)
           : bondType==='tamar' ? TAMAR_BONDS.find(x=>x.id===bondId)
+          : bondType==='usd' ? USD_BONDS.find(x=>x.id===bondId)
           : FIXED.find(x=>x.id===bondId);
   if(!b) return;
 
@@ -5219,7 +5376,7 @@ function openBondCalculator(bondType, bondId){
   const matD=new Date(b.mat+"T00:00:00");
   const lp=_livePrices[b.ticker]||{};
   const defaultPx=getCurrentPrice(b.id)||lp.last||lp.bid||lp.ask||'';
-  const typeLabel=bondType==='cer'?'CER':bondType==='tamar'?'TAMAR':(b.type||'LECAP');
+  const typeLabel=bondType==='cer'?'CER':bondType==='tamar'?'TAMAR':bondType==='usd'?('USD · '+(b.law||'AR')):(b.type||'LECAP');
   const defaultTamarProj=getTamarProjectionDefaultTNA();
   const defaultTamarProjLabel=defaultTamarProj!=null?defaultTamarProj.toFixed(4)+'%':'-';
 
@@ -5263,6 +5420,11 @@ function openBondCalculator(bondType, bondId){
           <button class="bc-tab" id="bcTabChart" onclick="_bcSwitchTab('chart')">Gráfico</button>
         </div>`:''}
         ${bondType==='fixed'?`
+        <div class="bc-tabs">
+          <button class="bc-tab active" id="bcTabCalc" onclick="_bcSwitchTab('calc')">Calculadora</button>
+          <button class="bc-tab" id="bcTabChart" onclick="_bcSwitchTab('chart')">Gráfico</button>
+        </div>`:''}
+        ${bondType==='usd'?`
         <div class="bc-tabs">
           <button class="bc-tab active" id="bcTabCalc" onclick="_bcSwitchTab('calc')">Calculadora</button>
           <button class="bc-tab" id="bcTabChart" onclick="_bcSwitchTab('chart')">Gráfico</button>
@@ -5498,6 +5660,8 @@ function openBondCalculator(bondType, bondId){
       _pushUniv(FIXED, '#fbbf24', '_tea', '_dur', 'Tasa Fija (TIR TEA)');
     } else if (bondType === 'tamar') {
       _pushUniv(TAMAR_BONDS, '#4da6ff', '_tn', '_dur', 'TAMAR (TIR Nom)');
+    } else if (bondType === 'usd') {
+      _pushUniv(USD_BONDS, '#22d3ee', '_tea', '_dur', 'USD Sov (TIR USD)');
     }
     _bcDrawCurveCanvas(cv, series, b);
     if (legend) {
@@ -6703,6 +6867,89 @@ function openBondCalculator(bondType, bondId){
           parts.length?parts.join('<span style="color:var(--tm);padding:0 8px">|</span>'):'Ingresa TEA o TNA objetivo para ver el precio implicito';
       }
 
+    } else if (bondType === 'usd') {
+      // ── USD SOVEREIGN (Bonares / Globales) ───────────────────────
+      // Flujos en USD desde el settle. TIR USD (TEA) por XIRR sobre flujos.
+      const flowsUsd = usdBondCashflows(b, settle);
+      let tir = null, tna = null, dur = null, conv = null;
+      if (price > 0 && flowsUsd.length) {
+        const tirRaw = xirrFromFlows(price, flowsUsd, 'nominal');
+        if (tirRaw != null) {
+          tir = tirRaw * 100; // TEA USD
+          tna = days > 0 ? ((Math.pow(1 + tir/100, days/365) - 1) * (365/days)) * 100 : null;
+          dur  = durationFromFlows(tirRaw, flowsUsd, 'nominal');
+          conv = convexityFromFlows(tirRaw, flowsUsd, 'nominal');
+          b._tea = tir; b._tna = tna; b._dur = dur; b._conv = conv; b._ok = true;
+        }
+      }
+      const teaEq = tir;
+      const temEq = tir != null ? (Math.pow(1 + tir/100, 1/12) - 1) * 100 : null;
+      document.getElementById('bck-tir').textContent = tir!=null ? tir.toFixed(2)+'%' : '—';
+      document.getElementById('bck-tir').style.color = tir!=null ? (tir>=0?'var(--acl)':'var(--neg)') : 'var(--td)';
+      document.getElementById('bck-tna').textContent = tna!=null ? tna.toFixed(2)+'%' : '—';
+      document.getElementById('bck-tna').style.color = tna!=null ? (tna>=0?'var(--acl)':'var(--neg)') : 'var(--td)';
+      document.getElementById('bck-tea').textContent = teaEq!=null ? teaEq.toFixed(2)+'%' : '—';
+      document.getElementById('bck-tea').style.color = teaEq!=null ? (teaEq>=0?'var(--acl)':'var(--neg)') : 'var(--td)';
+      document.getElementById('bck-tem').textContent = temEq!=null ? temEq.toFixed(2)+'%' : '—';
+      document.getElementById('bck-tem').style.color = temEq!=null ? (temEq>=0?'var(--acl)':'var(--neg)') : 'var(--td)';
+
+      // Riesgo / Curva USD
+      {
+        const fit = _bcFitCurveYield(USD_BONDS, b, dur, '_tea');
+        _bcRenderRiskKpis(dur, conv, fit, tir);
+      }
+
+      // Flujos
+      if (flowsUsd.length) {
+        const rows = flowsUsd.map(f => `<tr>
+          <td>${f.date.toLocaleDateString('es-AR')}</td>
+          <td style="text-align:right">${f.days}</td>
+          <td style="text-align:right">${(f.coupon||0).toFixed(4)}</td>
+          <td style="text-align:right">${(f.capital||0).toFixed(2)}</td>
+          <td style="text-align:right">${f.nominal.toFixed(4)}</td>
+          <td style="text-align:right">${(f.nominal*scale).toFixed(2)}</td>
+        </tr>`).join('');
+        const totNom = flowsUsd.reduce((s,f)=>s+f.nominal,0);
+        const totCup = flowsUsd.reduce((s,f)=>s+(f.coupon||0),0);
+        const totAmr = flowsUsd.reduce((s,f)=>s+(f.capital||0),0);
+        document.getElementById('bck-flows').innerHTML = `
+          <div class="st" style="margin-bottom:6px">Flujos USD — ${b.law||'AR'} law</div>
+          <table><thead><tr>
+            <th>Fecha</th><th style="text-align:right">Días</th>
+            <th style="text-align:right">Cupón</th>
+            <th style="text-align:right">Amort</th>
+            <th style="text-align:right">Total / 100 VN</th>
+            <th style="text-align:right">Total × ${vnoAmount.toLocaleString('es-AR')} VN</th>
+          </tr></thead><tbody>${rows}</tbody>
+          <tfoot><tr><td colspan="2">Totales</td>
+            <td style="text-align:right">${totCup.toFixed(4)}</td>
+            <td style="text-align:right">${totAmr.toFixed(2)}</td>
+            <td style="text-align:right">${totNom.toFixed(4)}</td>
+            <td style="text-align:right">${(totNom*scale).toFixed(2)}</td>
+          </tr></tfoot></table>`;
+      } else {
+        document.getElementById('bck-flows').innerHTML = '<div class="note" style="padding:10px;color:var(--tm)">Sin flujos futuros (bono vencido).</div>';
+      }
+
+      // Target TIR / TNA objetivo → precio implícito USD
+      {
+        const targetTirVal = parseFloat(document.getElementById('bci-target-tir').value);
+        const targetTnaVal = parseFloat(document.getElementById('bci-target-tna').value);
+        const parts = [];
+        if (!isNaN(targetTirVal) && flowsUsd.length) {
+          const r = targetTirVal/100;
+          const impliedPx = flowsUsd.reduce((s,f) => s + f.nominal/Math.pow(1+r, f.days/365), 0);
+          if (impliedPx > 0) parts.push(`TIR USD <strong style="color:var(--acl)">${targetTirVal.toFixed(2)}%</strong> → <strong style="color:var(--acl);font-size:13px">${impliedPx.toFixed(2)}</strong>`);
+        }
+        if (!isNaN(targetTnaVal) && flowsUsd.length) {
+          const r = targetTnaVal/100;
+          const impliedPx = flowsUsd.reduce((s,f) => s + f.nominal/(1 + r*(f.days/365)), 0);
+          if (impliedPx > 0) parts.push(`TNA USD <strong style="color:var(--fx)">${targetTnaVal.toFixed(2)}%</strong> → <strong style="color:var(--fx);font-size:13px">${impliedPx.toFixed(2)}</strong>`);
+        }
+        document.getElementById('bck-target-result').innerHTML =
+          parts.length ? parts.join('<span style="color:var(--tm);padding:0 8px">|</span>') : 'Ingresá TIR o TNA objetivo para ver el precio implícito';
+      }
+
     } else {
       // FIXED (LECAP / BONCAP)
       const emD=new Date(b.emDate+"T00:00:00");
@@ -7519,6 +7766,7 @@ function getAllTickers(){
   BONDS.forEach(b=>tickers.push(b.ticker));
   FIXED.forEach(f=>tickers.push(f.ticker));
   TAMAR_BONDS.forEach(t=>tickers.push(t.ticker));
+  if (typeof USD_BONDS !== 'undefined') USD_BONDS.forEach(u=>tickers.push(u.ticker));
   DL_BONDS.forEach(d=>tickers.push(d.ticker));
   ROFEX_FUTURES.forEach(r=>tickers.push(r.ticker));
   FX_EXTRA_TICKERS.forEach(t=>tickers.push(t));
@@ -11851,6 +12099,91 @@ setTimeout(()=>{
   try{ startPricePolling(); }catch(e){}
   try{ renderResumen(); }catch(e){}
 },800);
+
+// ═══ BONARES TAB: render tabla + curva USD + spreads AR-NY ═══
+function renderBonares(){
+  if (typeof USD_BONDS === 'undefined') return;
+  const today=new Date(); today.setHours(0,0,0,0);
+  const sd=document.getElementById("settleDate").value;
+  const settle=sd?new Date(sd+"T00:00:00"):ABD(today,1);
+
+  // Recalcular metrics para cada USD bond (TIR, dur, conv) según precio live
+  USD_BONDS.forEach(b=>{
+    const lp=_livePrices[b.ticker]||{};
+    const price=lp.last||lp.mid||lp.bid||lp.ask||0;
+    b._lastPrice=price;
+    const flows=usdBondCashflows(b, settle);
+    b._nextFlow = flows.length ? flows[0] : null;
+    if (price>0 && flows.length) {
+      const tirRaw=xirrFromFlows(price, flows, 'nominal');
+      if (tirRaw!=null) {
+        b._tea = tirRaw*100;
+        b._dur = durationFromFlows(tirRaw, flows, 'nominal');
+        b._conv = convexityFromFlows(tirRaw, flows, 'nominal');
+        b._ok = true;
+      } else { b._tea=null; b._dur=null; b._conv=null; b._ok=false; }
+    } else { b._tea=null; b._dur=null; b._conv=null; b._ok=false; }
+  });
+
+  // Tabla
+  const tbody=document.getElementById('bnBody');
+  if (!tbody) return;
+  const rows = USD_BONDS.map(b=>{
+    const days = DB(settle, new Date(b.mat+'T00:00:00'));
+    const nf = b._nextFlow;
+    const nextCup = nf && nf.coupon>0 ? '$ '+nf.coupon.toFixed(3)+' ('+nf.days+'d)' : '—';
+    const nextAmr = nf && nf.capital>0 ? nf.capital.toFixed(2)+'% ('+nf.days+'d)' : '—';
+    const px = b._lastPrice;
+    return `<tr class="fxc-row-clickable" onclick="openBondCalculator('usd','${b.id}')">
+      <td class="tk" style="color:${b.color};font-weight:700">${b.ticker}</td>
+      <td style="color:#cbd5e1">${b.name}</td>
+      <td style="font-size:9px;color:${b.law==='NY'?'#fbbf24':'#22d3ee'}">${b.law}</td>
+      <td style="font-size:10px">${b.mat}</td>
+      <td class="num">${days}</td>
+      <td class="num">${px?px.toFixed(2):'—'}</td>
+      <td class="num" style="color:#22d3ee;font-weight:600">${b._tea!=null?b._tea.toFixed(2)+'%':'—'}</td>
+      <td class="num">${b._dur!=null?b._dur.toFixed(2)+'y':'—'}</td>
+      <td class="num">${b._conv!=null?b._conv.toFixed(1):'—'}</td>
+      <td class="num" style="font-size:10px;color:var(--td)">${nextCup}</td>
+      <td class="num" style="font-size:10px;color:var(--td)">${nextAmr}</td>
+    </tr>`;
+  }).join('');
+  tbody.innerHTML = rows;
+
+  // Curva USD
+  const cv=document.getElementById('bnCurveChart');
+  if (cv) {
+    const pts = USD_BONDS
+      .filter(b=>b._ok && b._dur>0 && b._tea!=null)
+      .map(b=>({x:b._dur, y:b._tea, label:b.ticker, color:b.color}));
+    if (pts.length) {
+      const maxX = Math.max(...pts.map(p=>p.x))*1.1;
+      drawFxCurveChart('bnCurveChart', pts, maxX, [], '#22d3ee');
+    } else {
+      const c=cv.getContext('2d'); c.clearRect(0,0,cv.width,cv.height);
+    }
+  }
+
+  // Spread AR − NY por par del mismo vto
+  const pairs = [['AL29','GD29'],['AL30','GD30'],['AL35','GD35'],['AE38','GD38'],['AL41','GD41']];
+  const spreadHtml = pairs.map(([arT,nyT])=>{
+    const ar = USD_BONDS.find(b=>b.ticker===arT);
+    const ny = USD_BONDS.find(b=>b.ticker===nyT);
+    if (!ar || !ny || ar._tea==null || ny._tea==null) {
+      return `<div style="color:var(--td)">${arT} vs ${nyT}: —</div>`;
+    }
+    const sp = (ar._tea - ny._tea) * 100; // pp → bps
+    const cl = sp > 0 ? '#00e5a0' : '#ff6b4a';
+    return `<div>
+      <strong style="color:${ar.color}">${arT}</strong> ${ar._tea.toFixed(2)}%
+      −
+      <strong style="color:${ny.color}">${nyT}</strong> ${ny._tea.toFixed(2)}%
+      &nbsp;=&nbsp; <strong style="color:${cl}">${sp>=0?'+':''}${sp.toFixed(0)} bps</strong>
+    </div>`;
+  }).join('');
+  const sb=document.getElementById('bnSpreadBody');
+  if (sb) sb.innerHTML = spreadHtml || '<div style="color:var(--td)">Sin pares calculables.</div>';
+}
 
 // ═══ FX TAB: RENDER + INTRADAY ═══════════════════════════════
 function getFxSpot(){
