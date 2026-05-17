@@ -519,9 +519,9 @@
   <button class="tab-btn" onclick="switchTab('positions')">Posiciones</button>
   <button class="tab-btn" onclick="switchTab('pases')">Pases</button>
   <button class="tab-btn" onclick="switchTab('databcra')">BCRA</button>
-  <button class="tab-btn" onclick="switchTab('cer')" style="color:var(--gn);font-weight:700">CER</button>
-  <button class="tab-btn" onclick="switchTab('bonares')" style="color:#22d3ee;font-weight:700">BONARES</button>
-  <button class="tab-btn" onclick="switchTab('arbtasas')" style="color:#fbbf24;font-weight:700">ARB. TASAS</button>
+  <button class="tab-btn" onclick="switchTab('cer')">CER</button>
+  <button class="tab-btn" onclick="switchTab('bonares')">BONARES</button>
+  <button class="tab-btn" onclick="switchTab('arbtasas')">ARB. TASAS</button>
 </div>
 </div>
 
@@ -2272,14 +2272,62 @@
         prevLine = '<line x1="'+P.l+'" x2="'+(W-P.r)+'" y1="'+yp.toFixed(2)+'" y2="'+yp.toFixed(2)+'" stroke="#475569" stroke-width="1" stroke-dasharray="3,3"/>'
           +'<text x="'+(W-P.r-4)+'" y="'+(yp-3).toFixed(2)+'" fill="#475569" font-size="9" text-anchor="end">prev '+fmtPrice(s.prev_close)+'</text>';
       }
-      area.innerHTML = '<svg class="fx-chart-svg" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'
+      // Hover tooltip: crosshair vertical + valor + fecha del punto más cercano
+      area.innerHTML = '<svg class="fx-chart-svg" id="fxg-chart-svg" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'
         +'<defs><linearGradient id="'+fillId+'" x1="0" y1="0" x2="0" y2="1">'
         +'<stop offset="0%" stop-color="'+trend+'" stop-opacity="0.25"/>'
         +'<stop offset="100%" stop-color="'+trend+'" stop-opacity="0"/></linearGradient></defs>'
         +yTicks.join('')+prevLine
         +'<path d="'+dArea+'" fill="url(#'+fillId+')"/>'
         +'<path d="'+d+'" fill="none" stroke="'+trend+'" stroke-width="1.6"/>'
-        +xTicks.join('')+'</svg>';
+        +xTicks.join('')
+        +'<line id="fxg-cx-line" x1="0" y1="'+P.t+'" x2="0" y2="'+(P.t+innerH)+'" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3,3" opacity="0" pointer-events="none"/>'
+        +'<circle id="fxg-cx-dot" cx="0" cy="0" r="4" fill="'+trend+'" stroke="#fff" stroke-width="1.5" opacity="0" pointer-events="none"/>'
+        +'<rect id="fxg-cx-bg" x="0" y="0" width="120" height="38" rx="3" fill="#0a0f1a" stroke="'+trend+'" stroke-width="1" opacity="0" pointer-events="none"/>'
+        +'<text id="fxg-cx-txt1" x="0" y="0" fill="#fff" font-family="\'IBM Plex Mono\',monospace" font-size="11" font-weight="700" pointer-events="none" opacity="0"></text>'
+        +'<text id="fxg-cx-txt2" x="0" y="0" fill="#94a3b8" font-family="\'IBM Plex Mono\',monospace" font-size="9" pointer-events="none" opacity="0"></text>'
+        +'</svg>';
+      // Wire hover
+      const svg = document.getElementById('fxg-chart-svg');
+      const cxLine = document.getElementById('fxg-cx-line');
+      const cxDot = document.getElementById('fxg-cx-dot');
+      const cxBg = document.getElementById('fxg-cx-bg');
+      const cxT1 = document.getElementById('fxg-cx-txt1');
+      const cxT2 = document.getElementById('fxg-cx-txt2');
+      if (svg && cxLine) {
+        const tfFmtFull = state.selectedTf === '1D'
+          ? (d => d.toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'}) + ' · ' + d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'}))
+          : (d => d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'2-digit'}));
+        svg.addEventListener('mousemove', e => {
+          const rect = svg.getBoundingClientRect();
+          // viewBox coords (svg es viewBox 0 0 W H)
+          const xVB = (e.clientX - rect.left) / rect.width * W;
+          if (xVB < P.l || xVB > W-P.r) {
+            cxLine.style.opacity='0'; cxDot.style.opacity='0'; cxBg.style.opacity='0'; cxT1.style.opacity='0'; cxT2.style.opacity='0';
+            return;
+          }
+          // Binary search del punto más cercano por tiempo
+          const targetT = tMin + ((xVB - P.l)/innerW) * tRange;
+          let lo=0, hi=pts.length-1;
+          while (hi - lo > 1) { const m=(lo+hi)>>1; if (pts[m].t <= targetT) lo=m; else hi=m; }
+          const pNearest = Math.abs(pts[lo].t - targetT) < Math.abs(pts[hi].t - targetT) ? pts[lo] : pts[hi];
+          const x = xAt(pNearest.t), y = yAt(pNearest.v);
+          cxLine.setAttribute('x1', x); cxLine.setAttribute('x2', x); cxLine.style.opacity='0.6';
+          cxDot.setAttribute('cx', x); cxDot.setAttribute('cy', y); cxDot.style.opacity='1';
+          // Tooltip box position (a la derecha del cursor, o izq si cerca del borde)
+          const boxW = 124, boxH = 36;
+          const bx = (x + boxW + 6 < W-P.r) ? x+6 : x-boxW-6;
+          const by = (y - boxH - 6 > P.t) ? y - boxH - 6 : y + 8;
+          cxBg.setAttribute('x', bx); cxBg.setAttribute('y', by); cxBg.setAttribute('width', boxW); cxBg.setAttribute('height', boxH); cxBg.style.opacity='1';
+          cxT1.setAttribute('x', bx+6); cxT1.setAttribute('y', by+14); cxT1.style.opacity='1';
+          cxT1.textContent = fmtPrice(pNearest.v);
+          cxT2.setAttribute('x', bx+6); cxT2.setAttribute('y', by+30); cxT2.style.opacity='1';
+          cxT2.textContent = tfFmtFull(new Date(pNearest.t));
+        });
+        svg.addEventListener('mouseleave', () => {
+          cxLine.style.opacity='0'; cxDot.style.opacity='0'; cxBg.style.opacity='0'; cxT1.style.opacity='0'; cxT2.style.opacity='0';
+        });
+      }
     }
 
     // Heatmap stepped por nivel de %día (5 verdes / 5 rojos)
@@ -2842,45 +2890,6 @@
 
   </div>
 
-  <!-- ════════════════════════════════════════════════════════════════
-       BEI EXPLÍCITO — Breakeven Inflation: CER vs Tasa Fija por tenor
-       ════════════════════════════════════════════════════════════════ -->
-  <div class="card" id="beiCard" style="margin-top:14px">
-    <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
-      <div>
-        <div class="st" style="margin:0">📈 Breakeven Inflation — Curva CER vs Tasa Fija</div>
-        <div class="note" style="margin:4px 0 0 0;font-size:10px">
-          Para cada duración fiteada: BEI = ((1 + TIR Nominal LECAP) / (1 + TIR Real CER) − 1) × 100. Es la inflación implícita anual que iguala los rendimientos. <b>Si tu expectativa de inflación es MAYOR al BEI → conviene CER</b>. Si es MENOR → conviene Tasa Fija. Curvas fiteadas NSS sobre BONDS (CER TIR Real) y FIXED (TEA).
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <button class="btn-api btn-sm" onclick="renderBeiChart()">▶ Recalcular</button>
-        <span id="beiTs" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace">—</span>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:14px">
-      <!-- Chart -->
-      <div style="background:var(--bg);border:1px solid var(--cb);border-radius:8px;padding:10px">
-        <canvas id="beiChartCanvas" style="width:100%;height:320px;display:block"></canvas>
-        <div id="beiChartLegend" style="font-size:10px;color:var(--td);margin-top:6px;line-height:1.5"></div>
-      </div>
-      <!-- Tabla por tenor -->
-      <div>
-        <table id="beiTable" style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px">
-          <thead><tr style="color:var(--td);font-size:9.5px;text-transform:uppercase;letter-spacing:0.06em;background:#0a0f1a">
-            <th style="text-align:left;padding:6px 8px">Tenor</th>
-            <th style="text-align:right;padding:6px 8px" title="TIR Real CER fiteada NSS al tenor">CER TIR Real</th>
-            <th style="text-align:right;padding:6px 8px" title="TEA Tasa Fija fiteada NSS al tenor">TF TEA</th>
-            <th style="text-align:right;padding:6px 8px" title="Breakeven inflation = (1+TF)/(1+CER)-1">BEI</th>
-          </tr></thead>
-          <tbody id="beiTableBody"><tr><td colspan="4" style="text-align:center;color:var(--tm);padding:14px">Calculá CER y Tasa Fija primero</td></tr></tbody>
-        </table>
-        <div style="font-size:9px;color:var(--td);margin-top:8px;line-height:1.5">
-          <b>Tip:</b> compará BEI vs el REM (Relevamiento de Expectativas BCRA). Si BEI &gt; REM, el mercado pricea MÁS inflación que el consenso de economistas → CER over/underpriced según el lado.
-        </div>
-      </div>
-    </div>
-  </div>
 </div><!-- end tab-cer -->
 
 <!-- ════════════════════════════════════════════════════════════════════
@@ -5393,7 +5402,7 @@ function switchTab(tab){
   if(tab==="pases") buildPaseSelect();
   if(tab==="quantplus") refreshQuantPlus();
   if(tab==="fx") renderFX();
-  if(tab==="cer"){ try{ renderCERTab(); }catch(e){ console.warn('[cer-tab]',e); } try{ renderBeiChart(); }catch(e){} }
+  if(tab==="cer"){ try{ renderCERTab(); }catch(e){ console.warn('[cer-tab]',e); } }
   if(tab==="bonares"){ try{ renderBonares(); }catch(e){ console.warn('[bonares]',e); } }
   if(tab==="arbtasas"){ try{ atInitTab(); }catch(e){ console.warn('[arbtasas]',e); } }
   setTimeout(initSortableTables,100);
@@ -8493,12 +8502,6 @@ async function fetchPricesFromServer(){
         if (typeof atRenderCheapRich === 'function') atRenderCheapRich();
       }
     } catch(_e){}
-    // Auto-refresh BEI chart si tab CER está visible
-    try {
-      if (document.getElementById('tab-cer')?.style.display !== 'none') {
-        if (typeof renderBeiChart === 'function') renderBeiChart();
-      }
-    } catch(_e){}
     // Hook para callbacks externos que dependen de _livePrices (axes, etc.)
     if(Array.isArray(window._postPriceUpdate)){
       window._postPriceUpdate.forEach(fn=>{ try{fn()}catch(e){} });
@@ -9122,11 +9125,38 @@ function _bltFindAsset(ticker){
   return _bltAllTickers().find(a=>a.ticker.toUpperCase()===t)||null;
 }
 
-function _bltNextTicket(){
-  const today=new Date().toISOString().slice(0,10);
-  const todayCount=_blotter.filter(t=>t.ts && t.ts.startsWith(today)).length;
-  const ymd=today.replace(/-/g,'').slice(2); // YYMMDD
-  return `T${ymd}-${String(todayCount+1).padStart(3,'0')}`;
+// TKT helpers
+function _bltArtNow(){
+  // Hora actual en Buenos Aires (UTC-3, sin DST)
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset()*60000 - 3*3600000);
+}
+function _bltArtDateStr(d){
+  // YYYY-MM-DD en ART
+  const x = d || _bltArtNow();
+  return x.toISOString().slice(0,10);
+}
+function _bltArtIsoString(d){
+  // Full ISO con offset -03:00 para guardar en t.ts (mantiene compat con startsWith yyyy-mm-dd)
+  const x = d || _bltArtNow();
+  const pad = n => String(n).padStart(2,'0');
+  return `${x.getUTCFullYear()}-${pad(x.getUTCMonth()+1)}-${pad(x.getUTCDate())}T${pad(x.getUTCHours())}:${pad(x.getUTCMinutes())}:${pad(x.getUTCSeconds())}-03:00`;
+}
+function _bltMonthShort(m){
+  return ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'][m];
+}
+
+// Genera ticket. Si side/ticker conocidos: DD-MES-C/V-TICKER-NNN. Sino preview parcial.
+function _bltNextTicket(side, ticker){
+  const today = _bltArtDateStr();
+  const todayCount = _blotter.filter(t=>t.ts && t.ts.startsWith(today)).length;
+  const num = String(todayCount + 1).padStart(3, '0');
+  const d = _bltArtNow();
+  const day = String(d.getUTCDate()).padStart(2,'0');
+  const mon = _bltMonthShort(d.getUTCMonth());
+  const sideCh = side === 'B' ? 'C' : side === 'S' ? 'V' : '?';
+  const tk = (ticker || '???').toUpperCase().trim() || '???';
+  return `${day}-${mon}-${sideCh}-${tk}-${num}`;
 }
 
 // ── Cash impact: B = sale cash (negativo); S = entra cash (positivo).
@@ -9235,7 +9265,11 @@ function _bltCptyOptions(matchAsset){
   return out;
 }
 function openTradeModal(prefilled){
+  // BUG FIX: closeTradeModal resetea _tmEditingId. Preservarlo antes de cerrar
+  // y restaurarlo después, así editTrade() funciona correctamente.
+  const _savedEditingId = _tmEditingId;
   closeTradeModal();
+  _tmEditingId = _savedEditingId;
   const tickers=_bltAllTickers().map(a=>a.ticker).sort();
   const tickerOpts=tickers.map(t=>`<option value="${t}">`).join('');
   // Cpty list: mezcla agenda + defaults. Si hay ticker prefilled, prioriza por categoría.
@@ -9254,7 +9288,7 @@ function openTradeModal(prefilled){
   overlay.innerHTML=`
     <div class="tm-modal" role="dialog">
       <div class="tm-hd">
-        <h3>${_tmEditingId?'Editar trade '+_tmEditingId:'Nuevo Trade · '+_bltNextTicket()}</h3>
+        <h3>${_tmEditingId?'Editar trade '+_tmEditingId:'Nuevo Trade · '+_bltNextTicket(_tmDraft?.side, _tmDraft?.ticker)+' (preview)'}</h3>
         <button class="tm-close" type="button" id="tmClose" title="Esc">&times;</button>
       </div>
       <div class="tm-body">
@@ -9414,10 +9448,14 @@ function saveTradeFromModal(){
 
   if(_tmEditingId){
     const ix=_blotter.findIndex(x=>x.id===_tmEditingId);
-    if(ix>=0){ _blotter[ix]={..._blotter[ix],...t}; }
+    if(ix>=0){
+      // Preserve original id + ts en edit
+      const orig = _blotter[ix];
+      _blotter[ix] = {...orig, ...t, id: orig.id, ts: orig.ts};
+    }
   } else {
-    t.id=_bltNextTicket();
-    t.ts=new Date().toISOString();
+    t.ts = _bltArtIsoString();           // ISO con offset -03:00 ART
+    t.id = _bltNextTicket(t.side, t.ticker);  // DD-MES-C/V-TICKER-NNN
     _blotter.push(t);
   }
   // Recordar defaults
@@ -9488,7 +9526,21 @@ function renderBlotter(){
       const yld=_bltYieldFor(t.ticker, px);
       const yldStr= yld?.primary!=null ? yld.primary.toFixed(2)+'%' : '—';
       const yldTitle= yld?.secondary!=null ? `${yld.secondaryLabel}: ${yld.secondary.toFixed(2)}%` : '';
-      const hora=t.ts?t.ts.slice(11,19):'—';
+      // Hora ART desde t.ts. Si fue grabada con offset -03:00 los chars 11..19 ya son ART.
+      // Si vino de un trade legacy en UTC sin offset, parseamos y convertimos.
+      let hora='—';
+      if (t.ts) {
+        if (t.ts.includes('-03:00') || t.ts.includes('-0300')) {
+          hora = t.ts.slice(11,19);
+        } else {
+          // Legacy: asumir UTC, convertir a ART (-3h)
+          try {
+            const d = new Date(t.ts);
+            const art = new Date(d.getTime() - 3*3600000);
+            hora = art.toISOString().slice(11,19);
+          } catch(e) { hora = t.ts.slice(11,19); }
+        }
+      }
       const sideClass = t.side==='B'?'bl-buy':'bl-sell';
       const sideTd = t.side==='B'?'bl-side-b':'bl-side-s';
       const sideTxt = t.side==='B'?'COMPRA':'VENTA';
@@ -9508,13 +9560,13 @@ function renderBlotter(){
         <td class="num">${px?px.toFixed(2):'—'}</td>
         <td class="num" style="color:var(--ac)">${_fmtMoneyFull(notional)}</td>
         <td class="num" title="${yldTitle}">${yldStr}</td>
-        <td><span onclick="toggleApprove('${t.id}')" title="Click para ciclar yes→no→rej">${aprPill}</span></td>
+        <td><span onclick="event.stopPropagation();toggleApprove('${t.id}')" style="cursor:pointer;display:inline-block;padding:2px" title="Click para ciclar yes→no→rej">${aprPill}</span></td>
         <td style="font-size:9.5px;color:var(--td);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(t.notes||'').replace(/"/g,'&quot;')}">${t.notes||'—'}</td>
         <td>
           <div style="display:flex;gap:2px">
-            <button class="btn-api btn-sm" style="padding:2px 5px;font-size:10px" onclick="editTrade('${t.id}')" title="Editar">✎</button>
-            <button class="btn-api btn-sm" style="padding:2px 5px;font-size:10px" onclick="cloneTrade('${t.id}')" title="Clonar">⧉</button>
-            <button class="btn-api btn-sm" style="padding:2px 5px;font-size:10px;color:var(--w);border-color:var(--w)" onclick="deleteTrade('${t.id}')" title="Borrar">✕</button>
+            <button type="button" class="btn-api btn-sm" style="padding:2px 5px;font-size:10px" onclick="event.stopPropagation();editTrade('${t.id}')" title="Editar">✎</button>
+            <button type="button" class="btn-api btn-sm" style="padding:2px 5px;font-size:10px" onclick="event.stopPropagation();cloneTrade('${t.id}')" title="Clonar">⧉</button>
+            <button type="button" class="btn-api btn-sm" style="padding:2px 5px;font-size:10px;color:var(--w);border-color:var(--w)" onclick="event.stopPropagation();deleteTrade('${t.id}')" title="Borrar">✕</button>
           </div>
         </td>
       </tr>`;
@@ -12697,6 +12749,10 @@ function buildBCRASummary(){
 // ═══ TABLE SORTING ════════════════════════════════════════════════
 function makeSortable(tableEl){
   if(!tableEl)return;
+  // BUG FIX: makeSortable se llamaba en cada switchTab, acumulando listeners
+  // en los mismos th. Ahora idempotente via dataset flag.
+  if (tableEl.dataset.sortableWired === '1') return;
+  tableEl.dataset.sortableWired = '1';
   const ths=tableEl.querySelectorAll('thead th');
   ths.forEach((th,colIdx)=>{
     th.addEventListener('click',()=>{
@@ -13040,165 +13096,6 @@ function _bnDrawDualLawCurve(cv, ptsAR, ptsNY, maxX){
   }
   drawSerie(ptsAR, '#22d3ee', 'AR');
   drawSerie(ptsNY, '#fbbf24', 'NY');
-}
-
-// ═══ BEI EXPLÍCITO — Breakeven Inflation por tenor ═══════════
-const BEI_TENORS = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0]; // años de duration
-
-function renderBeiChart(){
-  const tbody = document.getElementById('beiTableBody');
-  const cv = document.getElementById('beiChartCanvas');
-  const legend = document.getElementById('beiChartLegend');
-  const tsEl = document.getElementById('beiTs');
-  if (!tbody || !cv) return;
-
-  // Fit NSS sobre CER (_tr) y FIXED (_tea), bonos activos con dur válida.
-  const cerPts = (typeof BONDS!=='undefined' ? BONDS : [])
-    .filter(b => b && b._ok && b._dur > 0 && b._tr != null && isFinite(b._tr))
-    .map(b => ({x: b._dur, y: b._tr}));
-  const tfPts = (typeof FIXED!=='undefined' ? FIXED : [])
-    .filter(f => f && f._ok && f._dur > 0 && f._tea != null && isFinite(f._tea))
-    .map(f => ({x: f._dur, y: f._tea}));
-
-  if (cerPts.length < 2 || tfPts.length < 2) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--tm);padding:14px">Necesito ≥2 CER y ≥2 Tasa Fija calculados. Conectá precios y andá a Calculadoras.</td></tr>';
-    const c=cv.getContext('2d'); c.clearRect(0,0,cv.width,cv.height);
-    return;
-  }
-
-  let cerNss=null, tfNss=null;
-  try { cerNss = (cerPts.length>=3 && typeof fitNSS==='function') ? fitNSS(cerPts) : null; } catch(e){}
-  try { tfNss  = (tfPts.length>=3  && typeof fitNSS==='function') ? fitNSS(tfPts)  : null; } catch(e){}
-  let cerLog=null, tfLog=null;
-  try { cerLog = typeof logRegression==='function' ? logRegression(cerPts) : null; } catch(e){}
-  try { tfLog  = typeof logRegression==='function' ? logRegression(tfPts)  : null; } catch(e){}
-
-  function predict(fit, fallback, x){
-    if (fit) { const v = fit.predict(x); if (isFinite(v)) return v; }
-    return fallback ? fallback.predict(x) : null;
-  }
-
-  // Construir filas de la tabla
-  const rows = BEI_TENORS.map(t => {
-    const cer = predict(cerNss, cerLog, t);
-    const tf  = predict(tfNss,  tfLog,  t);
-    let bei = null;
-    if (cer != null && tf != null) {
-      // BEI = ((1+tf/100) / (1+cer/100) - 1) * 100
-      bei = ((1 + tf/100) / (1 + cer/100) - 1) * 100;
-    }
-    return { t, cer, tf, bei };
-  });
-  tbody.innerHTML = rows.map(r => `<tr style="border-bottom:1px solid #131a28">
-    <td style="padding:5px 8px;color:#cbd5e1;font-weight:600">${r.t.toFixed(2)}y</td>
-    <td style="padding:5px 8px;text-align:right;color:#22d3ee">${r.cer!=null ? r.cer.toFixed(2)+'%' : '—'}</td>
-    <td style="padding:5px 8px;text-align:right;color:#fbbf24">${r.tf!=null  ? r.tf.toFixed(2)+'%'  : '—'}</td>
-    <td style="padding:5px 8px;text-align:right;font-weight:700;color:#00e5a0">${r.bei!=null ? r.bei.toFixed(2)+'%' : '—'}</td>
-  </tr>`).join('');
-
-  // Draw chart: 3 curvas (CER, TF, BEI). BEI eje derecho separado para que se vea bien.
-  const dpr = window.devicePixelRatio || 1;
-  const W = cv.clientWidth || 600, H = cv.clientHeight || 320;
-  cv.width = W*dpr; cv.height = H*dpr;
-  const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0);
-  c.clearRect(0,0,W,H);
-  const pad = {t:14, r:50, b:30, l:48};
-
-  // Sampling fino para curvas
-  const xMax = Math.max(...BEI_TENORS, 3.5);
-  const steps = 100;
-  const dx = xMax / steps;
-  const cerCurve = [], tfCurve = [], beiCurve = [];
-  for (let i = 1; i <= steps; i++) {
-    const x = i*dx;
-    const cer = predict(cerNss, cerLog, x);
-    const tf  = predict(tfNss,  tfLog,  x);
-    if (cer != null) cerCurve.push({x, y: cer});
-    if (tf  != null) tfCurve.push({x, y: tf});
-    if (cer != null && tf != null) {
-      const bei = ((1 + tf/100) / (1 + cer/100) - 1) * 100;
-      beiCurve.push({x, y: bei});
-    }
-  }
-
-  // Y range eje izq: CER + TF
-  const allY = cerCurve.concat(tfCurve).map(p=>p.y);
-  const yMin = Math.min(...allY) - 1, yMax = Math.max(...allY) + 1;
-  const yR = yMax - yMin || 1;
-  // Y range eje derecho: BEI
-  const beiY = beiCurve.map(p=>p.y);
-  const bMin = beiY.length ? Math.min(...beiY) - 0.5 : 0;
-  const bMax = beiY.length ? Math.max(...beiY) + 0.5 : 1;
-  const bR = bMax - bMin || 1;
-
-  const xP = x => pad.l + (x/xMax) * (W - pad.l - pad.r);
-  const yP = y => pad.t + (1 - (y-yMin)/yR) * (H - pad.t - pad.b);
-  const yPB = y => pad.t + (1 - (y-bMin)/bR) * (H - pad.t - pad.b);
-
-  // Grid + eje Y izq
-  c.strokeStyle = '#1a2233'; c.lineWidth = 0.5;
-  for (let i = 0; i <= 5; i++) {
-    const v = yMin + yR*i/5, py = yP(v);
-    c.beginPath(); c.moveTo(pad.l, py); c.lineTo(W-pad.r, py); c.stroke();
-    c.fillStyle = '#64748b'; c.font = "9px 'IBM Plex Mono',monospace"; c.textAlign = 'right';
-    c.fillText(v.toFixed(1)+'%', pad.l-4, py+3);
-  }
-  // Eje Y der (BEI)
-  for (let i = 0; i <= 5; i++) {
-    const v = bMin + bR*i/5, py = yPB(v);
-    c.fillStyle = '#00e5a0'; c.textAlign = 'left';
-    c.fillText(v.toFixed(1)+'%', W-pad.r+4, py+3);
-  }
-  // Eje X
-  c.fillStyle = '#64748b'; c.textAlign = 'center';
-  for (let i = 0; i <= 5; i++) {
-    const x = (xMax*i)/5, px = xP(x);
-    c.fillText(x.toFixed(1)+'y', px, H-12);
-  }
-
-  function drawCurve(pts, color, width, dashed, yFn){
-    if (!pts.length) return;
-    c.save();
-    c.strokeStyle = color; c.lineWidth = width;
-    if (dashed) c.setLineDash([5,3]);
-    c.beginPath();
-    pts.forEach((p,i) => { const x=xP(p.x), y=yFn(p.y); if(i===0) c.moveTo(x,y); else c.lineTo(x,y); });
-    c.stroke();
-    c.restore();
-  }
-  drawCurve(cerCurve, '#22d3ee', 2, false, yP);
-  drawCurve(tfCurve,  '#fbbf24', 2, false, yP);
-  drawCurve(beiCurve, '#00e5a0', 2.5, false, yPB);
-
-  // Dots por bono (CER + TF)
-  cerPts.forEach(p => {
-    const x=xP(p.x), y=yP(p.y);
-    c.beginPath(); c.arc(x,y,3.5,0,Math.PI*2); c.fillStyle='#22d3ee'; c.fill();
-    c.strokeStyle='#080c14'; c.lineWidth=1; c.stroke();
-  });
-  tfPts.forEach(p => {
-    const x=xP(p.x), y=yP(p.y);
-    c.beginPath(); c.arc(x,y,3.5,0,Math.PI*2); c.fillStyle='#fbbf24'; c.fill();
-    c.strokeStyle='#080c14'; c.lineWidth=1; c.stroke();
-  });
-
-  // Labels al borde derecho
-  if (cerCurve.length) {
-    const last = cerCurve[cerCurve.length-1];
-    c.fillStyle='#22d3ee'; c.font="bold 9px 'IBM Plex Mono',monospace"; c.textAlign='left';
-    c.fillText('CER ' + last.y.toFixed(1)+'%', W-pad.r+4, yP(last.y)+3);
-  }
-  if (tfCurve.length) {
-    const last = tfCurve[tfCurve.length-1];
-    c.fillStyle='#fbbf24'; c.fillText('TF ' + last.y.toFixed(1)+'%', W-pad.r+4, yP(last.y)+3);
-  }
-
-  if (legend) {
-    legend.innerHTML = `<span style="color:#22d3ee">●</span> CER TIR Real (NSS, eje izq) &nbsp;·&nbsp;
-      <span style="color:#fbbf24">●</span> Tasa Fija TEA (NSS, eje izq) &nbsp;·&nbsp;
-      <span style="color:#00e5a0">●</span> <strong>BEI</strong> = inflación implícita (eje DERECHO)`;
-  }
-  if (tsEl) tsEl.textContent = `${cerPts.length} CER · ${tfPts.length} TF · ${new Date().toLocaleTimeString('es-AR')}`;
 }
 
 // ═══ YIELD CURVE ANIMATION ═══════════════════════════════════
