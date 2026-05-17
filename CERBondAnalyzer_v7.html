@@ -2003,6 +2003,26 @@
           </div>
         </div>
       </div>
+
+      <!-- ═══ YTD Performance vs DXY ═══ -->
+      <div class="fx-pane" style="margin-top:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px">
+          <h4 style="margin:0">Performance YTD — Fortaleza vs USD</h4>
+          <div class="fx-mode-buttons" id="fxg-ytd-mode-buttons">
+            <button class="fx-mode-btn active" data-ytd="abs">ABSOLUTO</button>
+            <button class="fx-mode-btn" data-ytd="vsdxy">vs DXY</button>
+          </div>
+        </div>
+        <div style="font-size:9px;color:#64748b;margin-bottom:8px;line-height:1.5">
+          Normalizado al inicio del año. <b>+%</b> = la moneda se fortaleció vs USD. <b>−%</b> = se debilitó.
+          En modo <b>vs DXY</b> resta el movimiento del DXY a cada moneda → muestra "alpha" idiosincrático del país, limpio del trend global del dólar.
+        </div>
+        <div style="background:#0a0f1a;border:1px solid #131a28;border-radius:6px;padding:8px">
+          <canvas id="fxg-ytd-canvas" style="width:100%;height:320px;display:block"></canvas>
+        </div>
+        <div id="fxg-ytd-legend" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;font-size:10px;font-family:'IBM Plex Mono',monospace"></div>
+        <div id="fxg-ytd-status" style="font-size:9px;color:#64748b;margin-top:4px">—</div>
+      </div>
     </div>
   </div>
 
@@ -2384,6 +2404,186 @@
       // (ver computeCrossClient + applyLocalArsOverrides). Mantener noop por compat.
     }
 
+    // ═══ YTD PERFORMANCE vs DXY ═══
+    const YTD_CODES = ['BRL','MXN','CLP','JPY','EURUSD','DXY'];
+    const YTD_COLORS = {
+      'BRL':'#22d3ee', 'MXN':'#a78bfa', 'CLP':'#f472b6',
+      'JPY':'#fbbf24', 'EURUSD':'#10b981', 'DXY':'#ef4444',
+    };
+    const YTD_LABELS = {
+      'BRL':'USD/BRL', 'MXN':'USD/MXN', 'CLP':'USD/CLP',
+      'JPY':'USD/JPY', 'EURUSD':'EUR/USD', 'DXY':'DXY (USD broad)',
+    };
+    let _fxgYtdData = null;   // {code: [{t, retPct}]} normalizado al inicio
+    let _fxgYtdMode = 'abs';
+
+    // Convención de quote: para USD/X (x_per_usd: BRL/MXN/CLP/JPY), si el par
+    // SUBE, la moneda X se DEBILITA vs USD → return moneda = -change.
+    // Para EUR/USD (usd_per_x): si SUBE, EUR se FORTALECE → return = +change.
+    // Para DXY (index): SUBE = USD se fortalece → "return USD" = +change.
+    const YTD_INVERTED = new Set(['BRL','MXN','CLP','JPY']); // pairs USD/X
+
+    async function _fxgLoadYtd() {
+      try {
+        const results = await Promise.all(YTD_CODES.map(c =>
+          fetchJSON('/api/fx/series?code='+c+'&tf=YTD').catch(()=>null)
+        ));
+        const out = {};
+        results.forEach((s, i) => {
+          const code = YTD_CODES[i];
+          if (!s || !s.points || s.points.length < 2) { out[code] = []; return; }
+          const base = s.points.find(p => p.v != null && p.v > 0);
+          if (!base) { out[code] = []; return; }
+          const sign = YTD_INVERTED.has(code) ? -1 : 1;
+          out[code] = s.points.filter(p => p.v != null && p.v > 0).map(p => ({
+            t: p.t,
+            retPct: sign * (p.v / base.v - 1) * 100,
+          }));
+        });
+        _fxgYtdData = out;
+        _fxgDrawYtd();
+      } catch (e) {
+        const status = document.getElementById('fxg-ytd-status');
+        if (status) status.textContent = 'Error cargando YTD: ' + e;
+      }
+    }
+
+    function _fxgDrawYtd() {
+      const cv = document.getElementById('fxg-ytd-canvas');
+      if (!cv || !_fxgYtdData) return;
+      const dpr = window.devicePixelRatio || 1;
+      const W = cv.clientWidth || 900, H = cv.clientHeight || 320;
+      cv.width = W*dpr; cv.height = H*dpr;
+      const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0);
+      c.clearRect(0,0,W,H);
+
+      // Pre-computar DXY map ts→ret para modo vsdxy
+      const dxySeries = _fxgYtdData['DXY'] || [];
+      // Para alinear, usamos el último punto DXY <= ts (forward-fill)
+      function _dxyAt(ts){
+        if (!dxySeries.length) return 0;
+        let lo=0, hi=dxySeries.length-1;
+        if (ts <= dxySeries[0].t) return dxySeries[0].retPct;
+        if (ts >= dxySeries[hi].t) return dxySeries[hi].retPct;
+        while (hi - lo > 1) {
+          const m = (lo+hi)>>1;
+          if (dxySeries[m].t <= ts) lo = m; else hi = m;
+        }
+        return dxySeries[lo].retPct;
+      }
+
+      // Series ajustadas según modo
+      const adjusted = {};
+      YTD_CODES.forEach(code => {
+        const raw = _fxgYtdData[code] || [];
+        if (_fxgYtdMode === 'vsdxy' && code !== 'DXY') {
+          adjusted[code] = raw.map(p => ({t:p.t, retPct: p.retPct - _dxyAt(p.t)}));
+        } else {
+          adjusted[code] = raw;
+        }
+      });
+
+      // En modo vsdxy, DXY es el baseline (línea horizontal en 0). Lo omitimos.
+      const visibleCodes = (_fxgYtdMode === 'vsdxy') ? YTD_CODES.filter(c => c !== 'DXY') : YTD_CODES;
+
+      const allPts = visibleCodes.flatMap(c => adjusted[c]);
+      if (!allPts.length) {
+        c.fillStyle='#475569'; c.font="11px 'IBM Plex Mono',monospace"; c.textAlign='center';
+        c.fillText('Cargando datos YTD…', W/2, H/2);
+        return;
+      }
+
+      const pad = {t:12, r:12, b:24, l:46};
+      const ts = allPts.map(p=>p.t);
+      const tMin = Math.min(...ts), tMax = Math.max(...ts);
+      const tR = (tMax - tMin) || 1;
+      const ys = allPts.map(p=>p.retPct);
+      const yMin = Math.min(...ys, 0), yMax = Math.max(...ys, 0);
+      const ySpread = yMax - yMin || 1;
+      const yPad = ySpread*0.08;
+      const yLo = yMin - yPad, yHi = yMax + yPad, yR = yHi - yLo;
+      const xP = t => pad.l + (t - tMin)/tR * (W - pad.l - pad.r);
+      const yP = v => pad.t + (1 - (v - yLo)/yR) * (H - pad.t - pad.b);
+
+      // Grid horizontal
+      c.strokeStyle = '#1a2233'; c.lineWidth = 0.5;
+      for (let i=0; i<=5; i++) {
+        const v = yLo + yR*i/5, py = yP(v);
+        c.beginPath(); c.moveTo(pad.l, py); c.lineTo(W-pad.r, py); c.stroke();
+        c.fillStyle = '#64748b'; c.font = "9px 'IBM Plex Mono',monospace"; c.textAlign = 'right';
+        c.fillText((v>=0?'+':'') + v.toFixed(1) + '%', pad.l-4, py+3);
+      }
+      // Línea cero más visible
+      const yZero = yP(0);
+      c.strokeStyle = '#475569'; c.lineWidth = 1; c.setLineDash([3,3]);
+      c.beginPath(); c.moveTo(pad.l, yZero); c.lineTo(W-pad.r, yZero); c.stroke();
+      c.setLineDash([]);
+
+      // Eje X
+      c.fillStyle = '#64748b'; c.font = "9px 'IBM Plex Mono',monospace"; c.textAlign = 'center';
+      for (let i=0; i<=5; i++) {
+        const t = tMin + tR*i/5;
+        const d = new Date(t);
+        const lbl = d.toLocaleDateString('es-AR', {day:'2-digit', month:'short'});
+        c.fillText(lbl, xP(t), H-8);
+      }
+
+      // Líneas por moneda
+      visibleCodes.forEach(code => {
+        const pts = adjusted[code];
+        if (!pts || pts.length < 2) return;
+        const col = YTD_COLORS[code];
+        const isDxy = code === 'DXY';
+        c.strokeStyle = col;
+        c.lineWidth = isDxy ? 2.2 : 1.5;
+        if (isDxy) c.setLineDash([5,3]); else c.setLineDash([]);
+        c.beginPath();
+        pts.forEach((p,i) => {
+          const x = xP(p.t), y = yP(p.retPct);
+          if (i===0) c.moveTo(x,y); else c.lineTo(x,y);
+        });
+        c.stroke();
+        c.setLineDash([]);
+        // Label al borde derecho
+        const last = pts[pts.length-1];
+        if (last) {
+          const lx = xP(last.t), ly = yP(last.retPct);
+          c.fillStyle = col; c.font = "bold 9px 'IBM Plex Mono',monospace"; c.textAlign = 'left';
+          c.fillText(code + ' ' + (last.retPct>=0?'+':'') + last.retPct.toFixed(1) + '%', Math.min(lx+4, W-pad.r-60), ly+3);
+        }
+      });
+
+      // Legend
+      const legend = document.getElementById('fxg-ytd-legend');
+      if (legend) {
+        legend.innerHTML = visibleCodes.map(code => {
+          const pts = adjusted[code];
+          const last = pts && pts.length ? pts[pts.length-1].retPct : null;
+          const isDxy = code === 'DXY';
+          const dashStyle = isDxy ? 'border-bottom:2px dashed '+YTD_COLORS[code] : 'border-bottom:2px solid '+YTD_COLORS[code];
+          return `<span style="display:inline-flex;align-items:center;gap:4px">
+            <span style="display:inline-block;width:18px;${dashStyle}">&nbsp;</span>
+            <span style="color:${YTD_COLORS[code]};font-weight:700">${YTD_LABELS[code]}</span>
+            <span style="color:${last>=0?'#00e5a0':'#ff6b4a'}">${last!=null ? (last>=0?'+':'')+last.toFixed(2)+'%' : '—'}</span>
+          </span>`;
+        }).join('');
+      }
+      const status = document.getElementById('fxg-ytd-status');
+      if (status) {
+        const startDate = new Date(tMin).toLocaleDateString('es-AR');
+        const endDate = new Date(tMax).toLocaleDateString('es-AR');
+        status.textContent = `${startDate} → ${endDate}  ·  Fuente: Yahoo via /api/fx/series  ·  ${new Date().toLocaleTimeString('es-AR')}`;
+      }
+    }
+
+    document.getElementById('fxg-ytd-mode-buttons').addEventListener('click', e => {
+      if (!e.target.matches('.fx-mode-btn')) return;
+      document.querySelectorAll('#fxg-ytd-mode-buttons .fx-mode-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      _fxgYtdMode = e.target.dataset.ytd;
+      _fxgDrawYtd();
+    });
+
     document.getElementById('fxg-tf-buttons').addEventListener('click', e => {
       if (!e.target.matches('.fx-tf-btn')) return;
       document.querySelectorAll('#fxg-tf-buttons .fx-tf-btn').forEach(b => b.classList.remove('active'));
@@ -2404,8 +2604,10 @@
     function startFxGlobal() {
       if (_fxgStarted) return;
       _fxgStarted = true;
-      Promise.all([loadSnapshot(), loadSeries(), loadCross()]);
+      Promise.all([loadSnapshot(), loadSeries(), loadCross(), _fxgLoadYtd()]);
+      // YTD se refresca más espaciado (data diaria de Yahoo cambia poco intraday)
       setInterval(() => { loadSnapshot(); loadCross(); loadSeries(); }, REFRESH_MS);
+      setInterval(() => { _fxgLoadYtd(); }, 5*60*1000); // YTD cada 5 min
     }
 
     // Lazy init: arrancar solo cuando la tab FX se muestre por primera vez
@@ -5922,7 +6124,29 @@ function openBondCalculator(bondType, bondId){
     } else if (bondType === 'fixed') {
       _pushUniv(FIXED, '#fbbf24', '_tea', '_dur', 'Tasa Fija (TIR TEA)');
     } else if (bondType === 'tamar') {
-      _pushUniv(TAMAR_BONDS, '#4da6ff', '_tn', '_dur', 'TAMAR (TIR Nom)');
+      // Recomputar margen hoy LIVE para TODOS los TAMAR (LETAMAR/BONTAMAR/DUAL)
+      // usando precio del Sheet (no del input del calc, así no depende de que el
+      // usuario haya entrado a la tab calc).
+      try {
+        if (typeof getTamarMap === 'function' && typeof calcTamarCurrentMarginData === 'function') {
+          const tmap = getTamarMap();
+          const flatProj = typeof getTamarProjectionDefaultTNA === 'function' ? getTamarProjectionDefaultTNA() : null;
+          TAMAR_BONDS.forEach(t => {
+            const lp = _livePrices[t.ticker] || {};
+            const px = lp.last || lp.mid || lp.bid || lp.ask || parseFloat(document.getElementById("tpx_"+t.id)?.value) || 0;
+            if (px > 0) {
+              const md = calcTamarCurrentMarginData(t, px, settle, tmap, flatProj);
+              if (md) {
+                t._marginToday = md.currentMargin;
+                t._impliedTNA = md.impliedTNA;
+                const days = DB(settle, new Date(t.mat+'T00:00:00'));
+                t._dur = days > 0 ? days/365 : t._dur;
+              }
+            }
+          });
+        }
+      } catch(e){ console.warn('[tamar-chart-recompute]', e); }
+      _pushUniv(TAMAR_BONDS, '#4da6ff', '_marginToday', '_dur', 'TAMAR (Margen hoy %)');
     } else if (bondType === 'usd') {
       _pushUniv(USD_BONDS, '#22d3ee', '_tea', '_dur', 'USD Sov (TIR USD)');
     }
