@@ -50,9 +50,11 @@ CREDITS_FILE = os.path.join(SCRIPT_DIR, "data", "fx_credits.json")
 # ══════════════════════════════════════════════════════════════════
 CURRENCIES = [
     {"code": "ARS_OF",   "label": "USD/ARS Oficial",   "source": "dolarapi",
-     "dolarapi_casa": "oficial",         "quote_convention": "x_per_usd", "group": "ARS"},
+     "dolarapi_casa": "oficial",         "yh_symbol": "ARS=X",
+     "quote_convention": "x_per_usd", "group": "ARS"},
     {"code": "ARS_MAY",  "label": "USD/ARS Mayorista", "source": "dolarapi",
-     "dolarapi_casa": "mayorista",       "quote_convention": "x_per_usd", "group": "ARS"},
+     "dolarapi_casa": "mayorista",       "yh_symbol": "ARS=X",
+     "quote_convention": "x_per_usd", "group": "ARS"},
     {"code": "ARS_MEP",  "label": "USD/ARS MEP",       "source": "dolarapi",
      "dolarapi_casa": "bolsa",           "quote_convention": "x_per_usd", "group": "ARS"},
     {"code": "ARS_CCL",  "label": "USD/ARS CCL",       "source": "dolarapi",
@@ -439,20 +441,41 @@ def get_series(code, tf="1D"):
 
     try:
         if cfg["source"] == "dolarapi":
-            # Para ARS: leer histórico propio de SQLite (no hay otra fuente)
+            # Para 1D: SQLite (intradía denso de DolarAPI + cálculos).
+            # Para 1W/1M/YTD: si hay yh_symbol, usar Yahoo (histórico denso desde
+            # la apertura del par); sino caer a SQLite (lo que tengamos).
             if tf == "1D":
                 since = int((time.time() - 86400) * 1000)
                 ticks = storage.fx_ticks_range(code, since_ts_ms=since)
+                out["points"] = [{"t": t["ts"], "v": t["price"]} for t in ticks]
+                out["data_source"] = "sqlite_history"
             else:
-                days = {"1W": 7, "1M": 30, "YTD": 365}.get(tf, 30)
-                since = int((time.time() - days * 86400) * 1000)
-                ticks = storage.fx_ticks_range(code, since_ts_ms=since)
-            out["points"] = [{"t": t["ts"], "v": t["price"]} for t in ticks]
+                yh_sym = cfg.get("yh_symbol")
+                if yh_sym:
+                    range_str, interval = TF_MAP[tf]
+                    try:
+                        data = _yahoo_chart(yh_sym, range_str=range_str, interval=interval)
+                        out["points"] = [{"t": int(t) * 1000, "v": float(c)}
+                                         for t, c in zip(data["timestamps"], data["closes"])]
+                        out["data_source"] = "yahoo"
+                    except Exception as e:
+                        # Fallback a SQLite si Yahoo falla
+                        days = {"1W": 7, "1M": 30, "YTD": 365}.get(tf, 30)
+                        since = int((time.time() - days * 86400) * 1000)
+                        ticks = storage.fx_ticks_range(code, since_ts_ms=since)
+                        out["points"] = [{"t": t["ts"], "v": t["price"]} for t in ticks]
+                        out["data_source"] = "sqlite_history_fallback"
+                        out["note"] = f"yahoo error: {e}"
+                else:
+                    days = {"1W": 7, "1M": 30, "YTD": 365}.get(tf, 30)
+                    since = int((time.time() - days * 86400) * 1000)
+                    ticks = storage.fx_ticks_range(code, since_ts_ms=since)
+                    out["points"] = [{"t": t["ts"], "v": t["price"]} for t in ticks]
+                    out["data_source"] = "sqlite_history"
             q = _dolarapi_quote(cfg["dolarapi_casa"])
             out["last"] = q["last"]
             out["prev_close"] = None
             out["pct_day"] = _ars_pct_day(cfg["dolarapi_casa"], q["last"])
-            out["data_source"] = "sqlite_history"
             if not out["points"]:
                 out["points"] = [{"t": int(time.time() * 1000), "v": q["last"]}]
                 out["note"] = "histórico ARS aún se está construyendo"

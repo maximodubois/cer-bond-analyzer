@@ -1206,6 +1206,44 @@
   <div id="qtBacktestResult" style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--td)">Tocá "Correr backtest" para evaluar señales sobre el histórico cargado.</div>
 </div>
 
+<!-- ── CHEAP / RICH SCREENER vs curva fiteada (NSS / LOG) ───────── -->
+<div class="card qt-card">
+  <div class="qt-hd">
+    <div>
+      <div class="st" style="margin:0">🎯 Cheap / Rich Screener — Residuales vs curva fiteada</div>
+      <div class="note" style="margin:4px 0 0 0;font-size:10px">
+        Para cada bono del universo: TIR mercado vs TIR <strong>NSS</strong> (preferida) y <strong>LOG</strong>. Residual = mkt − curva en bps.<br>
+        <span style="color:var(--ac)">CHEAP</span> = TIR mercado &gt; curva (rinde más de lo esperado → potencialmente subvaluado). <span style="color:var(--neg)">RICH</span> = TIR mercado &lt; curva (rinde menos → potencialmente sobrevaluado). Z-score normaliza vs el universo.
+      </div>
+    </div>
+    <div class="qt-controls">
+      <select id="atRvUniv" onchange="atRenderCheapRich()" style="padding:4px 8px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;font-size:11px;font-family:'IBM Plex Mono',monospace">
+        <option value="cer">CER (TIR Real)</option>
+        <option value="fixed">Tasa Fija (TEA)</option>
+        <option value="usd">USD Sov (TEA USD)</option>
+        <option value="tamar">TAMAR (TIR Nom)</option>
+      </select>
+      <button class="btn-api btn-sm" onclick="atRenderCheapRich()">▶ Refrescar</button>
+    </div>
+  </div>
+  <div style="overflow-x:auto;max-height:480px">
+    <table id="atCheapRichTbl" style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px">
+      <thead><tr style="color:var(--td);font-size:9.5px;text-transform:uppercase;letter-spacing:0.06em;background:#0a0f1a;position:sticky;top:0">
+        <th style="text-align:left;padding:6px 8px">Ticker</th>
+        <th style="text-align:right;padding:6px 8px">Dur (y)</th>
+        <th style="text-align:right;padding:6px 8px">TIR Mkt</th>
+        <th style="text-align:right;padding:6px 8px">NSS</th>
+        <th style="text-align:right;padding:6px 8px">LOG</th>
+        <th style="text-align:right;padding:6px 8px">Resid NSS (bps)</th>
+        <th style="text-align:right;padding:6px 8px">Z-score</th>
+        <th style="text-align:center;padding:6px 8px">Señal</th>
+      </tr></thead>
+      <tbody id="atCheapRichBody"><tr><td colspan="8" style="text-align:center;color:var(--tm);padding:14px">Calculá los bonos del universo primero (cualquier render de tabla los actualiza).</td></tr></tbody>
+    </table>
+  </div>
+  <div id="atCheapRichInfo" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;margin-top:6px">—</div>
+</div>
+
 </div><!-- end tab-quantplus -->
 
 <!-- TAB: LIVE SCREEN -->
@@ -2405,23 +2443,25 @@
     }
 
     // ═══ YTD PERFORMANCE vs DXY ═══
-    const YTD_CODES = ['BRL','MXN','CLP','JPY','EURUSD','DXY'];
+    const YTD_CODES = ['ARS_OF','BRL','MXN','CLP','JPY','EURUSD','DXY'];
     const YTD_COLORS = {
+      'ARS_OF':'#00e5a0', // verde Argentina
       'BRL':'#22d3ee', 'MXN':'#a78bfa', 'CLP':'#f472b6',
       'JPY':'#fbbf24', 'EURUSD':'#10b981', 'DXY':'#ef4444',
     };
     const YTD_LABELS = {
+      'ARS_OF':'USD/ARS Oficial',
       'BRL':'USD/BRL', 'MXN':'USD/MXN', 'CLP':'USD/CLP',
       'JPY':'USD/JPY', 'EURUSD':'EUR/USD', 'DXY':'DXY (USD broad)',
     };
     let _fxgYtdData = null;   // {code: [{t, retPct}]} normalizado al inicio
     let _fxgYtdMode = 'abs';
 
-    // Convención de quote: para USD/X (x_per_usd: BRL/MXN/CLP/JPY), si el par
-    // SUBE, la moneda X se DEBILITA vs USD → return moneda = -change.
+    // Convención de quote: para USD/X (x_per_usd: ARS/BRL/MXN/CLP/JPY), si el
+    // par SUBE, la moneda X se DEBILITA vs USD → return moneda = -change.
     // Para EUR/USD (usd_per_x): si SUBE, EUR se FORTALECE → return = +change.
     // Para DXY (index): SUBE = USD se fortalece → "return USD" = +change.
-    const YTD_INVERTED = new Set(['BRL','MXN','CLP','JPY']); // pairs USD/X
+    const YTD_INVERTED = new Set(['ARS_OF','BRL','MXN','CLP','JPY']); // pairs USD/X
 
     async function _fxgLoadYtd() {
       try {
@@ -2791,6 +2831,7 @@
         <th>Vto</th>
         <th class="num">Días</th>
         <th class="num">Px USD <span style="font-size:9px;color:var(--td)">(D)</span></th>
+        <th class="num">Var %</th>
         <th class="num">Px ARS</th>
         <th class="num">FX impl</th>
         <th class="num">TIR USD</th>
@@ -2799,7 +2840,7 @@
         <th class="num">Próx Cupón</th>
         <th class="num">Próx Amort</th>
       </tr></thead>
-      <tbody id="bnBody"><tr><td colspan="13" style="text-align:center;color:var(--tm);padding:14px">Esperando precios…</td></tr></tbody>
+      <tbody id="bnBody"><tr><td colspan="14" style="text-align:center;color:var(--tm);padding:14px">Esperando precios…</td></tr></tbody>
     </table>
   </div>
 
@@ -2936,43 +2977,6 @@
     </div>
   </div>
 
-  <!-- C. Cheap / Rich Screener vs curva fiteada (NSS / LOG) -->
-  <div class="card">
-    <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
-      <div>
-        <div class="st" style="margin:0">🎯 Cheap / Rich Screener — Residuales vs curva fiteada</div>
-        <div class="note" style="margin:4px 0 0 0;font-size:10px">
-          Para cada bono del universo: TIR mercado vs TIR <strong>NSS</strong> (preferida) y <strong>LOG</strong>. Residual = mkt − curva en bps.<br>
-          <span style="color:var(--ac)">CHEAP</span> = TIR mercado &gt; curva (rinde más de lo esperado → potencialmente subvaluado). <span style="color:var(--neg)">RICH</span> = TIR mercado &lt; curva (rinde menos → potencialmente sobrevaluado). Z-score normaliza vs el universo.
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <select id="atRvUniv" onchange="atRenderCheapRich()" style="padding:4px 8px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;font-size:11px;font-family:'IBM Plex Mono',monospace">
-          <option value="cer">CER (TIR Real)</option>
-          <option value="fixed">Tasa Fija (TEA)</option>
-          <option value="usd">USD Sov (TEA USD)</option>
-          <option value="tamar">TAMAR (TIR Nom)</option>
-        </select>
-        <button class="btn-api btn-sm" onclick="atRenderCheapRich()">▶ Refrescar</button>
-      </div>
-    </div>
-    <div style="overflow-x:auto;max-height:480px">
-      <table id="atCheapRichTbl" style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px">
-        <thead><tr style="color:var(--td);font-size:9.5px;text-transform:uppercase;letter-spacing:0.06em;background:#0a0f1a;position:sticky;top:0">
-          <th style="text-align:left;padding:6px 8px">Ticker</th>
-          <th style="text-align:right;padding:6px 8px">Dur (y)</th>
-          <th style="text-align:right;padding:6px 8px">TIR Mkt</th>
-          <th style="text-align:right;padding:6px 8px">NSS</th>
-          <th style="text-align:right;padding:6px 8px">LOG</th>
-          <th style="text-align:right;padding:6px 8px">Resid NSS (bps)</th>
-          <th style="text-align:right;padding:6px 8px">Z-score</th>
-          <th style="text-align:center;padding:6px 8px">Señal</th>
-        </tr></thead>
-        <tbody id="atCheapRichBody"><tr><td colspan="8" style="text-align:center;color:var(--tm);padding:14px">Calculá los bonos del universo primero (cualquier render de tabla los actualiza).</td></tr></tbody>
-      </table>
-    </div>
-    <div id="atCheapRichInfo" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;margin-top:6px">—</div>
-  </div>
 </div><!-- end tab-arbtasas -->
 
 <div class="card" style="border-color:rgba(71,85,105,0.2);margin-top:10px">
@@ -3319,6 +3323,20 @@ const IM=[
 
 // ═══ DATE UTILS ════════════════════
 const DB=(a,b)=>Math.round((b-a)/864e5);
+
+// Bonos vencidos (vto > N días atrás) NO se muestran en el dashboard.
+function isBondActive(b, graceDays){
+  if (!b || !b.mat) return true;
+  const g = (graceDays==null) ? 3 : graceDays;
+  const matD = new Date(b.mat+'T00:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const daysSince = (today - matD) / 86400000;
+  return daysSince <= g;
+}
+function filterActive(arr, graceDays){
+  if (!Array.isArray(arr)) return arr;
+  return arr.filter(b => isBondActive(b, graceDays));
+}
 const DS=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const _dynHolidayCache=new Map();
 const MOVABLE_HOLIDAYS=[[5,17],[7,17],[9,12],[10,20]];
@@ -4652,7 +4670,7 @@ function calcFixedOne(f){
   document.getElementById("fxpxth_"+f.id).textContent=pxComp!=null?"$"+pxComp.toFixed(3):"—";
   document.getElementById("fxmonths_"+f.id).textContent=monthsRem.toFixed(2);
   document.getElementById("fxdur_"+f.id).textContent=dur.toFixed(3);
-  f._ok=true; f._tea=tea; f._tna=tna; f._dur=dur; f._vf=vf; f._days=days; f._price=price; f._temCurrent=temCurrent;
+  f._ok=isBondActive(f); f._tea=tea; f._tna=tna; f._dur=dur; f._vf=vf; f._days=days; f._price=price; f._temCurrent=temCurrent;
   return {x:dur,y:tna,label:f.ticker,color:"#8b5cf6",id:f.id,assetType:"fixed"};
 }
 
@@ -4721,7 +4739,7 @@ function calculate(){
       document.getElementById("pa_"+b.id).textContent=par.toFixed(2)+"%";
       document.getElementById("rt_"+b.id).textContent=ratioVF.toFixed(6);
       document.getElementById("durm_"+b.id).textContent=dur!=null?dur.toFixed(3):"—";
-      b._tr=tirRealTEA;b._tn=tirNomTEA;b._tnaTF=tnaNom;b._dur=dur;b._ok=tirNomTEA!=null;
+      b._tr=tirRealTEA;b._tn=tirNomTEA;b._tnaTF=tnaNom;b._dur=dur;b._ok=tirNomTEA!=null && isBondActive(b);
       // TNA real for CER+ chart
       const tnaReal=tirRealTEA!=null?((Math.pow(1+tirRealTEA/100,days/365)-1)*(365/days))*100:null;
       b._tnaReal=tnaReal;
@@ -4823,7 +4841,7 @@ function calculate(){
           t._tamarBE=null;
         }
       }
-      t._ok=true;
+      t._ok=isBondActive(t);
       t._tnaNeta = t._impliedTNA!=null ? t._impliedTNA : t._tamarBE;
       // Update CALCULADORAS card DOM
       const tdEl=document.getElementById("td_"+t.id);
@@ -5299,7 +5317,7 @@ function switchTab(tab){
   if(tab==="resumen") renderResumen();
   if(tab==="livescreen") buildLiveTable();
   if(tab==="positions"){ renderPositions(); renderBlotter(); renderAxes(); try{renderAgenda()}catch(_e){} try{renderRun()}catch(_e){} }
-  if(tab==="quantplus"){ try{ qtInit(); }catch(_e){console.warn('[qt]',_e)} }
+  if(tab==="quantplus"){ try{ qtInit(); }catch(_e){console.warn('[qt]',_e)} try{ atRenderCheapRich(); }catch(_e){} }
   if(tab==="pases") buildPaseSelect();
   if(tab==="quantplus") refreshQuantPlus();
   if(tab==="fx") renderFX();
@@ -5442,7 +5460,7 @@ function renderResumen(){
     let rows="";
     // Ordenar por DURATION ascendente — bonos con flujos cortos / amortizables (TX26)
     // quedan arriba aunque su mat date sea lejano.
-    BONDS.filter(b=>b._ok).slice().sort((a,b)=>{
+    filterActive(BONDS).filter(b=>b._ok).slice().sort((a,b)=>{
       const da=(a._dur!=null)?a._dur:DB(settle,new Date(a.mat+"T00:00:00"))/365;
       const db=(b._dur!=null)?b._dur:DB(settle,new Date(b.mat+"T00:00:00"))/365;
       return da-db;
@@ -5916,6 +5934,13 @@ function openBondCalculator(bondType, bondId){
           <div class="bc-kpi"><div class="bv" id="bck-curve-log" style="color:var(--fx)">-</div><div class="bl">En curva LOG</div></div>
           <div class="bc-kpi"><div class="bv" id="bck-spread-curve" style="color:var(--am)">-</div><div class="bl">Spread vs curva (bps)</div></div>
         </div>
+        ${bondType==='cer'?`
+        <!-- CER vs curva Tasa Fija (relative value entre familias) -->
+        <div class="bc-kpis" style="margin-top:8px;border-top:1px dashed var(--cb);padding-top:8px">
+          <div class="bc-kpi"><div class="bv" id="bck-tfcurve-nss" style="color:#fbbf24">-</div><div class="bl">TNA TF en curva (NSS)</div></div>
+          <div class="bc-kpi"><div class="bv" id="bck-tfcurve-log" style="color:#fbbf24">-</div><div class="bl">TNA TF en curva (LOG)</div></div>
+          <div class="bc-kpi"><div class="bv" id="bck-tfcurve-spread" style="color:var(--am)">-</div><div class="bl">Spread TNA TF vs curva TF (bps)</div></div>
+        </div>`:''}
         <!-- ── Orderbook horizontal (BID izq | OFFER der) — estilo broker AR ── -->
         <div class="bc-book2" id="bc-book-wrap">
           <div class="bb2-hd">
@@ -7242,6 +7267,36 @@ function openBondCalculator(bondType, bondId){
         // CER: fiteamos sobre TIR REAL (b._tr) vs duración del propio universo CER.
         const fit  = _bcFitCurveYield(BONDS, b, dur, '_tr');
         _bcRenderRiskKpis(dur, conv, fit, tirReal);
+
+        // CER vs CURVA TASA FIJA: relative value entre familias.
+        // Fitea NSS+LOG sobre FIXED._tea y compara con la TNA TF equivalente
+        // del CER (que es b._tnaTF — TNA nominal del CER en simple, no TEA).
+        // Convertimos _tea TF (que es TEA) a TNA simple para mismo eje:
+        // TNA_TF_at_dur = ((1+TEA_TF/100)^(d/365) - 1) * 365/d * 100, donde d=days.
+        const fitTF = _bcFitCurveYield(FIXED, b, dur, '_tea');
+        const dys = days;
+        function teaToTna(tea){
+          if (tea == null || !isFinite(tea) || !(dys > 0)) return null;
+          return (Math.pow(1 + tea/100, dys/365) - 1) * 365/dys * 100;
+        }
+        const tfNssTna = teaToTna(fitTF.nss);
+        const tfLogTna = teaToTna(fitTF.log);
+        const refTna = (tfNssTna != null) ? tfNssTna : tfLogTna;
+        document.getElementById('bck-tfcurve-nss').textContent = (tfNssTna != null) ? tfNssTna.toFixed(2)+'%' : '—';
+        document.getElementById('bck-tfcurve-log').textContent = (tfLogTna != null) ? tfLogTna.toFixed(2)+'%' : '—';
+        const spEl = document.getElementById('bck-tfcurve-spread');
+        if (spEl) {
+          if (refTna != null && tna != null) {
+            const bps = (tna - refTna) * 100;
+            spEl.textContent = (bps>=0?'+':'') + bps.toFixed(0) + ' bps';
+            spEl.style.color = bps > 0 ? 'var(--acl)' : (bps < 0 ? 'var(--neg)' : 'var(--td)');
+            spEl.title = (bps > 0
+              ? 'CER rinde MÁS que el TF comparable — potencialmente cheap vs TF'
+              : 'CER rinde MENOS que el TF — potencialmente rich vs TF');
+          } else {
+            spEl.textContent = '—'; spEl.style.color = 'var(--td)';
+          }
+        }
       }
 
       // Breakeven inflation display
@@ -8092,7 +8147,7 @@ function buildLiveTable(){
 
   let rows="";
 
-  BONDS.forEach(b=>{
+  filterActive(BONDS).forEach(b=>{
     const lp=_livePrices[b.ticker]||{};
     const matD=new Date(b.mat+"T00:00:00");
     const days=DB(settle,matD);
@@ -8150,7 +8205,7 @@ function buildLiveTable(){
     </tr>`;
   });
 
-  FIXED.forEach(f=>{
+  filterActive(FIXED).forEach(f=>{
     const lp=_livePrices[f.ticker]||{};
     const matD=new Date(f.mat+"T00:00:00");
     const emD=new Date(f.emDate+"T00:00:00");
@@ -8354,10 +8409,15 @@ async function fetchPricesFromServer(){
     syncBondCalcModal();
     // Refresh Run de Mercado si la tab Posiciones está visible
     try { if (document.getElementById('tab-positions')?.style.display !== 'none') renderRun(); } catch(_e){}
-    // Auto-refresh Arbitraje Tasas si está visible (rápido — solo lee del Sheet ya cacheado)
+    // Auto-refresh Arbitraje Tasas si está visible
     try {
       if (document.getElementById('tab-arbtasas')?.style.display !== 'none') {
         if (!_atScanRunning && _atLastScan) atRunScan();
+      }
+    } catch(_e){}
+    // Auto-refresh Cheap/Rich screener si Desarrollo está visible
+    try {
+      if (document.getElementById('tab-quantplus')?.style.display !== 'none') {
         if (typeof atRenderCheapRich === 'function') atRenderCheapRich();
       }
     } catch(_e){}
@@ -12737,7 +12797,7 @@ function renderRun(){
   };
   const sel=arrMap[_runUniv]||arrMap.cer;
   const rows=[];
-  sel.arr.forEach(b=>{
+  filterActive(sel.arr).forEach(b=>{
     const tk = (sel.type==='usd' && typeof usdBondPriceTicker==='function') ? usdBondPriceTicker(b) : b.ticker;
     const lp=_livePrices[tk]||{};
     const bid=lp.bid||null, ask=lp.ask||null, last=lp.last||null;
@@ -12804,6 +12864,96 @@ function renderRun(){
   if (tsEl) tsEl.textContent=new Date().toLocaleTimeString('es-AR');
 }
 
+// Draw 2-serie curve (AR + NY) en el mismo canvas, cada una con NSS+LOG
+// fiteado por separado para que se vea la diferencia de pricing por ley.
+function _bnDrawDualLawCurve(cv, ptsAR, ptsNY, maxX){
+  const dpr = window.devicePixelRatio || 1;
+  const ct = cv.parentElement;
+  const W = ct.clientWidth || 600, H = ct.clientHeight || 280;
+  cv.width = W*dpr; cv.height = H*dpr;
+  const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0);
+  c.clearRect(0,0,W,H);
+  const pad = {t:14, r:60, b:30, l:48};
+  const all = ptsAR.concat(ptsNY);
+  if (!all.length) return;
+  const ys = all.map(p=>p.y);
+  const ySpread = Math.max(...ys) - Math.min(...ys);
+  const yPad = Math.max(ySpread*0.2, 1);
+  const yMin = Math.min(...ys) - yPad, yMax = Math.max(...ys) + yPad;
+  const xP = x => pad.l + (x/maxX)*(W-pad.l-pad.r);
+  const yP = y => pad.t + (1-(y-yMin)/(yMax-yMin))*(H-pad.t-pad.b);
+  // Grid
+  c.strokeStyle='#1a2233'; c.lineWidth=0.5;
+  for (let i=0; i<=5; i++) {
+    const v = yMin + (yMax-yMin)*i/5, py = yP(v);
+    c.beginPath(); c.moveTo(pad.l, py); c.lineTo(W-pad.r, py); c.stroke();
+    c.fillStyle='#64748b'; c.font="9px 'IBM Plex Mono',monospace"; c.textAlign='right';
+    c.fillText(v.toFixed(1)+'%', pad.l-4, py+3);
+  }
+  for (let i=0; i<=5; i++) {
+    const x = (maxX*i/5), px = xP(x);
+    c.beginPath(); c.moveTo(px, pad.t); c.lineTo(px, H-pad.b); c.stroke();
+    c.fillStyle='#64748b'; c.textAlign='center'; c.font="8px 'IBM Plex Mono',monospace";
+    c.fillText(x.toFixed(1)+'y', px, H-14);
+  }
+  // Helper: render una serie con NSS + LOG + dots
+  function drawSerie(pts, color, label){
+    if (!pts.length) return;
+    // Fit
+    const fitPts = pts.map(p=>({x:p.x, y:p.y}));
+    let nssFit=null, logFit=null;
+    try { logFit = (typeof logRegression==='function') ? logRegression(fitPts) : null; } catch(e){}
+    try { nssFit = fitPts.length>=3 && typeof fitNSS==='function' ? fitNSS(fitPts) : null; } catch(e){}
+    const steps = 80;
+    const dx = (maxX-0.1)/steps;
+    // LOG dashed
+    if (logFit) {
+      c.save(); c.setLineDash([5,3]); c.strokeStyle=color+'aa'; c.lineWidth=1.4;
+      c.beginPath(); let first=true;
+      for (let i=0; i<=steps; i++) {
+        const x = 0.1+i*dx;
+        const y = logFit.predict(x);
+        if (!isFinite(y) || y<yMin-5 || y>yMax+5) { first=true; continue; }
+        const px = xP(x), py = yP(y);
+        first ? (c.moveTo(px,py), first=false) : c.lineTo(px,py);
+      }
+      c.stroke(); c.restore();
+    }
+    // NSS solid
+    if (nssFit) {
+      c.save(); c.strokeStyle=color; c.lineWidth=2;
+      c.beginPath(); let first=true;
+      for (let i=0; i<=steps; i++) {
+        const x = Math.max(0.1, 0.1+i*dx);
+        const y = nssFit.predict(x);
+        if (!isFinite(y) || y<yMin-5 || y>yMax+5) { first=true; continue; }
+        const px = xP(x), py = yP(y);
+        first ? (c.moveTo(px,py), first=false) : c.lineTo(px,py);
+      }
+      c.stroke(); c.restore();
+      // Label NSS al borde
+      const yEdge = nssFit.predict(maxX);
+      if (isFinite(yEdge) && yEdge>=yMin && yEdge<=yMax) {
+        c.fillStyle=color; c.font="bold 9px 'IBM Plex Mono',monospace"; c.textAlign='left';
+        c.fillText(label, W-pad.r+4, yP(yEdge)+3);
+      }
+    }
+    // Dots
+    pts.forEach(p => {
+      const px = xP(p.x), py = yP(p.y);
+      c.beginPath(); c.arc(px, py, 5, 0, Math.PI*2);
+      c.fillStyle = color; c.fill();
+      c.strokeStyle = '#080c14'; c.lineWidth = 1.2; c.stroke();
+      c.fillStyle = color; c.font = "bold 8px 'IBM Plex Mono',monospace"; c.textAlign = 'center';
+      c.fillText(p.label, px, py-10);
+      c.fillStyle = '#94a3b8'; c.font = "8px 'IBM Plex Mono',monospace";
+      c.fillText(p.y.toFixed(1)+'%', px, py+16);
+    });
+  }
+  drawSerie(ptsAR, '#22d3ee', 'AR');
+  drawSerie(ptsNY, '#fbbf24', 'NY');
+}
+
 // ═══ BONARES TAB: render tabla + curva USD + spreads AR-NY ═══
 function renderBonares(){
   if (typeof USD_BONDS === 'undefined') return;
@@ -12814,7 +12964,8 @@ function renderBonares(){
   // Recalcular metrics para cada USD bond (TIR, dur, conv) según precio live.
   // PRICE USD viene de _livePrices[tickerD] (AL30D, GD30D, etc.). El ticker base
   // (AL30) en ARS lo guardamos para mostrar la "brecha implícita" vs MEP/CCL.
-  USD_BONDS.forEach(b=>{
+  const ACTIVE_USD = filterActive(USD_BONDS);
+  ACTIVE_USD.forEach(b=>{
     const tkUsd = usdBondPriceTicker(b);
     const lpUsd = _livePrices[tkUsd] || {};
     const lpArs = _livePrices[b.ticker] || {};
@@ -12840,7 +12991,7 @@ function renderBonares(){
   // Tabla
   const tbody=document.getElementById('bnBody');
   if (!tbody) return;
-  const rows = USD_BONDS.map(b=>{
+  const rows = ACTIVE_USD.map(b=>{
     const days = DB(settle, new Date(b.mat+'T00:00:00'));
     const nf = b._nextFlow;
     const nextCup = nf && nf.coupon>0 ? '$ '+nf.coupon.toFixed(3)+' ('+nf.days+'d)' : '—';
@@ -12848,6 +12999,13 @@ function renderBonares(){
     const pxUsd = b._lastPriceUsd;
     const pxArs = b._lastPriceArs;
     const fxImpl = b._impliedFx;
+    // Var % día sobre el precio USD (ticker D). Usa close del Sheet.
+    const tkUsd = (typeof usdBondPriceTicker==='function') ? usdBondPriceTicker(b) : b.ticker+'D';
+    const lpUsd = _livePrices[tkUsd] || {};
+    const closeUsd = lpUsd.close || 0;
+    const varPct = (pxUsd > 0 && closeUsd > 0) ? ((pxUsd/closeUsd - 1) * 100) : null;
+    const varStr = varPct != null ? (varPct>=0?'+':'') + varPct.toFixed(2) + '%' : '—';
+    const varColor = varPct == null ? 'var(--td)' : varPct>=0 ? 'var(--pos)' : 'var(--neg)';
     return `<tr class="fxc-row-clickable" onclick="openBondCalculator('usd','${b.id}')">
       <td class="tk" style="color:${b.color};font-weight:700">${b.ticker}</td>
       <td style="color:#cbd5e1">${b.name}</td>
@@ -12855,6 +13013,7 @@ function renderBonares(){
       <td style="font-size:10px">${b.mat}</td>
       <td class="num">${days}</td>
       <td class="num" style="font-weight:600">${pxUsd?pxUsd.toFixed(2):'—'}</td>
+      <td class="num" style="color:${varColor};font-size:11px;font-weight:600">${varStr}</td>
       <td class="num" style="color:var(--td);font-size:10px">${pxArs?pxArs.toLocaleString('es-AR',{maximumFractionDigits:0}):'—'}</td>
       <td class="num" style="color:#fbbf24;font-size:10px">${fxImpl?fxImpl.toFixed(0):'—'}</td>
       <td class="num" style="color:#22d3ee;font-weight:600">${b._tea!=null?b._tea.toFixed(2)+'%':'—'}</td>
@@ -12866,15 +13025,19 @@ function renderBonares(){
   }).join('');
   tbody.innerHTML = rows;
 
-  // Curva USD
+  // Curva USD — AR y NY separadas
   const cv=document.getElementById('bnCurveChart');
   if (cv) {
-    const pts = USD_BONDS
-      .filter(b=>b._ok && b._dur>0 && b._tea!=null)
-      .map(b=>({x:b._dur, y:b._tea, label:b.ticker, color:b.color}));
-    if (pts.length) {
-      const maxX = Math.max(...pts.map(p=>p.x))*1.1;
-      drawFxCurveChart('bnCurveChart', pts, maxX, [], '#22d3ee');
+    const activeOk = ACTIVE_USD.filter(b=>b._ok && b._dur>0 && b._tea!=null);
+    const ptsAR = activeOk.filter(b=>b.law==='AR').map(b=>({x:b._dur, y:b._tea, label:b.ticker, color:'#22d3ee'}));
+    const ptsNY = activeOk.filter(b=>b.law==='NY').map(b=>({x:b._dur, y:b._tea, label:b.ticker, color:'#fbbf24'}));
+    if (ptsAR.length || ptsNY.length) {
+      const all = ptsAR.concat(ptsNY);
+      const maxX = Math.max(...all.map(p=>p.x))*1.1;
+      // Renderizo las dos series en el mismo canvas; reusamos drawFxCurveChart
+      // pasando las dos series concatenadas como "current" + "prev" (truco visual)
+      // pero queremos AMBAS sólidas. Usamos un draw custom mínimo.
+      _bnDrawDualLawCurve(cv, ptsAR, ptsNY, maxX);
     } else {
       const c=cv.getContext('2d'); c.clearRect(0,0,cv.width,cv.height);
     }
@@ -13172,8 +13335,6 @@ function atInitTab(){
   }
   // Re-render top5 si hay scan previo (al volver al tab)
   if (_atLastScan) _atRenderTop5();
-  // Cheap/Rich screener
-  atRenderCheapRich();
 }
 
 // ═══ CHEAP / RICH SCREENER vs curva fiteada ═══════════════════
