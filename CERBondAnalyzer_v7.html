@@ -1248,33 +1248,6 @@
 
 <!-- TAB: LIVE SCREEN -->
 <div id="tab-livescreen" style="display:none">
-  <div class="card" style="margin-top:10px">
-    <div class="st">Pantalla Live — BID / LAST / OFFER → TNA / TEA</div>
-    <div class="note" style="margin-bottom:8px">Datos en tiempo real de la API Primary. Para CER, la TEA/TNA se calcula como tasa fija equivalente usando la proyección de inflación del análisis.</div>
-    <div style="overflow-x:auto">
-      <table id="liveTable" class="lt">
-        <thead>
-          <tr>
-            <th>Ticker</th><th class="num">Var %</th><th>Tipo</th><th>Días</th>
-            <th class="num">BID</th><th class="num">LAST</th><th class="num">OFFER</th>
-            <th class="num hl-g">TIR BID</th><th class="num hl-g">TIR LAST</th><th class="num hl-g">TIR OFFER</th>
-            <th class="num hl-b">TNA BID</th><th class="num hl-b">TNA LAST</th><th class="num hl-b">TNA OFFER</th>
-          </tr>
-        </thead>
-        <tbody id="liveTableBody">
-          <tr><td colspan="13" style="text-align:center;color:var(--tm);padding:20px">Conectá la API Primary y calculá para ver datos</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div><!-- end tab-livescreen -->
-
-<!-- TAB: POSITIONS -->
-<div id="tab-positions" style="display:none">
-
-  <!-- ════════════════════════════════════════════════════════════════
-       RUN DE MERCADO — bid/ask/mid live + TIR/TNA por punta
-       ════════════════════════════════════════════════════════════════ -->
   <style>
     #runCard .run-tbl{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px}
     #runCard .run-tbl th{text-align:right;padding:6px 8px;border-bottom:1px solid #1a2540;color:var(--td);font-size:9.5px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;background:#0a0f1a;position:sticky;top:0}
@@ -1286,6 +1259,7 @@
     #runCard .run-bid{color:var(--pos)}
     #runCard .run-ask{color:var(--neg)}
     #runCard .run-mid{color:#fbbf24}
+    #runCard .run-last{color:var(--acl);font-weight:600}
     #runCard .run-tir-cell{font-weight:600}
     #runCard .run-vol{color:var(--td);font-size:10px}
     #runCard .run-stale{opacity:0.4}
@@ -1293,7 +1267,7 @@
   <div class="card" id="runCard" style="margin-top:10px">
     <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
       <div>
-        <div class="st" style="margin:0">📡 Run de Mercado — Bid / Mid / Ask con TIR por punta</div>
+        <div class="st" style="margin:0">📡 Run de Mercado — Bid / Mid / Ask + Last con TIR por punta</div>
         <div style="font-size:10px;color:var(--td);margin-top:2px">
           Pricing live de Google Sheets. TIR/TNA recalculadas en cada punta con los flows del bono. Click en fila → calculadora completa.
         </div>
@@ -1318,28 +1292,35 @@
         <span id="runTs" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace">—</span>
       </div>
     </div>
-    <div style="overflow-x:auto;max-height:450px">
+    <div style="overflow-x:auto;max-height:560px">
       <table class="run-tbl">
         <thead>
           <tr>
             <th>Ticker</th>
             <th>Vto / Días</th>
+            <th class="num">Var %</th>
             <th class="num">Bid Size</th>
             <th class="num" style="color:var(--pos)">BID</th>
             <th class="num" style="color:#fbbf24">MID</th>
+            <th class="num" style="color:var(--acl)">LAST</th>
             <th class="num" style="color:var(--neg)">ASK</th>
             <th class="num">Ask Size</th>
             <th class="num" style="color:var(--pos)">TIR BID</th>
             <th class="num" style="color:#fbbf24">TIR MID</th>
+            <th class="num" style="color:var(--acl)">TIR LAST</th>
             <th class="num" style="color:var(--neg)">TIR ASK</th>
             <th class="num">Spread (bps)</th>
             <th class="num">Dur</th>
           </tr>
         </thead>
-        <tbody id="runBody"><tr><td colspan="12" style="text-align:center;color:var(--tm);padding:14px">Conectá el polling de precios para ver el run.</td></tr></tbody>
+        <tbody id="runBody"><tr><td colspan="15" style="text-align:center;color:var(--tm);padding:14px">Conectá el polling de precios para ver el run.</td></tr></tbody>
       </table>
     </div>
   </div>
+</div><!-- end tab-livescreen -->
+
+<!-- TAB: POSITIONS -->
+<div id="tab-positions" style="display:none">
 
   <!-- ════════════════════════════════════════════════════════════════
        AGENDA — Libreta de traders/contrapartes (alimenta Blotter autocomplete)
@@ -2650,10 +2631,24 @@
       setInterval(() => { _fxgLoadYtd(); }, 5*60*1000); // YTD cada 5 min
     }
 
+    // Reorder DOM al cargar: mover el card del FX Panel Global JUSTO DESPUÉS del
+    // "Tipo de Cambio en Tiempo Real" (primer card). Así queda arriba todo lo
+    // analítico (cross matrix, brecha/canje, YTD vs DXY) y abajo lo de DL/Fut.
+    function _fxgReorderDOM(){
+      const fxTab = document.getElementById('tab-fx');
+      if (!fxTab) return;
+      const fxGlobalCard = document.getElementById('fx-global')?.closest('.card');
+      const firstCard = fxTab.firstElementChild;  // "Tipo de Cambio en Tiempo Real"
+      if (!fxGlobalCard || !firstCard) return;
+      if (fxGlobalCard === firstCard.nextElementSibling) return;  // ya está en lugar
+      fxTab.insertBefore(fxGlobalCard, firstCard.nextElementSibling);
+    }
+
     // Lazy init: arrancar solo cuando la tab FX se muestre por primera vez
     window.addEventListener('DOMContentLoaded', () => {
       const fxTab = document.getElementById('tab-fx');
       if (!fxTab) return;
+      _fxgReorderDOM();  // reordenar inmediatamente, no necesita TD ni data
       // Si la tab ya está visible al cargar, arrancar
       if (fxTab.style.display !== 'none') startFxGlobal();
       // Observer: dispara cuando se muestre
@@ -5315,8 +5310,8 @@ function switchTab(tab){
     b.classList.toggle("active",isActive);
   });
   if(tab==="resumen") renderResumen();
-  if(tab==="livescreen") buildLiveTable();
-  if(tab==="positions"){ renderPositions(); renderBlotter(); renderAxes(); try{renderAgenda()}catch(_e){} try{renderRun()}catch(_e){} }
+  if(tab==="livescreen") { try{ renderRun(); }catch(_e){} }
+  if(tab==="positions"){ renderPositions(); renderBlotter(); renderAxes(); try{renderAgenda()}catch(_e){} }
   if(tab==="quantplus"){ try{ qtInit(); }catch(_e){console.warn('[qt]',_e)} try{ atRenderCheapRich(); }catch(_e){} }
   if(tab==="pases") buildPaseSelect();
   if(tab==="quantplus") refreshQuantPlus();
@@ -8407,8 +8402,8 @@ async function fetchPricesFromServer(){
     _syncCaucionRateToInputs();
     syncFxCalcModal();
     syncBondCalcModal();
-    // Refresh Run de Mercado si la tab Posiciones está visible
-    try { if (document.getElementById('tab-positions')?.style.display !== 'none') renderRun(); } catch(_e){}
+    // Refresh Run de Mercado si la tab Live Screen está visible
+    try { if (document.getElementById('tab-livescreen')?.style.display !== 'none') renderRun(); } catch(_e){}
     // Auto-refresh Arbitraje Tasas si está visible
     try {
       if (document.getElementById('tab-arbtasas')?.style.display !== 'none') {
@@ -12827,7 +12822,7 @@ function renderRun(){
   rows.sort(cmp);
 
   if (!rows.length){
-    body.innerHTML='<tr><td colspan="12" style="text-align:center;color:var(--tm);padding:14px">Sin datos live. Conectá precios primero.</td></tr>';
+    body.innerHTML='<tr><td colspan="15" style="text-align:center;color:var(--tm);padding:14px">Sin datos live. Conectá precios primero.</td></tr>';
     return;
   }
 
@@ -12842,18 +12837,28 @@ function renderRun(){
     const liveLp=lp(tkLive);
     const bidSz=liveLp.bidSize||null;
     const askSz=liveLp.askSize||null;
+    const last = liveLp.last || null;
+    const closeP = liveLp.close || 0;
+    const varPct = (last && closeP) ? ((last/closeP - 1) * 100) : null;
+    const varStr = varPct==null ? '—' : (varPct>=0?'+':'') + varPct.toFixed(2) + '%';
+    const varColor = varPct==null ? 'var(--td)' : varPct>=0 ? 'var(--pos)' : 'var(--neg)';
+    // TIR LAST recalculado igual que bid/ask
+    const tirLast = last ? _runTirForPrice(r.b, sel.type, settle, last) : null;
     const ageMs = liveLp.ts ? (Date.now()-liveLp.ts) : null;
     const staleCls = (ageMs && ageMs > 60000) ? ' run-stale' : '';
     return `<tr class="${staleCls}" onclick="openBondCalculator('${calcBondType}','${r.b.id}')">
       <td style="color:${r.b.color||'var(--t)'}">${r.b.ticker}</td>
       <td>${r.b.mat} · <span style="color:var(--td)">${r.days}d</span></td>
+      <td style="color:${varColor};font-weight:600">${varStr}</td>
       <td class="run-vol">${fmtVol(bidSz)}</td>
       <td class="run-bid">${fmtPx(r.bid)}</td>
       <td class="run-mid">${fmtPx(r.mid)}</td>
+      <td class="run-last">${fmtPx(last)}</td>
       <td class="run-ask">${fmtPx(r.ask)}</td>
       <td class="run-vol">${fmtVol(askSz)}</td>
       <td class="run-tir-cell run-bid">${fmtTir(r.tirBid)}</td>
       <td class="run-tir-cell run-mid">${fmtTir(r.tirMid)}</td>
+      <td class="run-tir-cell run-last">${fmtTir(tirLast)}</td>
       <td class="run-tir-cell run-ask">${fmtTir(r.tirAsk)}</td>
       <td>${r.spreadBps!=null?r.spreadBps.toFixed(0):'—'}</td>
       <td>${r.dur!=null?r.dur.toFixed(2)+'y':'—'}</td>

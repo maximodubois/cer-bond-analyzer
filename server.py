@@ -882,7 +882,14 @@ def main():
     # FX minute snapshot: dispara fx_module.get_snapshot() cada 60s para
     # persistir DolarAPI (Of/May/MEP/CCL/Blue) sin depender de polling cliente.
     _start_fx_minute_snapshot()
-    print("✓ FX minute scheduler iniciado (DolarAPI + TD persistence cada 60s)")
+    print("✓ FX minute scheduler iniciado (DolarAPI persistence cada 60s)")
+    # TwelveData scheduler dedicado: ÚNICO lugar que dispara fetches a TD.
+    # Cadencia TD_CADENCE_SEC (300s = 5min). Todos los clients leen del cache.
+    if fx_module.TWELVEDATA_API_KEY:
+        fx_module.start_td_scheduler()
+        print(f"✓ TwelveData scheduler iniciado (cada {fx_module.TD_CADENCE_SEC}s, single source)")
+    else:
+        print("⚠ TwelveData NO configurado — sin polling. Set TWELVEDATA_API_KEY env var.")
 
     is_railway = os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("PORT")
     if not is_railway:

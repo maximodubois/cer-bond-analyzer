@@ -36,7 +36,7 @@ import storage
 TWELVEDATA_API_KEY = os.getenv("TWELVEDATA_API_KEY", "").strip()
 TWELVEDATA_BASE = "https://api.twelvedata.com"
 
-TD_CADENCE_SEC = int(os.getenv("FX_TWELVEDATA_CADENCE_SEC", "190"))
+TD_CADENCE_SEC = int(os.getenv("FX_TWELVEDATA_CADENCE_SEC", "300"))
 TD_DAILY_CAP = int(os.getenv("FX_TWELVEDATA_DAILY_CAP", "790"))
 TD_WINDOW_START_HOUR_ART = int(os.getenv("FX_WINDOW_START_HOUR", "10"))
 TD_WINDOW_END_HOUR_ART = int(os.getenv("FX_WINDOW_END_HOUR", "17"))
@@ -210,26 +210,26 @@ def _td_fetch_all():
     return result
 
 
-def _td_refresh_if_due():
-    if not TWELVEDATA_API_KEY or not _is_within_window():
-        return
+def _td_do_refresh():
+    """Hace el fetch real a TwelveData + persistencia. NO chequea cadencia ni
+    ventana — eso es responsabilidad del caller. Single source of truth para
+    todo lo que llame a TD."""
+    if not TWELVEDATA_API_KEY:
+        return False
     with _td_lock:
         snap = _td_snapshot
         now = time.time()
-        if (now - snap["last_success_ts"]) < TD_CADENCE_SEC:
-            return
         allowed, state = _credits_charge(len(TD_SYMBOLS))
         if not allowed:
             snap["last_error"] = (f"quota agotada: used={state['used']}/{TD_DAILY_CAP} "
                                   f"min={state['minute_used']}/8")
-            return
+            return False
         try:
             data = _td_fetch_all()
             snap["by_code"] = data
             snap["last_success_ts"] = now
             snap["ts"] = int(now * 1000)
             snap["last_error"] = None
-            # Persistencia: 1 tick por moneda
             ts_ms = int(now * 1000)
             for code, q in data.items():
                 if q.get("error") or q.get("last") is None:
@@ -243,8 +243,42 @@ def _td_refresh_if_due():
                     )
                 except Exception as e:
                     print(f"[fx] tick persist error {code}: {e}")
+            return True
         except Exception as e:
             snap["last_error"] = str(e)
+            return False
+
+
+def _td_refresh_if_due():
+    """Legacy alias: usado por get_snapshot() en versiones viejas. Ahora no-op
+    para evitar disparar TD desde el path del request del cliente. La
+    actualización de TD vive en el thread dedicado start_td_scheduler()."""
+    return False
+
+
+def start_td_scheduler():
+    """Thread daemon ÚNICO que actualiza TwelveData según TD_CADENCE_SEC.
+    Todos los clients leen del cache (_td_snapshot). Llamar una vez al boot.
+    """
+    def loop():
+        # Pequeña espera inicial para que init termine
+        time.sleep(15)
+        while True:
+            try:
+                if _is_within_window():
+                    ok = _td_do_refresh()
+                    if ok:
+                        print(f"[td-scheduler] refresh ok @{_dt.datetime.utcnow().isoformat()} "
+                              f"used={_credits_read().get('used',0)}/{TD_DAILY_CAP}")
+                    else:
+                        # Si la quota está agotada o falló, esperamos igual la cadencia
+                        pass
+            except Exception as e:
+                print(f"[td-scheduler] error: {e}")
+            time.sleep(max(TD_CADENCE_SEC, 60))
+    t = threading.Thread(target=loop, name="td-scheduler", daemon=True)
+    t.start()
+    return t
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -346,11 +380,9 @@ def _persist_dolarapi(cfg, q):
 # SNAPSHOT
 # ══════════════════════════════════════════════════════════════════
 def get_snapshot():
-    try:
-        _td_refresh_if_due()
-    except Exception:
-        pass
-
+    # NOTA: el refresh de TwelveData vive en start_td_scheduler() (server.py),
+    # NO se dispara desde acá. Cada client lee el cache compartido sin gastar
+    # créditos. Solo persistimos DolarAPI (que tiene su propio TTL local).
     items = []
     td_cache = _td_snapshot["by_code"]
     td_age_sec = int(time.time() - _td_snapshot["last_success_ts"]) if _td_snapshot["last_success_ts"] else None
