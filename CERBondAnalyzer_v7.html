@@ -5584,6 +5584,15 @@ function openBondCalculator(bondType, bondId){
               <button class="bc-univ-btn" data-univ="combo" onclick="_bcSetChartUniverse('combo')">CER + Tasa Fija</button>
             </div>`:''}
           </div>
+          <!-- Zoom X: máx duration visible -->
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:10px;color:var(--td)">
+            <label style="text-transform:uppercase;letter-spacing:0.05em">Max Duration:</label>
+            <input type="range" id="bc-chart-maxdur-slider" min="0.5" max="30" step="0.25" value="30" style="flex:1;accent-color:var(--acl)">
+            <input type="number" id="bc-chart-maxdur-input" step="0.25" min="0.5" value="" placeholder="auto"
+              style="width:70px;font-family:'IBM Plex Mono',monospace;font-size:11px;text-align:right;background:var(--bg);border:1px solid var(--cb);color:var(--t);padding:3px 6px;border-radius:4px">
+            <span style="font-family:'IBM Plex Mono',monospace">y</span>
+            <button class="bc-univ-btn" onclick="_bcResetChartZoom()" style="padding:3px 8px">↺ Auto</button>
+          </div>
           <div style="background:var(--bg);border:1px solid var(--cb);border-radius:8px;padding:10px">
             <canvas id="bc-chart-canvas" style="width:100%;height:340px;display:block"></canvas>
           </div>
@@ -5627,11 +5636,20 @@ function openBondCalculator(bondType, bondId){
 
   // Estado del gráfico de curva (CER puede toglearse entre solo-CER y CER+TF)
   let _bcChartUniv = 'cer';
+  let _bcChartMaxDur = null; // null = auto
   window._bcSetChartUniverse = function(u){
     _bcChartUniv = u;
     document.querySelectorAll('#bc-univ-buttons .bc-univ-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.univ === u);
     });
+    _bcRenderChartTab();
+  };
+  window._bcResetChartZoom = function(){
+    _bcChartMaxDur = null;
+    const sl = document.getElementById('bc-chart-maxdur-slider');
+    const ip = document.getElementById('bc-chart-maxdur-input');
+    if (sl) sl.value = 30;
+    if (ip) ip.value = '';
     _bcRenderChartTab();
   };
 
@@ -5663,19 +5681,47 @@ function openBondCalculator(bondType, bondId){
     } else if (bondType === 'usd') {
       _pushUniv(USD_BONDS, '#22d3ee', '_tea', '_dur', 'USD Sov (TIR USD)');
     }
-    _bcDrawCurveCanvas(cv, series, b);
+    _bcDrawCurveCanvas(cv, series, b, _bcChartMaxDur);
     if (legend) {
-      // Max/Min duration display
+      // Max/Min duration display (sobre TODOS los puntos, sin clip)
       const allPts = series.flatMap(s => s.pts);
       const durs = allPts.map(p => p.x).filter(v => v > 0);
       const maxDur = durs.length ? Math.max(...durs) : null;
       const minDur = durs.length ? Math.min(...durs) : null;
       const parts = series.map(s => `<span style="color:${s.color}">●</span> ${s.label} (${s.pts.length})`).join('  ·  ');
       const sel = `<span style="color:#fff;background:${b.color};padding:1px 6px;border-radius:3px;margin-left:8px">${b.ticker}</span>`;
+      const zoomNote = _bcChartMaxDur != null && maxDur != null && _bcChartMaxDur < maxDur
+        ? `  ·  <span style="color:var(--am)">Zoom: 0 → ${_bcChartMaxDur.toFixed(2)}y (de ${maxDur.toFixed(2)}y total)</span>` : '';
       const durLine = maxDur != null
-        ? `<div style="margin-top:4px"><strong style="color:#cbd5e1">Duration:</strong> mín ${minDur.toFixed(2)}y · máx <strong style="color:var(--am)">${maxDur.toFixed(2)}y</strong> · spread ${(maxDur-minDur).toFixed(2)}y</div>`
+        ? `<div style="margin-top:4px"><strong style="color:#cbd5e1">Duration:</strong> mín ${minDur.toFixed(2)}y · máx <strong style="color:var(--am)">${maxDur.toFixed(2)}y</strong> · spread ${(maxDur-minDur).toFixed(2)}y${zoomNote}</div>`
         : '';
       legend.innerHTML = parts + ' ' + sel + durLine;
+    }
+    // Wire inputs del zoom (idempotente, solo primera vez)
+    const sl = document.getElementById('bc-chart-maxdur-slider');
+    const ip = document.getElementById('bc-chart-maxdur-input');
+    if (sl && !sl.dataset.wired) {
+      sl.dataset.wired = '1';
+      // Setear el max del slider al máx observado para que el slider tenga rango útil
+      const allPts2 = series.flatMap(s => s.pts);
+      const maxObserved = allPts2.length ? Math.max(...allPts2.map(p=>p.x)) : 30;
+      sl.max = Math.max(maxObserved + 1, 5).toFixed(2);
+      sl.value = sl.max;
+      sl.addEventListener('input', e => {
+        const v = parseFloat(e.target.value);
+        _bcChartMaxDur = v;
+        if (ip) ip.value = v.toFixed(2);
+        _bcRenderChartTab();
+      });
+    }
+    if (ip && !ip.dataset.wired) {
+      ip.dataset.wired = '1';
+      ip.addEventListener('input', e => {
+        const v = parseFloat(e.target.value);
+        _bcChartMaxDur = (isFinite(v) && v > 0) ? v : null;
+        if (sl && _bcChartMaxDur != null) sl.value = _bcChartMaxDur;
+        _bcRenderChartTab();
+      });
     }
     // Dispara render del histórico también
     _bcRenderHistCharts();
@@ -5777,21 +5823,27 @@ function openBondCalculator(bondType, bondId){
     c.fillText(last.v.toFixed(2), W-pad.r, pad.t+10);
   }
 
-  function _bcDrawCurveCanvas(cv, series, currentBond){
+  function _bcDrawCurveCanvas(cv, series, currentBond, maxDurClip){
     const dpr = window.devicePixelRatio || 1;
     const W = cv.clientWidth || 600, H = cv.clientHeight || 340;
     cv.width = W*dpr; cv.height = H*dpr;
     const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0);
     c.clearRect(0,0,W,H);
     const pad = {t:14, r:14, b:30, l:48};
-    const allPts = series.flatMap(s => s.pts);
+    // Clip de puntos por maxDur (para que solo afecten al eje Y los visibles)
+    const clipPts = pts => (maxDurClip != null && maxDurClip > 0) ? pts.filter(p => p.x <= maxDurClip) : pts;
+    const visibleSeries = series.map(s => Object.assign({}, s, { pts: clipPts(s.pts) }));
+    const allPts = visibleSeries.flatMap(s => s.pts);
     if (!allPts.length) {
       c.fillStyle = '#475569'; c.font = "11px 'IBM Plex Mono',monospace"; c.textAlign='center';
-      c.fillText('Sin datos para construir la curva — calculá los bonos del universo primero', W/2, H/2);
+      c.fillText(maxDurClip ? `Sin puntos hasta ${maxDurClip.toFixed(2)}y — bajá el zoom` : 'Sin datos para construir la curva — calculá los bonos primero', W/2, H/2);
       return;
     }
     const xs = allPts.map(p => p.x), ys = allPts.map(p => p.y);
-    const xMin = 0, xMax = Math.max(...xs) * 1.08;
+    const xMin = 0;
+    const xMax = (maxDurClip != null && maxDurClip > 0)
+      ? maxDurClip
+      : Math.max(...xs) * 1.08;
     const ySpread = Math.max(...ys) - Math.min(...ys);
     const yPad = Math.max(ySpread*0.15, 1);
     const yMin = Math.min(...ys) - yPad, yMax = Math.max(...ys) + yPad;
@@ -5811,8 +5863,8 @@ function openBondCalculator(bondType, bondId){
       c.fillStyle='#64748b'; c.textAlign='center'; c.font="9px 'IBM Plex Mono',monospace";
       c.fillText(x.toFixed(1)+'y', px, H-14);
     }
-    // Para cada serie: ajusta NSS/LOG y dibuja líneas + labels al borde
-    series.forEach(s => {
+    // Para cada serie (clipeada): ajusta NSS/LOG y dibuja líneas + labels al borde
+    visibleSeries.forEach(s => {
       const fitPts = s.pts.map(p => ({x:p.x, y:p.y}));
       if (fitPts.length >= 2) {
         let logFit = null, nssFit = null;
