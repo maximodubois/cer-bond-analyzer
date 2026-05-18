@@ -2744,6 +2744,47 @@
     });
   })();
   </script>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       🏦 Cobertura FX — DL vs Futuros vs LECAP
+       Para cada DL bond y cada futuro ROFEX:
+       • encuentra LECAP comparable (mat más cercana)
+       • computa FX implícito al vto: spot × (1 + LECAP_TNA × d/365)
+       • compara con precio real y muestra spread
+       Permite ver dónde está más cara la cobertura y dónde hay arb.
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="card" id="fxCobCard">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+      <div>
+        <div class="st" style="margin:0">🏦 Cobertura FX — DL vs Futuros vs Tasa Pesos (LECAP)</div>
+        <div class="note" style="margin:4px 0 0 0;font-size:10px">
+          Para cada instrumento se calcula <b>FX implícito al vencimiento</b> usando la TNA de la LECAP comparable: <code>spot × (1 + LECAP_TNA × d/365)</code>.<br>
+          Comparado con el <b>FX implícito real del instrumento</b> (precio de mercado): se ve qué cobertura está cara/barata y oportunidades de arb.<br>
+          <span style="color:var(--ac)">Diff &lt; 0</span> = mercado pricea MENOS devaluación que la curva de pesos → cobertura BARATA, considerá comprarla.
+          <span style="color:var(--neg)">Diff &gt; 0</span> = pricea MÁS → cobertura cara, vender + colocar pesos = arb potencial.
+        </div>
+      </div>
+      <button class="btn-api btn-sm" onclick="renderFxCobertura()">▶ Refrescar</button>
+    </div>
+    <div style="overflow-x:auto;max-height:520px">
+      <table id="fxCobTbl" style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px">
+        <thead><tr style="color:var(--td);font-size:9.5px;text-transform:uppercase;letter-spacing:0.06em;background:#0a0f1a;position:sticky;top:0">
+          <th style="text-align:left;padding:6px 8px">Tipo</th>
+          <th style="text-align:left;padding:6px 8px">Ticker</th>
+          <th style="text-align:left;padding:6px 8px">Vto</th>
+          <th style="text-align:right;padding:6px 8px">Días</th>
+          <th style="text-align:right;padding:6px 8px">Px Live</th>
+          <th style="text-align:left;padding:6px 8px">LECAP Comp</th>
+          <th style="text-align:right;padding:6px 8px">TNA LECAP</th>
+          <th style="text-align:right;padding:6px 8px" title="FX teórico = spot × (1+TNA·d/365)">FX teórico</th>
+          <th style="text-align:right;padding:6px 8px" title="FX implícito del instrumento (futuro: precio · DL: px×(1+TNA·d/365)/100)">FX implícito mkt</th>
+          <th style="text-align:right;padding:6px 8px" title="(FX impl mkt / FX teórico - 1) × 100">Diff %</th>
+        </tr></thead>
+        <tbody id="fxCobBody"><tr><td colspan="10" style="text-align:center;color:var(--tm);padding:14px">Calculá Tasa Fija primero (Calculadoras tab) y conectá precios</td></tr></tbody>
+      </table>
+    </div>
+    <div id="fxCobInfo" style="font-size:10px;color:var(--td);margin-top:6px;font-family:'IBM Plex Mono',monospace">—</div>
+  </div>
 </div><!-- end tab-fx -->
 
 <!-- ════════════════════════════════════════════════════════════════════
@@ -5401,7 +5442,7 @@ function switchTab(tab){
   if(tab==="quantplus"){ try{ qtInit(); }catch(_e){console.warn('[qt]',_e)} try{ atRenderCheapRich(); }catch(_e){} try{ ycaLoadTimestamps(); }catch(_e){} }
   if(tab==="pases") buildPaseSelect();
   if(tab==="quantplus") refreshQuantPlus();
-  if(tab==="fx") renderFX();
+  if(tab==="fx") { renderFX(); try{ renderFxCobertura(); }catch(_e){} }
   if(tab==="cer"){ try{ renderCERTab(); }catch(e){ console.warn('[cer-tab]',e); } }
   if(tab==="bonares"){ try{ renderBonares(); }catch(e){ console.warn('[bonares]',e); } }
   if(tab==="arbtasas"){ try{ atInitTab(); }catch(e){ console.warn('[arbtasas]',e); } }
@@ -8490,6 +8531,8 @@ async function fetchPricesFromServer(){
     syncBondCalcModal();
     // Refresh Run de Mercado si la tab Live Screen está visible
     try { if (document.getElementById('tab-livescreen')?.style.display !== 'none') renderRun(); } catch(_e){}
+    // Refresh Cobertura FX si la tab FX está visible
+    try { if (document.getElementById('tab-fx')?.style.display !== 'none' && typeof renderFxCobertura === 'function') renderFxCobertura(); } catch(_e){}
     // Auto-refresh Arbitraje Tasas si está visible
     try {
       if (document.getElementById('tab-arbtasas')?.style.display !== 'none') {
@@ -13756,6 +13799,37 @@ function getFxCcl(){
   if(al30&&al30.last&&al30c&&al30c.last&&al30c.last>0) return al30.last/al30c.last;
   return 0;
 }
+// Busca LECAP/BONCAP comparable por fecha (más cercano a targetDate).
+// Devuelve el objeto FIXED con _tna populated (necesita que FIXED esté calculado).
+function findComparableLecap(targetDate){
+  if (typeof FIXED === 'undefined' || !FIXED.length) return null;
+  const t = (targetDate instanceof Date) ? targetDate.getTime() : new Date(targetDate+'T00:00:00').getTime();
+  let best = null, bestDelta = Infinity;
+  FIXED.forEach(f => {
+    if (!f || !f._ok || f._tna == null || !isFinite(f._tna)) return;
+    if (!isBondActive(f)) return;
+    const fd = new Date(f.mat+'T00:00:00').getTime();
+    const delta = Math.abs(fd - t);
+    if (delta < bestDelta) { best = f; bestDelta = delta; }
+  });
+  return best;
+}
+
+// Computa "FX al vencimiento" usando la tasa pesos de la LECAP comparable.
+// Para un FUTURO o un DL bond: spot_today × (1 + lecap_tna × d/365)
+function computeImpliedFxAtMaturity(targetDate){
+  const lec = findComparableLecap(targetDate);
+  if (!lec) return null;
+  const spot = (typeof getFxSpot==='function') ? getFxSpot() : 0;
+  if (!(spot>0)) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const td = (targetDate instanceof Date) ? targetDate : new Date(targetDate+'T00:00:00');
+  const days = DB(today, td);
+  if (days <= 0) return null;
+  const fxImplied = spot * (1 + (lec._tna/100) * days / 365);
+  return { lecap: lec, days, fxImplied, lecapTna: lec._tna, spot };
+}
+
 function getFxBrechaCanje(){
   const sp=getFxSpot(), mep=getFxMep(), ccl=getFxCcl();
   return {
@@ -13763,6 +13837,100 @@ function getFxBrechaCanje(){
     brecha: (sp&&mep) ? (mep/sp - 1)*100 : null,
     canje:  (mep&&ccl) ? (ccl/mep - 1)*100 : null,
   };
+}
+
+// ═══ COBERTURA FX — DL vs Futuros vs LECAP ═══════════════════════
+function renderFxCobertura(){
+  const tbody = document.getElementById('fxCobBody');
+  const info = document.getElementById('fxCobInfo');
+  if (!tbody) return;
+  const spot = getFxSpot();
+  if (!(spot > 0)) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--tm);padding:14px">Spot no disponible (DLR/SPOT)</td></tr>';
+    return;
+  }
+  const today = new Date(); today.setHours(0,0,0,0);
+  const rows = [];
+
+  // 1) DL bonds: FX implícito mkt = px_dl × (1 + tna_real × d/365) / 100 → este es el "precio implícito del FX al vto" según el bono
+  // Más limpio: FX implícito mkt para DL = px_dl / spot × ratio ... mejor lo derivamos del TNA del bono.
+  // TNA_DL = (100 × spot / px_dl - 1) × 365/d. Si TNA real es esa, entonces "FX implícito al vto" si se cumple esa TNA es:
+  // fx_imp = spot × (1 + TNA_DL × d/365)
+  // Pero queremos en cambio mostrar el FX que cuadra con la LECAP TNA (la pesos rate):
+  // fx_lecap = spot × (1 + LECAP_TNA × d/365) ← "FX teórico"
+  // fx_market_implicit = derived del precio DL real: spot × (1 + TNA_DL_actual × d/365)
+  // O sea: ambos sobre la misma base.
+  if (typeof DL_BONDS !== 'undefined') {
+    filterActive(DL_BONDS).forEach(b => {
+      const lp = _livePrices[b.ticker] || {};
+      const px = lp.last || lp.mid || lp.bid || lp.ask || 0;
+      const matD = new Date(b.mat + 'T00:00:00');
+      const d = DB(today, matD);
+      if (d <= 0 || !(px > 0)) return;
+      const lecInfo = computeImpliedFxAtMaturity(matD);
+      if (!lecInfo) return;
+      // FX implícito del bono DL (a partir del TNA real del bono)
+      const tnaDl = (100 * spot / px - 1) * 365 / d * 100;  // %
+      const fxImpDl = spot * (1 + (tnaDl/100) * d / 365);
+      const diffPct = (fxImpDl / lecInfo.fxImplied - 1) * 100;
+      rows.push({
+        kind: 'DL', ticker: b.ticker, color: b.color, matStr: b.mat, days: d,
+        pxLive: px, lecTicker: lecInfo.lecap.ticker, lecTna: lecInfo.lecapTna,
+        fxTeorico: lecInfo.fxImplied, fxImpMkt: fxImpDl, diffPct, tnaInstr: tnaDl,
+      });
+    });
+  }
+
+  // 2) Futuros ROFEX: FX implícito mkt = px del futuro (es el FX al vto pricing directo).
+  if (typeof ROFEX_FUTURES !== 'undefined') {
+    ROFEX_FUTURES.forEach(f => {
+      const lp = _livePrices[f.ticker] || {};
+      const px = lp.last || lp.mid || lp.bid || lp.ask || 0;
+      const expD = new Date(f.exp + 'T00:00:00');
+      const d = DB(today, expD);
+      if (d <= 0 || !(px > 0)) return;
+      const lecInfo = computeImpliedFxAtMaturity(expD);
+      if (!lecInfo) return;
+      const tnaInstr = (px / spot - 1) * 365 / d * 100;  // %
+      const diffPct = (px / lecInfo.fxImplied - 1) * 100;
+      rows.push({
+        kind: 'FUT', ticker: f.ticker.replace('DLR/',''), color: f.color || '#f97316', matStr: f.exp, days: d,
+        pxLive: px, lecTicker: lecInfo.lecap.ticker, lecTna: lecInfo.lecapTna,
+        fxTeorico: lecInfo.fxImplied, fxImpMkt: px, diffPct, tnaInstr,
+      });
+    });
+  }
+
+  // Sort por días al vto
+  rows.sort((a,b) => a.days - b.days);
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--tm);padding:14px">Sin instrumentos calculables. Conectá precios + calculá Tasa Fija.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => {
+    const kindCol = r.kind === 'DL' ? '#22d3ee' : '#f97316';
+    const diffCol = r.diffPct > 0.3 ? 'var(--neg)' : r.diffPct < -0.3 ? 'var(--ac)' : 'var(--am)';
+    return `<tr style="border-bottom:1px solid #131a28">
+      <td style="padding:5px 8px;color:${kindCol};font-weight:700;font-size:9.5px">${r.kind}</td>
+      <td style="padding:5px 8px;color:${r.color};font-weight:700">${r.ticker}</td>
+      <td style="padding:5px 8px;font-size:10px;color:var(--td)">${r.matStr}</td>
+      <td style="padding:5px 8px;text-align:right">${r.days}</td>
+      <td style="padding:5px 8px;text-align:right">${r.pxLive.toFixed(2)}</td>
+      <td style="padding:5px 8px;font-size:10px;color:#fbbf24">${r.lecTicker}</td>
+      <td style="padding:5px 8px;text-align:right;color:#fbbf24">${r.lecTna.toFixed(2)}%</td>
+      <td style="padding:5px 8px;text-align:right">${r.fxTeorico.toFixed(2)}</td>
+      <td style="padding:5px 8px;text-align:right;font-weight:600">${r.fxImpMkt.toFixed(2)}</td>
+      <td style="padding:5px 8px;text-align:right;font-weight:700;color:${diffCol}">${(r.diffPct>=0?'+':'')+r.diffPct.toFixed(2)}%</td>
+    </tr>`;
+  }).join('');
+
+  if (info) {
+    const nDL = rows.filter(r=>r.kind==='DL').length;
+    const nFUT = rows.filter(r=>r.kind==='FUT').length;
+    info.textContent = `${nDL} DL bonds · ${nFUT} futuros · spot ARS/USD ${spot.toFixed(2)} · ${new Date().toLocaleTimeString('es-AR')}`;
+  }
 }
 
 function renderFX(){
@@ -14045,6 +14213,33 @@ function openFxCalculator(type, id){
           </div>
         </div>
 
+        ${type==='fut' ? `
+        <!-- LECAP COMPARABLE — FX teórico al vto usando tasa pesos -->
+        <div style="margin-top:12px;padding:10px;background:#0a0f1a;border:1px solid #1a2540;border-radius:6px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:11px;color:var(--td);text-transform:uppercase;letter-spacing:0.06em;font-weight:600">vs Tasa Pesos (LECAP comparable)</div>
+            <div id="fxck-lec-ticker" style="font-size:10px;color:#fbbf24;font-weight:600;font-family:'IBM Plex Mono',monospace">—</div>
+          </div>
+          <div class="fxc-kpis">
+            <div class="fxc-kpi">
+              <div class="bv" id="fxck-lec-tna" style="color:#fbbf24">—</div>
+              <div class="bl">TNA LECAP</div>
+            </div>
+            <div class="fxc-kpi">
+              <div class="bv" id="fxck-lec-fxteo" style="color:#fbbf24">—</div>
+              <div class="bl">FX teórico al vto (spot × (1+TNA·d/365))</div>
+            </div>
+            <div class="fxc-kpi">
+              <div class="bv" id="fxck-lec-spread" style="color:var(--am)">—</div>
+              <div class="bl">PX Futuro vs FX teórico</div>
+            </div>
+          </div>
+          <div style="font-size:9.5px;color:var(--td);margin-top:6px;line-height:1.4">
+            Si PX Futuro &gt; FX teórico → el futuro pricea MÁS devaluación que la curva de pesos.
+            Comprar futuro está caro como cobertura; vender futuro + colocar pesos = arb posible.
+          </div>
+        </div>` : ''}
+
         <!-- Live market prices strip -->
         <div class="bc-prices">
           <span>BID: <strong style="color:var(--t)">${lp.bid||'—'}</strong></span>
@@ -14158,6 +14353,38 @@ function openFxCalculator(type, id){
           document.getElementById('fxck-pxdl').textContent=pxDLCalc.toFixed(2)+'%';
         }
       }
+      // LECAP comparable (solo para futuros)
+      if (type === 'fut') {
+        const lecEl = document.getElementById('fxck-lec-ticker');
+        const tnaLecEl = document.getElementById('fxck-lec-tna');
+        const fxTeoEl = document.getElementById('fxck-lec-fxteo');
+        const sprEl = document.getElementById('fxck-lec-spread');
+        if (lecEl && fxTeoEl && sprEl) {
+          const info = computeImpliedFxAtMaturity(endDate);
+          if (info && info.fxImplied > 0) {
+            lecEl.textContent = info.lecap.ticker + ' (vto ' + info.lecap.mat + ', ' + info.days + 'd)';
+            tnaLecEl.textContent = info.lecapTna.toFixed(2) + '%';
+            fxTeoEl.textContent = '$ ' + info.fxImplied.toFixed(2);
+            const pxFut = pxIn || livePx;
+            if (pxFut > 0 && info.fxImplied > 0) {
+              const spreadPct = (pxFut / info.fxImplied - 1) * 100;
+              const spreadAbs = pxFut - info.fxImplied;
+              sprEl.innerHTML = (spreadPct>=0?'+':'')+spreadPct.toFixed(2)+'%<br><span style="font-size:11px;color:var(--td)">'+(spreadAbs>=0?'+$':'-$')+Math.abs(spreadAbs).toFixed(2)+'</span>';
+              sprEl.style.color = spreadPct > 0.05 ? 'var(--neg)' : spreadPct < -0.05 ? 'var(--ac)' : 'var(--am)';
+              sprEl.title = spreadPct > 0
+                ? 'Futuro pricea MÁS devaluación que LECAP → cobertura cara'
+                : 'Futuro pricea MENOS devaluación que LECAP → cobertura barata / arb posible';
+            } else {
+              sprEl.textContent = '—'; sprEl.style.color = 'var(--am)';
+            }
+          } else {
+            lecEl.textContent = 'sin LECAP comparable';
+            tnaLecEl.textContent = '—';
+            fxTeoEl.textContent = '—';
+            sprEl.textContent = '—';
+          }
+        }
+      }
     } finally { _fxCalcUpdating=false; }
   }
 
@@ -14197,6 +14424,9 @@ function openFxCalculator(type, id){
     }
     _fxcRecalc('px');
   });
+
+  // Initial trigger para que pinte LECAP comp + KPIs aún sin tocar nada
+  _fxcRecalc('init');
 
   // ═══ Sintético tab (solo DL) ════════════════════════════════════
   if (type === 'dl') {
