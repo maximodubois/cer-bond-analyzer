@@ -621,18 +621,22 @@ def get_cross_matrix():
 # HISTORY accesor para frontend (raw ticks o agregado diario)
 # ══════════════════════════════════════════════════════════════════
 def get_history(code, days=30, mode="auto"):
-    """mode: 'ticks' | 'daily' | 'auto' (auto: ticks si <=7 días, daily si más)."""
+    """mode: 'ticks' | 'daily' | 'auto' (auto: ticks si <=7 días, daily si más).
+
+    Acepta códigos calc-only (PS/PSP/IMP/BRECHA/CANJE) que el cliente pushea
+    vía /api/fx/calc_ticks — éstos no están en CURRENCY_BY_CODE pero sí en
+    fx_ticks. Si el código es desconocido, usar el code como label.
+    """
     cfg = CURRENCY_BY_CODE.get(code)
-    if not cfg:
-        raise ValueError(f"código desconocido: {code}")
+    label = cfg["label"] if cfg else code
     if mode == "auto":
         mode = "ticks" if days <= 7 else "daily"
     if mode == "daily":
         rows = storage.fx_daily_series(code, days=days)
-        return {"code": code, "label": cfg["label"], "mode": "daily", "rows": rows}
+        return {"code": code, "label": label, "mode": "daily", "rows": rows}
     since = int((time.time() - days * 86400) * 1000)
     ticks = storage.fx_ticks_range(code, since_ts_ms=since, limit=20000)
-    return {"code": code, "label": cfg["label"], "mode": "ticks",
+    return {"code": code, "label": label, "mode": "ticks",
             "points": [{"t": t["ts"], "v": t["price"]} for t in ticks]}
 
 
