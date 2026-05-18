@@ -2938,6 +2938,39 @@
     </div>
     <div id="fxCobInfo" style="font-size:10px;color:var(--td);margin-top:6px;font-family:'IBM Plex Mono',monospace">—</div>
   </div>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       🔁 Forward TNA Matrix — costo del pase entre futuros DLR
+       Para cada par (FROM, TO): forward TNA = (PXFUT_TO / PXFUT_FROM - 1) × 365 / days_between
+       Es la "tasa pesos implícita" para rolear desde un futuro hacia otro.
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="card" id="fxFwdMatrixCard">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+      <div>
+        <div class="st" style="margin:0">🔁 Forward TNA Matrix — Costo del Pase (roll futuros DLR)</div>
+        <div class="note" style="margin:4px 0 0 0;font-size:10px">
+          Para cada par (FROM → TO): <code>Forward TNA = (PXFUT_TO / PXFUT_FROM − 1) × 365 / días</code>.<br>
+          Es la <b>tasa pesos implícita</b> entre dos vencimientos. Útil para evaluar el costo de rolear un short futuro hacia un vto más largo.<br>
+          <span style="color:var(--ac)">Verde</span> = forward TNA baja (roll barato) · <span style="color:var(--neg)">Rojo</span> = forward TNA alta (roll caro).
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <div class="fx-mode-buttons" id="fxFwdModeButtons">
+          <button class="fx-mode-btn active" data-fwd="tna">TNA %</button>
+          <button class="fx-mode-btn" data-fwd="price">PRECIO</button>
+          <button class="fx-mode-btn" data-fwd="pct">% DIFF</button>
+        </div>
+        <button class="btn-api btn-sm" onclick="renderFxForwardMatrix()">▶ Refrescar</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="fxFwdMatrixTbl" style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px">
+        <thead id="fxFwdMatrixHead"></thead>
+        <tbody id="fxFwdMatrixBody"><tr><td style="text-align:center;color:var(--tm);padding:14px">Conectá precios para ver la matriz</td></tr></tbody>
+      </table>
+    </div>
+    <div id="fxFwdMatrixInfo" style="font-size:10px;color:var(--td);margin-top:6px;font-family:'IBM Plex Mono',monospace">—</div>
+  </div>
 </div><!-- end tab-fx -->
 
 <!-- ════════════════════════════════════════════════════════════════════
@@ -5595,7 +5628,7 @@ function switchTab(tab){
   if(tab==="quantplus"){ try{ qtInit(); }catch(_e){console.warn('[qt]',_e)} try{ atRenderCheapRich(); }catch(_e){} try{ ycaLoadTimestamps(); }catch(_e){} }
   if(tab==="pases") buildPaseSelect();
   if(tab==="quantplus") refreshQuantPlus();
-  if(tab==="fx") { renderFX(); try{ renderFxCobertura(); }catch(_e){} }
+  if(tab==="fx") { renderFX(); try{ renderFxCobertura(); }catch(_e){} try{ renderFxForwardMatrix(); }catch(_e){} }
   if(tab==="cer"){ try{ renderCERTab(); }catch(e){ console.warn('[cer-tab]',e); } }
   if(tab==="bonares"){ try{ renderBonares(); }catch(e){ console.warn('[bonares]',e); } }
   if(tab==="arbtasas"){ try{ atInitTab(); }catch(e){ console.warn('[arbtasas]',e); } }
@@ -8732,8 +8765,13 @@ async function fetchPricesFromServer(){
     syncBondCalcModal();
     // Refresh Run de Mercado si la tab Live Screen está visible
     try { if (document.getElementById('tab-livescreen')?.style.display !== 'none') renderRun(); } catch(_e){}
-    // Refresh Cobertura FX si la tab FX está visible
-    try { if (document.getElementById('tab-fx')?.style.display !== 'none' && typeof renderFxCobertura === 'function') renderFxCobertura(); } catch(_e){}
+    // Refresh Cobertura FX + Forward Matrix si la tab FX está visible
+    try {
+      if (document.getElementById('tab-fx')?.style.display !== 'none') {
+        if (typeof renderFxCobertura === 'function') renderFxCobertura();
+        if (typeof renderFxForwardMatrix === 'function') renderFxForwardMatrix();
+      }
+    } catch(_e){}
     // Auto-refresh Arbitraje Tasas si está visible
     try {
       if (document.getElementById('tab-arbtasas')?.style.display !== 'none') {
@@ -13614,25 +13652,63 @@ function renderBonares(){
     }
   }
 
-  // Spread AR − NY por par del mismo vto
+  // Spread AR − NY por par del mismo vto (riesgo legislación pricing)
   const pairs = [['AL29','GD29'],['AL30','GD30'],['AL35','GD35'],['AE38','GD38'],['AL41','GD41']];
-  const spreadHtml = pairs.map(([arT,nyT])=>{
+  const validPairs = pairs.map(([arT,nyT])=>{
     const ar = USD_BONDS.find(b=>b.ticker===arT);
     const ny = USD_BONDS.find(b=>b.ticker===nyT);
-    if (!ar || !ny || ar._tea==null || ny._tea==null) {
-      return `<div style="color:var(--td)">${arT} vs ${nyT}: —</div>`;
-    }
-    const sp = (ar._tea - ny._tea) * 100; // pp → bps
-    const cl = sp > 0 ? '#00e5a0' : '#ff6b4a';
-    return `<div>
-      <strong style="color:${ar.color}">${arT}</strong> ${ar._tea.toFixed(2)}%
-      −
-      <strong style="color:${ny.color}">${nyT}</strong> ${ny._tea.toFixed(2)}%
-      &nbsp;=&nbsp; <strong style="color:${cl}">${sp>=0?'+':''}${sp.toFixed(0)} bps</strong>
+    if (!ar || !ny || ar._tea==null || ny._tea==null) return null;
+    return { ar, ny, arT, nyT, spBps: (ar._tea - ny._tea) * 100, days: ar._dur };
+  }).filter(Boolean);
+  // Magnitud máxima para escalar las barras
+  const maxAbs = validPairs.length ? Math.max(...validPairs.map(p=>Math.abs(p.spBps)), 50) : 50;
+  let spreadHtml = '';
+  if (!validPairs.length) {
+    spreadHtml = '<div style="color:var(--td);padding:14px;text-align:center">Sin pares calculables.</div>';
+  } else {
+    // Resumen header
+    const avgSp = validPairs.reduce((s,p)=>s+p.spBps,0)/validPairs.length;
+    const avgCl = avgSp > 0 ? 'var(--ac)' : 'var(--neg)';
+    spreadHtml = `<div style="display:flex;gap:14px;padding:8px 10px;background:#0a0f1a;border-radius:6px;margin-bottom:10px;font-size:11px">
+      <div><span style="color:var(--td);font-size:10px">PROMEDIO</span> <strong style="color:${avgCl};font-size:15px;font-family:'IBM Plex Mono',monospace">${avgSp>=0?'+':''}${avgSp.toFixed(0)} bps</strong></div>
+      <div style="border-left:1px solid var(--cb);padding-left:14px"><span style="color:var(--td);font-size:10px">PARES</span> <strong style="color:var(--t);font-size:13px;font-family:'IBM Plex Mono',monospace">${validPairs.length}</strong></div>
     </div>`;
-  }).join('');
+
+    // Tabla con barras visuales
+    spreadHtml += '<table style="width:100%;border-collapse:collapse;font-family:\'IBM Plex Mono\',monospace;font-size:11px">';
+    spreadHtml += `<thead><tr style="color:var(--td);font-size:9.5px;text-transform:uppercase">
+      <th style="text-align:left;padding:4px 6px">Par</th>
+      <th style="text-align:right;padding:4px 6px">AR</th>
+      <th style="text-align:right;padding:4px 6px">NY</th>
+      <th style="text-align:right;padding:4px 6px">Spread</th>
+      <th style="text-align:left;padding:4px 6px;width:50%">Magnitud</th>
+    </tr></thead><tbody>`;
+    validPairs.forEach(p => {
+      const cl = p.spBps > 0 ? 'var(--ac)' : 'var(--neg)';
+      const barW = Math.min(Math.abs(p.spBps) / maxAbs * 100, 100);
+      const barLeft = p.spBps >= 0 ? 50 : (50 - barW);
+      spreadHtml += `<tr style="border-bottom:1px solid #131a28;cursor:pointer" onclick="openBondCalculator('usd','${p.ar.id}')">
+        <td style="padding:5px 6px"><strong style="color:${p.ar.color}">${p.arT}</strong> · <strong style="color:${p.ny.color}">${p.nyT}</strong></td>
+        <td style="text-align:right;padding:5px 6px;color:${p.ar.color}">${p.ar._tea.toFixed(2)}%</td>
+        <td style="text-align:right;padding:5px 6px;color:${p.ny.color}">${p.ny._tea.toFixed(2)}%</td>
+        <td style="text-align:right;padding:5px 6px;font-weight:700;color:${cl}">${p.spBps>=0?'+':''}${p.spBps.toFixed(0)} bps</td>
+        <td style="padding:5px 6px">
+          <div style="position:relative;height:12px;background:#0a0f1a;border:1px solid #131a28;border-radius:2px">
+            <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:#475569"></div>
+            <div style="position:absolute;top:1px;bottom:1px;left:${barLeft}%;width:${barW}%;background:${cl};opacity:0.8;border-radius:1px"></div>
+          </div>
+        </td>
+      </tr>`;
+    });
+    spreadHtml += '</tbody></table>';
+    spreadHtml += `<div style="font-size:9px;color:var(--td);margin-top:8px;line-height:1.4">
+      <span style="color:var(--ac)">+</span> = AR rinde más que NY (riesgo legal AR pricing) ·
+      <span style="color:var(--neg)">−</span> = NY rinde más (raro, suele haber arb).
+      Click en fila para abrir la calculadora del bono.
+    </div>`;
+  }
   const sb=document.getElementById('bnSpreadBody');
-  if (sb) sb.innerHTML = spreadHtml || '<div style="color:var(--td)">Sin pares calculables.</div>';
+  if (sb) sb.innerHTML = spreadHtml;
 }
 
 // ═══ ARBITRAJE TASAS TAB ═══════════════════════════════════════
@@ -14053,6 +14129,121 @@ function getFxBrechaCanje(){
     canje:  (mep&&ccl) ? (ccl/mep - 1)*100 : null,
   };
 }
+
+// ═══ FORWARD TNA MATRIX — costo del pase entre futuros DLR ═══════
+let _fxFwdMode = 'tna'; // tna | price | pct
+function renderFxForwardMatrix(){
+  const head = document.getElementById('fxFwdMatrixHead');
+  const body = document.getElementById('fxFwdMatrixBody');
+  const info = document.getElementById('fxFwdMatrixInfo');
+  if (!head || !body) return;
+  if (typeof ROFEX_FUTURES === 'undefined') return;
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  // Solo futuros activos (>3d después del exp) con precio live
+  const futs = ROFEX_FUTURES.map(f => {
+    const lp = _livePrices[f.ticker] || {};
+    const px = lp.last || lp.mid || lp.bid || lp.ask || 0;
+    const expD = new Date(f.exp + 'T00:00:00');
+    const d = DB(today, expD);
+    return { f, px, expD, days: d, label: f.ticker.replace('DLR/','') };
+  }).filter(x => x.px > 0 && x.days > 0).sort((a,b) => a.days - b.days);
+
+  if (futs.length < 2) {
+    head.innerHTML = '';
+    body.innerHTML = '<tr><td style="text-align:center;color:var(--tm);padding:14px">Necesito al menos 2 futuros con precio live</td></tr>';
+    return;
+  }
+
+  // Header: corner + col por target
+  let theadHtml = '<tr><th style="text-align:left;padding:6px 8px;color:var(--td);font-size:9px;background:#0a0f1a;border-bottom:1px solid #1a2540">FROM ↓ / TO →</th>';
+  futs.forEach(t => {
+    theadHtml += `<th style="text-align:right;padding:6px 8px;color:#f97316;font-size:10px;background:#0a0f1a;border-bottom:1px solid #1a2540;font-weight:700">${t.label}<br><span style="color:var(--td);font-size:9px;font-weight:400">${t.days}d</span></th>`;
+  });
+  theadHtml += '</tr>';
+  head.innerHTML = theadHtml;
+
+  // Recolectar todos los valores para color scale
+  const allVals = [];
+  futs.forEach((from, i) => {
+    futs.forEach((to, j) => {
+      if (i === j) return;
+      const dDays = to.days - from.days;
+      if (dDays === 0) return;
+      let val;
+      if (_fxFwdMode === 'tna') {
+        val = (to.px / from.px - 1) * 365 / dDays * 100; // % TNA
+      } else if (_fxFwdMode === 'price') {
+        val = to.px - from.px;
+      } else { // pct
+        val = (to.px / from.px - 1) * 100;
+      }
+      if (isFinite(val)) allVals.push(val);
+    });
+  });
+  const aMin = allVals.length ? Math.min(...allVals) : 0;
+  const aMax = allVals.length ? Math.max(...allVals) : 1;
+  const aRange = aMax - aMin || 1;
+
+  // Body: filas por source future
+  let tbodyHtml = '';
+  futs.forEach((from, i) => {
+    tbodyHtml += `<tr style="border-bottom:1px solid #131a28">
+      <td style="padding:5px 8px;color:#f97316;font-weight:700;background:#0a0f1a">${from.label} <span style="color:var(--td);font-size:9px;font-weight:400">${from.days}d</span></td>`;
+    futs.forEach((to, j) => {
+      if (i === j) {
+        tbodyHtml += '<td style="padding:5px 8px;text-align:right;background:#080c14;color:#475569">—</td>';
+        return;
+      }
+      const dDays = to.days - from.days;
+      // Roll backward (to before from): N/A — futuros no se pueden rolar al pasado
+      if (dDays <= 0) {
+        tbodyHtml += '<td style="padding:5px 8px;text-align:right;color:#475569;font-size:9px">N/A</td>';
+        return;
+      }
+      const fwdTna  = (to.px / from.px - 1) * 365 / dDays * 100;
+      const priceD  = to.px - from.px;
+      const pctDiff = (to.px / from.px - 1) * 100;
+      const val = _fxFwdMode === 'tna' ? fwdTna : _fxFwdMode === 'price' ? priceD : pctDiff;
+      // Color scale: rojo = alto, verde = bajo (forward TNA bajo = roll barato)
+      const norm = (val - aMin) / aRange;
+      const bgAlpha = 0.15 + norm * 0.4;
+      const bgColor = val > (aMin + aRange/2)
+        ? `rgba(255,107,74,${bgAlpha})`  // rojo
+        : `rgba(0,229,160,${bgAlpha})`;  // verde
+      let display;
+      if (_fxFwdMode === 'tna') display = (val>=0?'+':'')+val.toFixed(1)+'%';
+      else if (_fxFwdMode === 'price') display = (val>=0?'+':'')+val.toFixed(2);
+      else display = (val>=0?'+':'')+val.toFixed(2)+'%';
+      const tip = `${from.label} → ${to.label}\n${dDays}d\nForward TNA: ${fwdTna.toFixed(2)}%\nPrice diff: $${priceD.toFixed(2)}\n% diff: ${pctDiff.toFixed(2)}%`;
+      tbodyHtml += `<td title="${tip}" style="padding:5px 8px;text-align:right;background:${bgColor};font-weight:600">${display}</td>`;
+    });
+    tbodyHtml += '</tr>';
+  });
+  body.innerHTML = tbodyHtml;
+
+  if (info) {
+    const modeLabel = _fxFwdMode === 'tna' ? 'TNA implícita %'
+                   : _fxFwdMode === 'price' ? 'Diferencia precio ARS'
+                   : '% spot ratio';
+    info.textContent = `${futs.length} futuros · modo: ${modeLabel} · ${new Date().toLocaleTimeString('es-AR')}`;
+  }
+}
+
+// Wire toggle buttons (idempotente via dataset)
+setTimeout(() => {
+  const wrap = document.getElementById('fxFwdModeButtons');
+  if (wrap && !wrap.dataset.wired) {
+    wrap.dataset.wired = '1';
+    wrap.addEventListener('click', e => {
+      if (!e.target.matches('.fx-mode-btn')) return;
+      wrap.querySelectorAll('.fx-mode-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      _fxFwdMode = e.target.dataset.fwd;
+      renderFxForwardMatrix();
+    });
+  }
+}, 500);
 
 // ═══ COBERTURA FX — DL vs Futuros vs LECAP ═══════════════════════
 function renderFxCobertura(){
