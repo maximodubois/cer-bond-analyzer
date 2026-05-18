@@ -2954,11 +2954,21 @@
           <span style="color:var(--ac)">Verde</span> = forward TNA baja (roll barato) · <span style="color:var(--neg)">Rojo</span> = forward TNA alta (roll caro).
         </div>
       </div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <div class="fx-mode-buttons" id="fxFwdModeButtons">
-          <button class="fx-mode-btn active" data-fwd="tna">TNA %</button>
-          <button class="fx-mode-btn" data-fwd="price">PRECIO</button>
-          <button class="fx-mode-btn" data-fwd="pct">% DIFF</button>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:0.05em">Vista:</span>
+          <div class="fx-mode-buttons" id="fxFwdModeButtons">
+            <button class="fx-mode-btn active" data-fwd="tna">TNA %</button>
+            <button class="fx-mode-btn" data-fwd="spread">SPREAD $</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:0.05em">Pase:</span>
+          <div class="fx-mode-buttons" id="fxFwdStepButtons">
+            <button class="fx-mode-btn" data-step="1">1 mes</button>
+            <button class="fx-mode-btn" data-step="2">2 meses</button>
+            <button class="fx-mode-btn active" data-step="0">Todos</button>
+          </div>
         </div>
         <button class="btn-api btn-sm" onclick="renderFxForwardMatrix()">▶ Refrescar</button>
       </div>
@@ -14131,7 +14141,8 @@ function getFxBrechaCanje(){
 }
 
 // ═══ FORWARD TNA MATRIX — costo del pase entre futuros DLR ═══════
-let _fxFwdMode = 'tna'; // tna | price | pct
+let _fxFwdMode = 'tna'; // 'tna' | 'spread'
+let _fxFwdStep = 0;     // 0 = todos, 1 = solo 1 mes, 2 = solo 2 meses
 function renderFxForwardMatrix(){
   const head = document.getElementById('fxFwdMatrixHead');
   const body = document.getElementById('fxFwdMatrixBody');
@@ -14155,38 +14166,44 @@ function renderFxForwardMatrix(){
     return;
   }
 
-  // Header: corner + col por target
-  let theadHtml = '<tr><th style="text-align:left;padding:6px 8px;color:var(--td);font-size:9px;background:#0a0f1a;border-bottom:1px solid #1a2540">FROM ↓ / TO →</th>';
+  // Header
+  const colHdr = _fxFwdMode === 'tna' ? 'FORWARD TNA' : 'SPREAD $ (PASE)';
+  let theadHtml = `<tr><th colspan="${futs.length+1}" style="text-align:center;padding:6px 8px;color:var(--t);font-weight:700;background:#0a0f1a;border-bottom:1px solid #1a2540;letter-spacing:0.1em;font-size:11px">${colHdr}</th></tr>`;
+  theadHtml += '<tr><th style="text-align:left;padding:6px 8px;color:var(--td);font-size:9px;background:#0a0f1a;border-bottom:1px solid #1a2540">FROM ↓ / TO →</th>';
   futs.forEach(t => {
     theadHtml += `<th style="text-align:right;padding:6px 8px;color:#f97316;font-size:10px;background:#0a0f1a;border-bottom:1px solid #1a2540;font-weight:700">${t.label}<br><span style="color:var(--td);font-size:9px;font-weight:400">${t.days}d</span></th>`;
   });
   theadHtml += '</tr>';
   head.innerHTML = theadHtml;
 
-  // Recolectar todos los valores para color scale
+  // Helper: ¿se renderiza esta celda según el step filter?
+  function shouldShow(i, j) {
+    if (i >= j) return false; // sólo above diagonal
+    if (_fxFwdStep === 0) return true; // todos
+    return (j - i) === _fxFwdStep; // exacto N pasos
+  }
+
+  // Recolectar valores visibles para color scale
   const allVals = [];
   futs.forEach((from, i) => {
     futs.forEach((to, j) => {
-      if (i === j) return;
+      if (!shouldShow(i, j)) return;
       const dDays = to.days - from.days;
-      if (dDays === 0) return;
-      let val;
-      if (_fxFwdMode === 'tna') {
-        val = (to.px / from.px - 1) * 365 / dDays * 100; // % TNA
-      } else if (_fxFwdMode === 'price') {
-        val = to.px - from.px;
-      } else { // pct
-        val = (to.px / from.px - 1) * 100;
-      }
+      if (dDays <= 0) return;
+      const val = _fxFwdMode === 'tna'
+        ? (to.px / from.px - 1) * 365 / dDays * 100
+        : to.px - from.px;
       if (isFinite(val)) allVals.push(val);
     });
   });
   const aMin = allVals.length ? Math.min(...allVals) : 0;
   const aMax = allVals.length ? Math.max(...allVals) : 1;
   const aRange = aMax - aMin || 1;
+  const aMid = (aMin + aMax) / 2;
 
-  // Body: filas por source future
+  // Body
   let tbodyHtml = '';
+  let visibleCount = 0;
   futs.forEach((from, i) => {
     tbodyHtml += `<tr style="border-bottom:1px solid #131a28">
       <td style="padding:5px 8px;color:#f97316;font-weight:700;background:#0a0f1a">${from.label} <span style="color:var(--td);font-size:9px;font-weight:400">${from.days}d</span></td>`;
@@ -14195,27 +14212,29 @@ function renderFxForwardMatrix(){
         tbodyHtml += '<td style="padding:5px 8px;text-align:right;background:#080c14;color:#475569">—</td>';
         return;
       }
+      if (!shouldShow(i, j)) {
+        tbodyHtml += '<td style="padding:5px 8px;text-align:right;color:#1a2540;font-size:9px"></td>';
+        return;
+      }
       const dDays = to.days - from.days;
-      // Roll backward (to before from): N/A — futuros no se pueden rolar al pasado
       if (dDays <= 0) {
         tbodyHtml += '<td style="padding:5px 8px;text-align:right;color:#475569;font-size:9px">N/A</td>';
         return;
       }
+      visibleCount++;
       const fwdTna  = (to.px / from.px - 1) * 365 / dDays * 100;
       const priceD  = to.px - from.px;
-      const pctDiff = (to.px / from.px - 1) * 100;
-      const val = _fxFwdMode === 'tna' ? fwdTna : _fxFwdMode === 'price' ? priceD : pctDiff;
-      // Color scale: rojo = alto, verde = bajo (forward TNA bajo = roll barato)
-      const norm = (val - aMin) / aRange;
-      const bgAlpha = 0.15 + norm * 0.4;
-      const bgColor = val > (aMin + aRange/2)
+      const val = _fxFwdMode === 'tna' ? fwdTna : priceD;
+      // Color scale dual: rojo arriba del medio (caro), verde abajo (barato)
+      const norm = aRange ? Math.abs(val - aMid) / (aRange/2) : 0;
+      const bgAlpha = Math.min(0.15 + norm * 0.5, 0.6);
+      const bgColor = val > aMid
         ? `rgba(255,107,74,${bgAlpha})`  // rojo
         : `rgba(0,229,160,${bgAlpha})`;  // verde
-      let display;
-      if (_fxFwdMode === 'tna') display = (val>=0?'+':'')+val.toFixed(1)+'%';
-      else if (_fxFwdMode === 'price') display = (val>=0?'+':'')+val.toFixed(2);
-      else display = (val>=0?'+':'')+val.toFixed(2)+'%';
-      const tip = `${from.label} → ${to.label}\n${dDays}d\nForward TNA: ${fwdTna.toFixed(2)}%\nPrice diff: $${priceD.toFixed(2)}\n% diff: ${pctDiff.toFixed(2)}%`;
+      const display = _fxFwdMode === 'tna'
+        ? (val>=0?'+':'')+val.toFixed(2)+'%'
+        : (val>=0?'+$':'-$')+Math.abs(val).toFixed(2);
+      const tip = `${from.label} → ${to.label}\n${dDays}d\nForward TNA: ${fwdTna.toFixed(2)}%\nSpread $: ${(priceD>=0?'+':'')}${priceD.toFixed(2)}`;
       tbodyHtml += `<td title="${tip}" style="padding:5px 8px;text-align:right;background:${bgColor};font-weight:600">${display}</td>`;
     });
     tbodyHtml += '</tr>';
@@ -14223,10 +14242,9 @@ function renderFxForwardMatrix(){
   body.innerHTML = tbodyHtml;
 
   if (info) {
-    const modeLabel = _fxFwdMode === 'tna' ? 'TNA implícita %'
-                   : _fxFwdMode === 'price' ? 'Diferencia precio ARS'
-                   : '% spot ratio';
-    info.textContent = `${futs.length} futuros · modo: ${modeLabel} · ${new Date().toLocaleTimeString('es-AR')}`;
+    const modeLabel = _fxFwdMode === 'tna' ? 'Forward TNA %' : 'Spread $ ARS (pase nominal)';
+    const stepLabel = _fxFwdStep === 0 ? 'todos los pares' : `solo ${_fxFwdStep} mes${_fxFwdStep>1?'es':''}`;
+    info.textContent = `${futs.length} futuros · ${modeLabel} · ${stepLabel} · ${visibleCount} celdas · ${new Date().toLocaleTimeString('es-AR')}`;
   }
 }
 
@@ -14240,6 +14258,17 @@ setTimeout(() => {
       wrap.querySelectorAll('.fx-mode-btn').forEach(b => b.classList.remove('active'));
       e.target.classList.add('active');
       _fxFwdMode = e.target.dataset.fwd;
+      renderFxForwardMatrix();
+    });
+  }
+  const stepWrap = document.getElementById('fxFwdStepButtons');
+  if (stepWrap && !stepWrap.dataset.wired) {
+    stepWrap.dataset.wired = '1';
+    stepWrap.addEventListener('click', e => {
+      if (!e.target.matches('.fx-mode-btn')) return;
+      stepWrap.querySelectorAll('.fx-mode-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      _fxFwdStep = parseInt(e.target.dataset.step) || 0;
       renderFxForwardMatrix();
     });
   }
