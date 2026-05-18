@@ -6592,12 +6592,15 @@ function openBondCalculator(bondType, bondId){
     c.fillText(last.v.toFixed(2), W-pad.r, pad.t+10);
   }
 
+  // Hit-points trackeados por canvas para el hover tooltip del Gráfico tab
+  const _bcChartHits = [];
   function _bcDrawCurveCanvas(cv, series, currentBond, maxDurClip){
     const dpr = window.devicePixelRatio || 1;
     const W = cv.clientWidth || 600, H = cv.clientHeight || 340;
     cv.width = W*dpr; cv.height = H*dpr;
     const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0);
     c.clearRect(0,0,W,H);
+    _bcChartHits.length = 0;  // reset hits cada draw
     const pad = {t:14, r:14, b:30, l:48};
     // Clip de puntos por maxDur (para que solo afecten al eje Y los visibles)
     const clipPts = pts => (maxDurClip != null && maxDurClip > 0) ? pts.filter(p => p.x <= maxDurClip) : pts;
@@ -6642,7 +6645,8 @@ function openBondCalculator(bondType, bondId){
         const steps = 80;
         const dx = (xMax - 0.1) / steps;
         if (logFit) {
-          c.save(); c.setLineDash([5,3]); c.strokeStyle=s.color+'aa'; c.lineWidth=1.5;
+          // LOG curve más visible: dashed pero con linewidth 2.2 y opacidad alta
+          c.save(); c.setLineDash([6,4]); c.strokeStyle=s.color; c.globalAlpha=0.85; c.lineWidth=2;
           c.beginPath(); let first=true;
           for (let i=0; i<=steps; i++) {
             const x = 0.1 + i*dx;
@@ -6655,12 +6659,12 @@ function openBondCalculator(bondType, bondId){
           // Label LOG al borde derecho
           const yEdge = logFit.predict(xMax);
           if (isFinite(yEdge) && yEdge >= yMin && yEdge <= yMax) {
-            c.fillStyle=s.color; c.font="bold 9px 'IBM Plex Mono',monospace"; c.textAlign='left';
-            c.fillText('LOG', W-pad.r-22, yP(yEdge)+3);
+            c.fillStyle=s.color; c.font="bold 10px 'IBM Plex Mono',monospace"; c.textAlign='left';
+            c.fillText('LOG '+yEdge.toFixed(1)+'%', W-pad.r-58, yP(yEdge)+3);
           }
         }
         if (nssFit) {
-          c.save(); c.strokeStyle=s.color; c.lineWidth=2;
+          c.save(); c.strokeStyle=s.color; c.lineWidth=2.2;
           c.beginPath(); let first=true;
           for (let i=0; i<=steps; i++) {
             const x = Math.max(0.1, 0.1 + i*dx);
@@ -6673,8 +6677,8 @@ function openBondCalculator(bondType, bondId){
           // Label NSS al borde derecho
           const yEdge = nssFit.predict(xMax);
           if (isFinite(yEdge) && yEdge >= yMin && yEdge <= yMax) {
-            c.fillStyle=s.color; c.font="bold 9px 'IBM Plex Mono',monospace"; c.textAlign='left';
-            c.fillText('NSS', W-pad.r-22, yP(yEdge)-8);
+            c.fillStyle=s.color; c.font="bold 10px 'IBM Plex Mono',monospace"; c.textAlign='left';
+            c.fillText('NSS '+yEdge.toFixed(1)+'%', W-pad.r-58, yP(yEdge)-10);
           }
         }
       }
@@ -6694,8 +6698,52 @@ function openBondCalculator(bondType, bondId){
         c.fillStyle = '#94a3b8';
         c.font="8px 'IBM Plex Mono',monospace";
         c.fillText(p.y.toFixed(2)+'%', px, py + (isCur?20:14));
+        // Track hit-point para tooltip
+        _bcChartHits.push({sx:px, sy:py, r:10, label:p.label, y:p.y, x:p.x, color:s.color, seriesLabel:s.label});
       });
     });
+
+    // Wire hover tooltip (idempotente)
+    if (!cv.dataset.bcHoverWired) {
+      cv.dataset.bcHoverWired = '1';
+      cv.style.cursor = 'crosshair';
+      // Tooltip div anclado al parent del canvas
+      const parent = cv.parentElement;
+      if (parent) parent.style.position = 'relative';
+      let tip = parent ? parent.querySelector('.bc-chart-tooltip') : null;
+      if (!tip && parent) {
+        tip = document.createElement('div');
+        tip.className = 'bc-chart-tooltip';
+        tip.style.cssText = 'position:absolute;pointer-events:none;background:#0a0f1a;border:1px solid #1a2540;border-radius:4px;padding:6px 8px;font-family:"IBM Plex Mono",monospace;font-size:11px;color:#fff;box-shadow:0 4px 12px rgba(0,0,0,0.6);z-index:100;display:none;line-height:1.4;white-space:nowrap';
+        parent.appendChild(tip);
+      }
+      cv.addEventListener('mousemove', ev => {
+        const rect = cv.getBoundingClientRect();
+        const x = (ev.clientX - rect.left) * (cv.width / rect.width / (window.devicePixelRatio||1));
+        const y = (ev.clientY - rect.top)  * (cv.height / rect.height / (window.devicePixelRatio||1));
+        let best = null, bestD = Infinity;
+        _bcChartHits.forEach(h => {
+          const d = Math.hypot(h.sx - x, h.sy - y);
+          if (d < h.r && d < bestD) { best = h; bestD = d; }
+        });
+        if (best && tip) {
+          tip.innerHTML = `<strong style="color:${best.color}">${best.label}</strong>
+            <div style="color:#94a3b8;font-size:9px;margin-top:2px">${best.seriesLabel||''}</div>
+            <div style="margin-top:3px"><span style="color:#fbbf24;font-weight:700">${best.y.toFixed(2)}%</span> · dur ${best.x.toFixed(2)}y</div>`;
+          // Posición relativa al canvas
+          const lx = (ev.clientX - rect.left) + 12;
+          const ly = (ev.clientY - rect.top)  - 12;
+          tip.style.left = lx + 'px';
+          tip.style.top  = Math.max(0, ly) + 'px';
+          tip.style.display = 'block';
+        } else if (tip) {
+          tip.style.display = 'none';
+        }
+      });
+      cv.addEventListener('mouseleave', () => {
+        if (tip) tip.style.display = 'none';
+      });
+    }
   }
 
   // Tab switcher: handles CER (infl), TAMAR (tamar), and Chart tabs
@@ -14244,7 +14292,22 @@ function renderFX(){
   _futCurvePoints=[...futPtsValid];_futCurvePrevPoints=[...futPointsPrev];
   if(futPtsValid.length>=1||futPointsPrev.length>=1){
     const maxX=allFutX.length?Math.max(...allFutX.map(p=>p.x))*1.1:400;
-    drawFxCurveChart("fxFutCurveChart",futPtsValid,maxX,futPointsPrev,'#f97316');
+    // Overlay LECAP/BONCAP: para cada LECAP activo, calculá su TNA simple
+    // y posicionalo a sus días al vto. Sirve para comparar visualmente
+    // "tasa pesos LECAP" vs "TNA implícita de futuros DLR".
+    const lecapOverlay = [];
+    if (typeof FIXED !== 'undefined') {
+      filterActive(FIXED).forEach(f => {
+        if (!f._ok || f._tna == null || !isFinite(f._tna)) return;
+        const matD = new Date(f.mat+'T00:00:00');
+        const d = DB(today, matD);
+        if (d <= 0) return;
+        lecapOverlay.push({ x: d, y: f._tna, label: f.ticker });
+      });
+    }
+    drawFxCurveChart("fxFutCurveChart", futPtsValid, maxX, futPointsPrev, '#f97316',
+      lecapOverlay.length ? { points: lecapOverlay, color:'#fbbf24', label:'LECAP' } : null
+    );
   }
 
   // Intraday charts (SPOT 10-15, MEP 10-17)
@@ -14796,7 +14859,7 @@ function syncFxCalcModal(){
 // Map: canvasId → array de {x,y,label,sx,sy,r,type,id} para hit-test del click
 const _fxChartHits = {};
 
-function drawFxCurveChart(canvasId,points,maxX,prevPoints=[],seriesColor='#94a3b8'){
+function drawFxCurveChart(canvasId,points,maxX,prevPoints=[],seriesColor='#94a3b8',overlay=null){
   const cv=document.getElementById(canvasId);
   if(!cv)return;
   // Determinar tipo de curva (dl|fut) por canvas
@@ -14812,8 +14875,11 @@ function drawFxCurveChart(canvasId,points,maxX,prevPoints=[],seriesColor='#94a3b
   const pad={t:20,r:70,b:30,l:50},cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
   const minX=0;
 
-  // Y range: include prev points and fitted curves in range
-  const allYs=[...valid.map(p=>p.y),...validPrev.map(p=>p.y)].filter(isFinite);
+  // Y range: include prev points, current y overlay (LECAP) en el range
+  const validOverlay = (overlay && overlay.points)
+    ? overlay.points.filter(p=>p.x>0&&p.x<=maxX&&isFinite(p.y))
+    : [];
+  const allYs=[...valid.map(p=>p.y),...validPrev.map(p=>p.y),...validOverlay.map(p=>p.y)].filter(isFinite);
   if(!allYs.length) return;
   const ySpread=Math.max(...allYs)-Math.min(...allYs);
   const yPad=Math.max(ySpread*0.2,2);
@@ -14921,6 +14987,55 @@ function drawFxCurveChart(canvasId,points,maxX,prevPoints=[],seriesColor='#94a3b
     // Registrar hit-point (en CSS px, no en dpr-scaled)
     _fxChartHits[canvasId].push({sx:px, sy:py, r:11, label:p.label, type:_curveType});
   });
+
+  // ── Overlay (LECAP en futuros, por ej): NSS+LOG fit + dots ──
+  if (validOverlay.length >= 2) {
+    const ovColor = overlay.color || '#fbbf24';
+    const ovLabel = overlay.label || 'OVERLAY';
+    const ovFitPts = validOverlay.map(p=>({x:p.x,y:p.y}));
+    let ovLog=null, ovNss=null;
+    try { ovLog = logRegression(ovFitPts); } catch(e){}
+    try { ovNss = validOverlay.length>=3 ? fitNSS(ovFitPts) : null; } catch(e){}
+    const stepsO = 80;
+    const dxO = (maxX-1)/stepsO;
+    if (ovLog) {
+      c.save(); c.setLineDash([6,4]); c.strokeStyle=ovColor; c.globalAlpha=0.7; c.lineWidth=1.8;
+      c.beginPath(); let first=true;
+      for (let i=0; i<=stepsO; i++) {
+        const x = 1+i*dxO, y = ovLog.predict(x);
+        if (!isFinite(y) || y<minY-5 || y>maxY+5) { first=true; continue; }
+        const px=xP(x), py=yP(y);
+        first ? (c.moveTo(px,py), first=false) : c.lineTo(px,py);
+      }
+      c.stroke(); c.restore();
+    }
+    if (ovNss) {
+      c.save(); c.strokeStyle=ovColor; c.lineWidth=2;
+      c.beginPath(); let first=true;
+      for (let i=0; i<=stepsO; i++) {
+        const x = Math.max(1, 1+i*dxO), y = ovNss.predict(x);
+        if (!isFinite(y) || y<minY-5 || y>maxY+5) { first=true; continue; }
+        const px=xP(x), py=yP(y);
+        first ? (c.moveTo(px,py), first=false) : c.lineTo(px,py);
+      }
+      c.stroke(); c.restore();
+      // Label NSS overlay al borde derecho
+      const yEdge = ovNss.predict(maxX);
+      if (isFinite(yEdge) && yEdge>=minY && yEdge<=maxY) {
+        c.fillStyle=ovColor; c.font="bold 9px 'IBM Plex Mono',monospace"; c.textAlign='left';
+        c.fillText(ovLabel + ' ' + yEdge.toFixed(1)+'%', W-pad.r+3, yP(yEdge)+3);
+      }
+    }
+    // Dots del overlay
+    validOverlay.forEach(p => {
+      const px=xP(p.x), py=yP(p.y);
+      c.beginPath(); c.arc(px, py, 3, 0, Math.PI*2);
+      c.fillStyle=ovColor; c.fill();
+      c.strokeStyle='#080c14'; c.lineWidth=0.8; c.stroke();
+      c.fillStyle=ovColor; c.font="7px 'IBM Plex Mono',monospace"; c.textAlign='center';
+      c.fillText(p.label, px, py-6);
+    });
+  }
 
   // Attach click handler (idempotente: solo una vez por canvas)
   if (!cv.dataset.fxClickWired) {
