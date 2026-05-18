@@ -453,6 +453,53 @@ def bond_compact_old_ticks(keep_raw_days=7, compact_interval_min=15):
     return deleted
 
 
+def fx_compact_codes_to_hourly(code_prefixes):
+    """Política específica: códigos con prefix dado (ej ['IMP_', 'PS1_', 'PS2_',
+    'PSP1_', 'PSP2_']) → mantener TODOS los ticks del día actual (UTC), y para
+    días anteriores, compactar a 1 tick por hora.
+
+    Llamar diariamente a las 00 UTC (21 ART) para compactar el día anterior.
+    Devuelve cuántas filas se borraron.
+    """
+    if not code_prefixes:
+        return 0
+    now_utc = _dt.datetime.utcnow()
+    today_start_utc = _dt.datetime(now_utc.year, now_utc.month, now_utc.day)
+    cutoff_ms = int(today_start_utc.timestamp() * 1000)
+    bucket_ms = 60 * 60 * 1000  # 1 hora
+
+    like_clauses = " OR ".join(["code LIKE ?"] * len(code_prefixes))
+    like_args = [p + '%' for p in code_prefixes]
+
+    with _DB_LOCK, _conn() as c:
+        c.execute("DROP TABLE IF EXISTS _keep_fwd_hourly")
+        c.execute(
+            f"""
+            CREATE TEMP TABLE _keep_fwd_hourly AS
+            SELECT code, MAX(ts) AS ts
+            FROM fx_ticks
+            WHERE ts < ? AND ({like_clauses})
+            GROUP BY code, (ts / ?)
+            """,
+            [cutoff_ms] + like_args + [bucket_ms],
+        )
+        c.execute("CREATE INDEX IF NOT EXISTS _idx_keep_fwd ON _keep_fwd_hourly(code, ts)")
+        c.execute(
+            f"""
+            DELETE FROM fx_ticks
+            WHERE ts < ? AND ({like_clauses})
+              AND NOT EXISTS (
+                SELECT 1 FROM _keep_fwd_hourly k
+                WHERE k.code = fx_ticks.code AND k.ts = fx_ticks.ts
+              )
+            """,
+            [cutoff_ms] + like_args,
+        )
+        deleted = c.execute("SELECT changes()").fetchone()[0]
+        c.execute("DROP TABLE IF EXISTS _keep_fwd_hourly")
+    return deleted
+
+
 def fx_compact_old_ticks(keep_raw_days=7, compact_interval_min=15):
     """Mismo downsampling tiered pero para fx_ticks. Igual fix de perf."""
     cutoff_ms = int((time.time() - keep_raw_days * 86400) * 1000)

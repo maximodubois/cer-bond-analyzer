@@ -8872,10 +8872,12 @@ function startPricePolling(){
     window._bondTickTimer=setInterval(()=>{
       try{ pushBondTicks(); }catch(e){}
       try{ pushFxCalcTicks(); }catch(e){}
+      try{ pushFxFwdTicks(); }catch(e){}
     }, 60000);
     setTimeout(()=>{
       try{ pushBondTicks(); }catch(e){}
       try{ pushFxCalcTicks(); }catch(e){}
+      try{ pushFxFwdTicks(); }catch(e){}
     }, 8000); // primer push tras settle
   }
 }
@@ -8886,6 +8888,62 @@ function startPricePolling(){
 // ARS_CCL (AL30/AL30C calc)
 // ARS_OF (Oficial Minorista BCRA) y ARS_BLUE se persisten server-side via
 // scheduler 60s + DolarAPI (no se pueden calcular client-side).
+// Calcula y pushea cada 60s las series de Forward Matrix:
+//  - IMP_<futTicker>   : TNA implícita del futuro vs spot
+//  - PS_<from>_<to>    : TNA forward (pase) entre 2 futuros
+//  - PSP_<from>_<to>   : spread nominal $ entre 2 futuros
+// Cada serie persiste en fx_ticks con su propio "code".
+// Step 1 (consecutivos) y Step 2 (skip uno) — todos los pares.
+function pushFxFwdTicks(){
+  if (typeof ROFEX_FUTURES === 'undefined') return;
+  let spot = 0;
+  try { spot = (typeof getFxSpot==='function') ? getFxSpot() : 0; } catch(e){}
+  if (!(spot > 0)) return;
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const futs = ROFEX_FUTURES.map(f => {
+    const lp = _livePrices[f.ticker] || {};
+    const px = lp.last || lp.mid || lp.bid || lp.ask || 0;
+    const expD = new Date(f.exp + 'T00:00:00');
+    const d = DB(today, expD);
+    return { f, px, days: d, label: f.ticker.replace('DLR/','') };
+  }).filter(x => x.px > 0 && x.days > 0).sort((a,b) => a.days - b.days);
+
+  if (futs.length === 0) return;
+
+  const rows = [];
+  // IMP: implícita vs spot por cada futuro
+  futs.forEach(x => {
+    const tna = (x.px / spot - 1) * 365 / x.days * 100;
+    if (isFinite(tna)) {
+      rows.push({code: 'IMP_' + x.label, price: tna, source: 'FUT/SPOT'});
+    }
+  });
+  // PS / PSP: pase forward TNA + spread $ entre pares (step 1 y step 2)
+  for (let step of [1, 2]) {
+    for (let i = 0; i + step < futs.length; i++) {
+      const from = futs[i], to = futs[i+step];
+      const dDays = to.days - from.days;
+      if (dDays <= 0) continue;
+      const tna = (to.px / from.px - 1) * 365 / dDays * 100;
+      const spread$ = to.px - from.px;
+      if (isFinite(tna)) {
+        rows.push({code: `PS${step}_${from.label}_${to.label}`, price: tna, source: 'FWD'});
+      }
+      if (isFinite(spread$)) {
+        rows.push({code: `PSP${step}_${from.label}_${to.label}`, price: spread$, source: 'SPREAD$'});
+      }
+    }
+  }
+
+  if (!rows.length) return;
+  fetch('/api/fx/calc_ticks',{
+    method:'POST', credentials:'same-origin',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ts:Date.now(), rows})
+  }).catch(()=>{});
+}
+
 function pushFxCalcTicks(){
   const rows = [];
   try {
@@ -14313,7 +14371,12 @@ function renderFxForwardMatrix(){
         ? (val>=0?'+':'')+val.toFixed(2)+'%'
         : (val>=0?'+$':'-$')+Math.abs(val).toFixed(2);
       const tip = `${from.label} → ${to.label}\n${dDays}d\nForward TNA: ${fwdTna.toFixed(2)}%\nSpread $: ${(priceD>=0?'+':'')}${priceD.toFixed(2)}`;
-      tbodyHtml += `<td title="${tip}" style="padding:5px 8px;text-align:right;background:${bgColor};font-weight:600">${display}</td>`;
+      // Code de la serie para fetchear histórico al click
+      const step = j - i;
+      const codeTna = `PS${step}_${from.label}_${to.label}`;
+      const codeSp  = `PSP${step}_${from.label}_${to.label}`;
+      const onClick = `openPaseChart('${codeTna}','${codeSp}','${from.label}','${to.label}',${step})`;
+      tbodyHtml += `<td title="${tip} · click para histórico" onclick="${onClick}" style="padding:5px 8px;text-align:right;background:${bgColor};font-weight:600;cursor:pointer">${display}</td>`;
     });
     tbodyHtml += '</tr>';
   });
@@ -14324,6 +14387,152 @@ function renderFxForwardMatrix(){
     const stepLabel = _fxFwdStep === 0 ? 'todos los pares' : `solo ${_fxFwdStep} mes${_fxFwdStep>1?'es':''}`;
     info.textContent = `${futs.length} futuros · ${modeLabel} · ${stepLabel} · ${visibleCount} celdas · ${new Date().toLocaleTimeString('es-AR')}`;
   }
+}
+
+// Abrir modal con chart histórico de un pase específico (TNA + spread $)
+async function openPaseChart(codeTna, codeSp, fromLbl, toLbl, step){
+  // Remover modal previo si existe
+  document.getElementById('paseChartModal')?.remove();
+
+  let _pcTf = '1D';  // timeframe activo
+
+  const overlay = document.createElement('div');
+  overlay.id = 'paseChartModal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.72);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px';
+  overlay.innerHTML = `
+    <div style="background:#080c14;border:1px solid #1a2540;border-radius:10px;width:100%;max-width:920px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.7)" onclick="event.stopPropagation()">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:14px 18px;border-bottom:1px solid #1a2540">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#fbbf24;letter-spacing:0.04em">PASE ${fromLbl} → ${toLbl}</div>
+          <div style="font-size:10px;color:var(--td);margin-top:2px">${step} mes${step>1?'es':''} · Forward TNA + Spread $</div>
+        </div>
+        <button onclick="document.getElementById('paseChartModal')?.remove()" style="background:transparent;border:none;color:var(--td);font-size:22px;cursor:pointer;line-height:1">&times;</button>
+      </div>
+      <div style="padding:14px 18px">
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <button class="bc-univ-btn active" data-pctf="1D" onclick="_pcSetTf('1D')">1D</button>
+          <button class="bc-univ-btn" data-pctf="1W" onclick="_pcSetTf('1W')">1W</button>
+          <button class="bc-univ-btn" data-pctf="1M" onclick="_pcSetTf('1M')">1M</button>
+          <button class="bc-univ-btn" data-pctf="3M" onclick="_pcSetTf('3M')">3M</button>
+          <button class="bc-univ-btn" data-pctf="ALL" onclick="_pcSetTf('ALL')">ALL</button>
+          <span style="margin-left:auto;font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace" id="pcStatus">Cargando…</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <div style="font-size:10px;color:#fbbf24;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">FORWARD TNA %</div>
+            <div style="background:#0a0f1a;border:1px solid #131a28;border-radius:6px;padding:6px">
+              <canvas id="pcChartTna" style="width:100%;height:240px;display:block"></canvas>
+            </div>
+            <div id="pcLastTna" style="font-size:11px;color:var(--td);margin-top:4px;font-family:'IBM Plex Mono',monospace">—</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--ac);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">SPREAD $ (nominal ARS)</div>
+            <div style="background:#0a0f1a;border:1px solid #131a28;border-radius:6px;padding:6px">
+              <canvas id="pcChartSp" style="width:100%;height:240px;display:block"></canvas>
+            </div>
+            <div id="pcLastSp" style="font-size:11px;color:var(--td);margin-top:4px;font-family:'IBM Plex Mono',monospace">—</div>
+          </div>
+        </div>
+        <div style="margin-top:10px;padding:10px;background:#0a0f1a;border-radius:6px;font-size:10px;color:var(--td);line-height:1.5">
+          <b>Forward TNA</b> = (Px_${toLbl} / Px_${fromLbl} − 1) × 365/días.
+          Es la tasa pesos implícita entre los dos vencimientos.<br>
+          <b>Spread $</b> = costo nominal del pase (lo que pagás/cobrás al rolear de ${fromLbl} a ${toLbl}).<br>
+          Snapshots cada 1 min durante el día, 1 por hora después de EOD.
+        </div>
+      </div>
+    </div>
+  `;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  // Funciones para fetch y draw
+  async function _pcLoad(){
+    const days = _pcTf === '1D' ? 1 : _pcTf === '1W' ? 7 : _pcTf === '1M' ? 30 : _pcTf === '3M' ? 90 : 365;
+    document.getElementById('pcStatus').textContent = 'Cargando ' + _pcTf + '…';
+    try {
+      const [r1, r2] = await Promise.all([
+        fetch('/api/fx/history?code=' + encodeURIComponent(codeTna) + '&days=' + days, {credentials:'same-origin'}).then(r=>r.json()).catch(()=>null),
+        fetch('/api/fx/history?code=' + encodeURIComponent(codeSp)  + '&days=' + days, {credentials:'same-origin'}).then(r=>r.json()).catch(()=>null),
+      ]);
+      const tnaPts = (r1 && r1.points) || [];
+      const spPts  = (r2 && r2.points) || [];
+      _pcDrawLine('pcChartTna', tnaPts, '#fbbf24', v => (v>=0?'+':'') + v.toFixed(2) + '%');
+      _pcDrawLine('pcChartSp',  spPts,  '#00e5a0', v => (v>=0?'+$':'-$') + Math.abs(v).toFixed(2));
+      const lastTna = tnaPts.length ? tnaPts[tnaPts.length-1].v : null;
+      const lastSp  = spPts.length  ? spPts[spPts.length-1].v  : null;
+      document.getElementById('pcLastTna').textContent = lastTna!=null
+        ? `último: ${(lastTna>=0?'+':'')+lastTna.toFixed(2)}% · ${tnaPts.length} pts`
+        : 'sin datos';
+      document.getElementById('pcLastSp').textContent = lastSp!=null
+        ? `último: $${lastSp.toFixed(2)} · ${spPts.length} pts`
+        : 'sin datos';
+      document.getElementById('pcStatus').textContent = _pcTf + ' · ' + tnaPts.length + ' ticks TNA · ' + spPts.length + ' ticks $';
+    } catch(e) {
+      document.getElementById('pcStatus').textContent = 'Error: ' + e;
+    }
+  }
+
+  function _pcDrawLine(cvId, pts, color, fmtY){
+    const cv = document.getElementById(cvId);
+    if (!cv) return;
+    const dpr = window.devicePixelRatio || 1;
+    const W = cv.clientWidth || 400, H = cv.clientHeight || 240;
+    cv.width = W*dpr; cv.height = H*dpr;
+    const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0);
+    c.clearRect(0,0,W,H);
+    if (!pts || pts.length < 2) {
+      c.fillStyle='#475569'; c.font="11px 'IBM Plex Mono',monospace"; c.textAlign='center';
+      c.fillText('Sin datos suficientes — esperá que se acumulen snapshots', W/2, H/2);
+      return;
+    }
+    const pad = {t:10, r:10, b:24, l:50};
+    const vs = pts.map(p=>p.v), ts = pts.map(p=>p.t);
+    const vMin = Math.min(...vs), vMax = Math.max(...vs);
+    const vR = (vMax - vMin) || Math.abs(vMax)*0.001 || 1;
+    const yPad = vR*0.1;
+    const yLo = vMin - yPad, yHi = vMax + yPad, yR = yHi - yLo;
+    const tMin = ts[0], tMax = ts[ts.length-1], tR = (tMax-tMin) || 1;
+    const xP = t => pad.l + (t-tMin)/tR*(W-pad.l-pad.r);
+    const yP = v => pad.t + (1-(v-yLo)/yR)*(H-pad.t-pad.b);
+    // Grid
+    c.strokeStyle='#1a2233'; c.lineWidth=0.5;
+    for (let i=0; i<=4; i++) {
+      const v = yLo + yR*i/4, py = yP(v);
+      c.beginPath(); c.moveTo(pad.l, py); c.lineTo(W-pad.r, py); c.stroke();
+      c.fillStyle='#64748b'; c.font="9px 'IBM Plex Mono',monospace"; c.textAlign='right';
+      c.fillText(fmtY(v), pad.l-4, py+3);
+    }
+    // X ticks
+    c.fillStyle='#64748b'; c.textAlign='center';
+    const tfFmt = _pcTf === '1D'
+      ? (d => d.toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'}))
+      : (d => d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'}));
+    for (let i=0; i<=3; i++) {
+      const t = tMin + tR*i/3;
+      c.fillText(tfFmt(new Date(t)), xP(t), H-8);
+    }
+    // Línea + área
+    c.save();
+    const d = pts.map((p,i) => (i===0?'M':'L') + xP(p.t).toFixed(2) + ',' + yP(p.v).toFixed(2)).join(' ');
+    c.strokeStyle=color; c.lineWidth=1.6;
+    c.stroke(new Path2D(d));
+    c.globalAlpha=0.12; c.fillStyle=color;
+    const dArea = d + ` L${xP(tMax).toFixed(2)},${yP(yLo).toFixed(2)} L${xP(tMin).toFixed(2)},${yP(yLo).toFixed(2)} Z`;
+    c.fill(new Path2D(dArea));
+    c.restore();
+    // Last value tag
+    const last = pts[pts.length-1];
+    c.fillStyle=color; c.font="bold 11px 'IBM Plex Mono',monospace"; c.textAlign='right';
+    c.fillText(fmtY(last.v), W-pad.r, pad.t+12);
+  }
+
+  window._pcSetTf = function(tf){
+    _pcTf = tf;
+    document.querySelectorAll('#paseChartModal [data-pctf]').forEach(b => b.classList.toggle('active', b.dataset.pctf === tf));
+    _pcLoad();
+  };
+
+  _pcLoad();
 }
 
 // Wire toggle buttons (idempotente via dataset)

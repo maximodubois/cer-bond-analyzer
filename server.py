@@ -857,10 +857,14 @@ def _start_fx_scheduler():
                 if _dt.datetime.utcnow().hour >= 3 and last != today_utc:
                     bd = storage.bond_compact_old_ticks(keep_raw_days=7, compact_interval_min=15)
                     fxd = storage.fx_compact_old_ticks(keep_raw_days=7, compact_interval_min=15)
+                    # Forward Matrix: política específica 1/min hoy → 1/hora ayer+
+                    fwdc = storage.fx_compact_codes_to_hourly(
+                        ['IMP_', 'PS1_', 'PS2_', 'PSP1_', 'PSP2_']
+                    )
                     storage.bond_prune_ticks(keep_days=60)
                     storage.fx_prune_ticks(keep_days=90)
                     storage.kv_set("last_compact_date", today_utc)
-                    print(f"[scheduler] daily compact {today_utc}: bond -{bd} fx -{fxd} rows")
+                    print(f"[scheduler] daily compact {today_utc}: bond -{bd} fx -{fxd} fwd -{fwdc} rows")
             except Exception as e:
                 print(f"[scheduler] compact error: {e}")
             time.sleep(3600)
