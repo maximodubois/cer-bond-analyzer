@@ -2941,37 +2941,46 @@
 
   <!-- ════════════════════════════════════════════════════════════════
        🔁 Forward TNA Matrix — costo del pase entre futuros DLR
-       Para cada par (FROM, TO): forward TNA = (PXFUT_TO / PXFUT_FROM - 1) × 365 / days_between
-       Es la "tasa pesos implícita" para rolear desde un futuro hacia otro.
        ════════════════════════════════════════════════════════════════ -->
+  <style>
+    #fxFwdMatrixCard .fwd-controls{display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:#0a0f1a;padding:10px 14px;border-radius:8px;border:1px solid #1a2540;margin-bottom:12px}
+    #fxFwdMatrixCard .fwd-ctl-group{display:flex;align-items:center;gap:8px}
+    #fxFwdMatrixCard .fwd-ctl-label{font-size:10px;color:var(--td);text-transform:uppercase;letter-spacing:0.08em;font-weight:600}
+    #fxFwdMatrixCard .fwd-btn-group{display:inline-flex;background:#0c1220;border:1px solid #1e2d44;border-radius:6px;padding:2px;gap:1px}
+    #fxFwdMatrixCard .fwd-btn{background:transparent;border:none;color:#94a3b8;padding:5px 12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:0.04em;border-radius:4px;transition:all 0.12s;min-width:60px}
+    #fxFwdMatrixCard .fwd-btn:hover{color:#e2e8f0;background:rgba(0,229,160,0.06)}
+    #fxFwdMatrixCard .fwd-btn.active{background:linear-gradient(180deg,#00e5a0 0%,#00c98e 100%);color:#0a0f1a;font-weight:700;box-shadow:0 1px 3px rgba(0,229,160,0.3)}
+    #fxFwdMatrixCard .fwd-btn-step.active{background:linear-gradient(180deg,#fbbf24 0%,#f59e0b 100%);color:#0a0f1a;box-shadow:0 1px 3px rgba(251,191,36,0.3)}
+    #fxFwdMatrixCard .fwd-refresh{background:#0c1220;border:1px solid #2a3d5a;color:var(--acl);padding:6px 14px;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.12s;letter-spacing:0.04em}
+    #fxFwdMatrixCard .fwd-refresh:hover{border-color:var(--acl);background:rgba(0,229,160,0.08)}
+  </style>
   <div class="card" id="fxFwdMatrixCard">
-    <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
-      <div>
-        <div class="st" style="margin:0">🔁 Forward TNA Matrix — Costo del Pase (roll futuros DLR)</div>
-        <div class="note" style="margin:4px 0 0 0;font-size:10px">
-          Para cada par (FROM → TO): <code>Forward TNA = (PXFUT_TO / PXFUT_FROM − 1) × 365 / días</code>.<br>
-          Es la <b>tasa pesos implícita</b> entre dos vencimientos. Útil para evaluar el costo de rolear un short futuro hacia un vto más largo.<br>
-          <span style="color:var(--ac)">Verde</span> = forward TNA baja (roll barato) · <span style="color:var(--neg)">Rojo</span> = forward TNA alta (roll caro).
+    <div style="margin-bottom:10px">
+      <div class="st" style="margin:0">🔁 Forward TNA Matrix — Costo del Pase (roll futuros DLR)</div>
+      <div class="note" style="margin:4px 0 0 0;font-size:10px">
+        Para cada par (FROM → TO): <code>Forward TNA = (PXFUT_TO / PXFUT_FROM − 1) × 365 / días</code>.<br>
+        Es la <b>tasa pesos implícita</b> entre dos vencimientos.
+        <span style="color:var(--ac)">Verde</span> = forward TNA baja (roll barato) · <span style="color:var(--neg)">Rojo</span> = forward TNA alta (roll caro).
+      </div>
+    </div>
+    <div class="fwd-controls">
+      <div class="fwd-ctl-group">
+        <span class="fwd-ctl-label">Vista</span>
+        <div class="fwd-btn-group" id="fxFwdModeButtons">
+          <button class="fwd-btn fwd-btn-mode active" data-fwd="tna">TNA %</button>
+          <button class="fwd-btn fwd-btn-mode" data-fwd="spread">SPREAD $</button>
         </div>
       </div>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <div style="display:flex;align-items:center;gap:4px">
-          <span style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:0.05em">Vista:</span>
-          <div class="fx-mode-buttons" id="fxFwdModeButtons">
-            <button class="fx-mode-btn active" data-fwd="tna">TNA %</button>
-            <button class="fx-mode-btn" data-fwd="spread">SPREAD $</button>
-          </div>
+      <div class="fwd-ctl-group">
+        <span class="fwd-ctl-label">Pase</span>
+        <div class="fwd-btn-group" id="fxFwdStepButtons">
+          <button class="fwd-btn fwd-btn-step" data-step="1">1 mes</button>
+          <button class="fwd-btn fwd-btn-step" data-step="2">2 meses</button>
+          <button class="fwd-btn fwd-btn-step" data-step="3">3 meses</button>
+          <button class="fwd-btn fwd-btn-step active" data-step="0">Todos</button>
         </div>
-        <div style="display:flex;align-items:center;gap:4px">
-          <span style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:0.05em">Pase:</span>
-          <div class="fx-mode-buttons" id="fxFwdStepButtons">
-            <button class="fx-mode-btn" data-step="1">1 mes</button>
-            <button class="fx-mode-btn" data-step="2">2 meses</button>
-            <button class="fx-mode-btn active" data-step="0">Todos</button>
-          </div>
-        </div>
-        <button class="btn-api btn-sm" onclick="renderFxForwardMatrix()">▶ Refrescar</button>
       </div>
+      <button class="fwd-refresh" onclick="renderFxForwardMatrix()">▶ Refrescar</button>
     </div>
     <div style="overflow-x:auto">
       <table id="fxFwdMatrixTbl" style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px">
@@ -3572,6 +3581,15 @@ const ROFEX_FUTURES=[
   {id:"DLR/ENE27", ticker:"DLR/ENE27", name:"DLR Ene-27", exp:"2027-01-29", color:"#A34808"},
   {id:"DLR/FEB27", ticker:"DLR/FEB27", name:"DLR Feb-27", exp:"2027-02-26", color:"#92400E"},
   {id:"DLR/MAR27", ticker:"DLR/MAR27", name:"DLR Mar-27", exp:"2027-03-31", color:"#7C3009"},
+  {id:"DLR/ABR27", ticker:"DLR/ABR27", name:"DLR Abr-27", exp:"2027-04-30", color:"#6B2706"},
+  {id:"DLR/MAY27", ticker:"DLR/MAY27", name:"DLR May-27", exp:"2027-05-31", color:"#5A2105"},
+  {id:"DLR/JUN27", ticker:"DLR/JUN27", name:"DLR Jun-27", exp:"2027-06-30", color:"#4F1D04"},
+  {id:"DLR/JUL27", ticker:"DLR/JUL27", name:"DLR Jul-27", exp:"2027-07-30", color:"#451A04"},
+  {id:"DLR/AGO27", ticker:"DLR/AGO27", name:"DLR Ago-27", exp:"2027-08-31", color:"#3D1703"},
+  {id:"DLR/SEP27", ticker:"DLR/SEP27", name:"DLR Sep-27", exp:"2027-09-30", color:"#351502"},
+  {id:"DLR/OCT27", ticker:"DLR/OCT27", name:"DLR Oct-27", exp:"2027-10-29", color:"#2D1202"},
+  {id:"DLR/NOV27", ticker:"DLR/NOV27", name:"DLR Nov-27", exp:"2027-11-30", color:"#251001"},
+  {id:"DLR/DIC27", ticker:"DLR/DIC27", name:"DLR Dic-27", exp:"2027-12-30", color:"#1F0D01"},
 ];
 
 // ═══ FX EXTRA TICKERS (spot, MEP, CCL) ═
@@ -14254,8 +14272,8 @@ setTimeout(() => {
   if (wrap && !wrap.dataset.wired) {
     wrap.dataset.wired = '1';
     wrap.addEventListener('click', e => {
-      if (!e.target.matches('.fx-mode-btn')) return;
-      wrap.querySelectorAll('.fx-mode-btn').forEach(b => b.classList.remove('active'));
+      if (!e.target.matches('.fwd-btn')) return;
+      wrap.querySelectorAll('.fwd-btn').forEach(b => b.classList.remove('active'));
       e.target.classList.add('active');
       _fxFwdMode = e.target.dataset.fwd;
       renderFxForwardMatrix();
@@ -14265,8 +14283,8 @@ setTimeout(() => {
   if (stepWrap && !stepWrap.dataset.wired) {
     stepWrap.dataset.wired = '1';
     stepWrap.addEventListener('click', e => {
-      if (!e.target.matches('.fx-mode-btn')) return;
-      stepWrap.querySelectorAll('.fx-mode-btn').forEach(b => b.classList.remove('active'));
+      if (!e.target.matches('.fwd-btn')) return;
+      stepWrap.querySelectorAll('.fwd-btn').forEach(b => b.classList.remove('active'));
       e.target.classList.add('active');
       _fxFwdStep = parseInt(e.target.dataset.step) || 0;
       renderFxForwardMatrix();
