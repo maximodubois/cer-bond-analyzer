@@ -14306,7 +14306,7 @@ function renderFX(){
       });
     }
     drawFxCurveChart("fxFutCurveChart", futPtsValid, maxX, futPointsPrev, '#f97316',
-      lecapOverlay.length ? { points: lecapOverlay, color:'#fbbf24', label:'LECAP' } : null
+      lecapOverlay.length ? { points: lecapOverlay, color:'#a78bfa', label:'LECAP' } : null
     );
   }
 
@@ -14999,7 +14999,8 @@ function drawFxCurveChart(canvasId,points,maxX,prevPoints=[],seriesColor='#94a3b
     const stepsO = 80;
     const dxO = (maxX-1)/stepsO;
     if (ovLog) {
-      c.save(); c.setLineDash([6,4]); c.strokeStyle=ovColor; c.globalAlpha=0.7; c.lineWidth=1.8;
+      // LOG del overlay: dashed pero bien visible
+      c.save(); c.setLineDash([6,4]); c.strokeStyle=ovColor; c.globalAlpha=0.9; c.lineWidth=2;
       c.beginPath(); let first=true;
       for (let i=0; i<=stepsO; i++) {
         const x = 1+i*dxO, y = ovLog.predict(x);
@@ -15008,9 +15009,15 @@ function drawFxCurveChart(canvasId,points,maxX,prevPoints=[],seriesColor='#94a3b
         first ? (c.moveTo(px,py), first=false) : c.lineTo(px,py);
       }
       c.stroke(); c.restore();
+      // Label LOG overlay al borde derecho
+      const yEdgeLog = ovLog.predict(maxX);
+      if (isFinite(yEdgeLog) && yEdgeLog>=minY && yEdgeLog<=maxY) {
+        c.fillStyle=ovColor; c.font="bold 9px 'IBM Plex Mono',monospace"; c.textAlign='left';
+        c.fillText(ovLabel + ' LOG '+yEdgeLog.toFixed(1)+'%', W-pad.r+3, yP(yEdgeLog)+11);
+      }
     }
     if (ovNss) {
-      c.save(); c.strokeStyle=ovColor; c.lineWidth=2;
+      c.save(); c.strokeStyle=ovColor; c.lineWidth=2.2;
       c.beginPath(); let first=true;
       for (let i=0; i<=stepsO; i++) {
         const x = Math.max(1, 1+i*dxO), y = ovNss.predict(x);
@@ -15023,7 +15030,7 @@ function drawFxCurveChart(canvasId,points,maxX,prevPoints=[],seriesColor='#94a3b
       const yEdge = ovNss.predict(maxX);
       if (isFinite(yEdge) && yEdge>=minY && yEdge<=maxY) {
         c.fillStyle=ovColor; c.font="bold 9px 'IBM Plex Mono',monospace"; c.textAlign='left';
-        c.fillText(ovLabel + ' ' + yEdge.toFixed(1)+'%', W-pad.r+3, yP(yEdge)+3);
+        c.fillText(ovLabel + ' NSS '+yEdge.toFixed(1)+'%', W-pad.r+3, yP(yEdge)-3);
       }
     }
     // Dots del overlay
