@@ -42,6 +42,22 @@ _COMMIT_LOCK = threading.Lock()
 # ══════════════════════════════════════════════════════════════════
 # CONEXION + SCHEMA
 # ══════════════════════════════════════════════════════════════════
+class _ConnCtx:
+    """Context manager que CIERRA la conexión SQLite al salir.
+    sqlite3.Connection's default __exit__ NO cierra (solo commit/rollback),
+    así que tirábamos file descriptors. Wrap explícito para cerrar siempre.
+    """
+    def __init__(self, conn):
+        self._c = conn
+    def __enter__(self):
+        return self._c
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            self._c.close()
+        except Exception:
+            pass
+        return False  # no swallow
+
 def _conn():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     c = sqlite3.connect(DB_PATH, timeout=30, isolation_level=None)
@@ -49,7 +65,7 @@ def _conn():
     c.execute("PRAGMA synchronous=NORMAL")
     c.execute("PRAGMA foreign_keys=ON")
     c.row_factory = sqlite3.Row
-    return c
+    return _ConnCtx(c)
 
 
 SCHEMA_SQL = """
@@ -219,26 +235,22 @@ def fx_tick_insert(code, price, prev_close=None, pct_day=None, source=None, ts_m
 
 
 def _fx_daily_touch(c, code, ts_ms, price):
-    """Update agregado diario (UTC date)."""
+    """Update agregado diario (UTC date). FIX race: usar ON CONFLICT atómico
+    en vez de SELECT + INSERT/UPDATE (que tenía race entre threads → segunda
+    inserción hit UNIQUE constraint → tick perdido silenciosamente)."""
     date = _dt.datetime.utcfromtimestamp(ts_ms / 1000).strftime("%Y-%m-%d")
-    r = c.execute(
-        "SELECT open, high, low, ticks FROM fx_daily WHERE date=? AND code=?",
-        (date, code),
-    ).fetchone()
-    if r is None:
-        c.execute(
-            "INSERT INTO fx_daily(date, code, open, high, low, close, ticks) "
-            "VALUES(?,?,?,?,?,?,1)",
-            (date, code, price, price, price, price),
-        )
-    else:
-        hi = max(r["high"], price) if r["high"] is not None else price
-        lo = min(r["low"], price) if r["low"] is not None else price
-        c.execute(
-            "UPDATE fx_daily SET high=?, low=?, close=?, ticks=ticks+1 "
-            "WHERE date=? AND code=?",
-            (hi, lo, price, date, code),
-        )
+    c.execute(
+        """
+        INSERT INTO fx_daily(date, code, open, high, low, close, ticks)
+        VALUES(?, ?, ?, ?, ?, ?, 1)
+        ON CONFLICT(date, code) DO UPDATE SET
+          high  = MAX(fx_daily.high, excluded.close),
+          low   = MIN(fx_daily.low,  excluded.close),
+          close = excluded.close,
+          ticks = fx_daily.ticks + 1
+        """,
+        (date, code, price, price, price, price),
+    )
 
 
 def fx_ticks_range(code, since_ts_ms=None, until_ts_ms=None, limit=5000):
@@ -406,22 +418,34 @@ def bond_compact_old_ticks(keep_raw_days=7, compact_interval_min=15):
     cutoff_ms = int((time.time() - keep_raw_days * 86400) * 1000)
     bucket_ms = int(compact_interval_min * 60 * 1000)
     with _DB_LOCK, _conn() as c:
-        # Borra todos los ticks viejos EXCEPTO el (ticker, MAX(ts)) por bucket.
+        # PERF FIX: NOT IN sobre subquery con re-scan completo era O(N²).
+        # Ahora: temp table con (ticker, ts) a conservar (1 por bucket), luego
+        # DELETE usando JOIN antimatch. SQLite optimiza esto bien con index.
+        c.execute("DROP TABLE IF EXISTS _keep_bond_ticks")
+        c.execute(
+            """
+            CREATE TEMP TABLE _keep_bond_ticks AS
+            SELECT ticker, MAX(ts) AS ts
+            FROM bond_ticks
+            WHERE ts < ?
+            GROUP BY ticker, (ts / ?)
+            """,
+            (cutoff_ms, bucket_ms),
+        )
+        c.execute("CREATE INDEX IF NOT EXISTS _idx_keep_bond ON _keep_bond_ticks(ticker, ts)")
         c.execute(
             """
             DELETE FROM bond_ticks
             WHERE ts < ?
-              AND (ticker, ts) NOT IN (
-                SELECT ticker, MAX(ts)
-                FROM bond_ticks
-                WHERE ts < ?
-                GROUP BY ticker, (ts / ?)
+              AND NOT EXISTS (
+                SELECT 1 FROM _keep_bond_ticks k
+                WHERE k.ticker = bond_ticks.ticker AND k.ts = bond_ticks.ts
               )
             """,
-            (cutoff_ms, cutoff_ms, bucket_ms),
+            (cutoff_ms,),
         )
         deleted = c.execute("SELECT changes()").fetchone()[0]
-        # VACUUM async (en autocommit con WAL no se puede VACUUM dentro de transacción)
+        c.execute("DROP TABLE IF EXISTS _keep_bond_ticks")
         try:
             c.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         except Exception:
@@ -430,24 +454,35 @@ def bond_compact_old_ticks(keep_raw_days=7, compact_interval_min=15):
 
 
 def fx_compact_old_ticks(keep_raw_days=7, compact_interval_min=15):
-    """Mismo downsampling tiered pero para fx_ticks."""
+    """Mismo downsampling tiered pero para fx_ticks. Igual fix de perf."""
     cutoff_ms = int((time.time() - keep_raw_days * 86400) * 1000)
     bucket_ms = int(compact_interval_min * 60 * 1000)
     with _DB_LOCK, _conn() as c:
+        c.execute("DROP TABLE IF EXISTS _keep_fx_ticks")
+        c.execute(
+            """
+            CREATE TEMP TABLE _keep_fx_ticks AS
+            SELECT code, MAX(ts) AS ts
+            FROM fx_ticks
+            WHERE ts < ?
+            GROUP BY code, (ts / ?)
+            """,
+            (cutoff_ms, bucket_ms),
+        )
+        c.execute("CREATE INDEX IF NOT EXISTS _idx_keep_fx ON _keep_fx_ticks(code, ts)")
         c.execute(
             """
             DELETE FROM fx_ticks
             WHERE ts < ?
-              AND (code, ts) NOT IN (
-                SELECT code, MAX(ts)
-                FROM fx_ticks
-                WHERE ts < ?
-                GROUP BY code, (ts / ?)
+              AND NOT EXISTS (
+                SELECT 1 FROM _keep_fx_ticks k
+                WHERE k.code = fx_ticks.code AND k.ts = fx_ticks.ts
               )
             """,
-            (cutoff_ms, cutoff_ms, bucket_ms),
+            (cutoff_ms,),
         )
         deleted = c.execute("SELECT changes()").fetchone()[0]
+        c.execute("DROP TABLE IF EXISTS _keep_fx_ticks")
     return deleted
 
 
@@ -517,9 +552,14 @@ def commit_db_to_github(message=None, min_interval_sec=300):
                 c.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         except Exception:
             pass
+        # FIX memory: liberar blob explícitamente tras encode. Antes el
+        # GC mantenía blob_bytes + b64_string juntos = ~2× pico de RAM.
+        # Ahora: del blob libera los bytes una vez tenemos el b64.
+        blob_size = os.path.getsize(DB_PATH)
         with open(DB_PATH, "rb") as f:
             blob = f.read()
         b64 = base64.b64encode(blob).decode("ascii")
+        del blob  # libera ~db_size bytes inmediatamente
 
         sha = None
         try:
@@ -543,7 +583,7 @@ def commit_db_to_github(message=None, min_interval_sec=300):
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
                 kv_set("last_db_commit_ts", str(now))
-                return True, f"ok {r.status} ({len(blob)} bytes)"
+                return True, f"ok {r.status} ({blob_size} bytes)"
         except urllib.error.HTTPError as e:
             return False, f"github PUT {e.code}: {e.read().decode('utf-8','replace')[:200]}"
 

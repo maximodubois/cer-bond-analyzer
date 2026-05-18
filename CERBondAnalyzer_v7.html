@@ -2862,7 +2862,8 @@
     function startFxGlobal() {
       if (_fxgStarted) return;
       _fxgStarted = true;
-      Promise.all([loadSnapshot(), loadSeries(), loadCross(), _fxgLoadYtd(), _fxgLoadBcHistory()]);
+      Promise.all([loadSnapshot(), loadSeries(), loadCross(), _fxgLoadYtd(), _fxgLoadBcHistory()])
+        .catch(e => console.warn('[fxg] init error', e));
       // YTD y Brecha histórico se refrescan más espaciado (data ~ minutal cambia poco)
       setInterval(() => { loadSnapshot(); loadCross(); loadSeries(); }, REFRESH_MS);
       setInterval(() => { _fxgLoadYtd(); }, 5*60*1000); // YTD cada 5 min
@@ -3479,11 +3480,24 @@ function usdBondCashflows(b, settle){
   if (!matD || matD <= settle) return flows;
 
   // Generar fechas de pago semestrales hacia atrás desde mat
+  // FIX date drift: JS setMonth(-6) puede normalizar overflow (31-Ago →
+  // Feb 31 → Mar 3), corriendo todas las fechas siguientes. Anchorar al
+  // día original y, si drifteó, volver al último día del mes anterior.
+  const origDay = matD.getDate();
   const payDates=[];
   let d = new Date(matD);
-  while (d > new Date(b.emDate+'T00:00:00')) {
+  const emD = new Date(b.emDate+'T00:00:00');
+  let safety = 200; // safety net por si algún emDate inválido
+  while (d > emD && safety-- > 0) {
     payDates.unshift(new Date(d));
-    d = new Date(d); d.setMonth(d.getMonth()-6);
+    const m = d.getMonth();
+    d.setMonth(m - 6);
+    // Si la normalización JS corrió el día, ajustar al último día válido
+    // del mes target (típico: 31-Ago → setMonth-6 → "Feb 31" → Mar 3.
+    // Corregimos a 28/29 Feb).
+    if (d.getDate() !== origDay) {
+      d.setDate(0); // último día del mes anterior al sobreflowed
+    }
   }
   // Coupon lookup: para una fecha de pago, qué tasa anual corresponde (último step <= fecha)
   function rateForDate(payDate){
@@ -3617,11 +3631,14 @@ function _fxLoadIntraday(){
     const md=JSON.parse(localStorage.getItem(mk)||'[]');
     _intradaySpot=sd.map(p=>({t:new Date(p.t),v:p.v}));
     _intradayMep=md.map(p=>({t:new Date(p.t),v:p.v}));
-    // Clean old days (keep only today's key)
+    // Clean old days (keep only today's key). Snapshot keys ANTES de mutar
+    // para no saltarse índices al hacer removeItem dentro del loop.
+    const toDelete = [];
     for(let i=0;i<localStorage.length;i++){
       const k=localStorage.key(i);
-      if(k&&k.startsWith('fxIntraday_')&&k!==sk&&k!==mk) localStorage.removeItem(k);
+      if(k&&k.startsWith('fxIntraday_')&&k!==sk&&k!==mk) toDelete.push(k);
     }
+    toDelete.forEach(k => localStorage.removeItem(k));
   }catch(e){ _intradaySpot=[]; _intradayMep=[]; }
 }
 _fxLoadIntraday(); // Load on startup
@@ -3892,10 +3909,16 @@ async function fetchAllEmissionCER(){
       const cerDateStr=DS(cerDate);
       const result=await fetchCERForDate(cerDateStr);
       if(result&&result.valor){
-        document.getElementById("ce_"+b.id).value=result.valor;
-        document.getElementById("ce_"+b.id).style.borderColor="var(--ac)";
-        details.push(`${b.ticker}: ${result.valor} al ${result.fecha}`);
-        ok++;
+        const _ceEl = document.getElementById("ce_"+b.id);
+        if (_ceEl) {
+          _ceEl.value = result.valor;
+          _ceEl.style.borderColor = "var(--ac)";
+          details.push(`${b.ticker}: ${result.valor} al ${result.fecha}`);
+          ok++;
+        } else {
+          details.push(`${b.ticker}: el input no existe (bono filtrado?)`);
+          fail++;
+        }
       } else { details.push(`${b.ticker}: sin dato`); fail++; }
       await new Promise(r=>setTimeout(r,250));
     }catch(e){ details.push(`${b.ticker}: error ${e.message}`); fail++; }
@@ -4919,9 +4942,9 @@ function calcZSpreadFromFlows(price, flows, curvePredict) {
   if (!flows||!flows.length||!curvePredict||!price) return null;
   const arr=flows.filter(f=>f.days>0&&f.nominal>0);
   if(!arr.length) return null;
-  let low=-0.50, high=1.00;
-  for(let i=0;i<80;i++){
-    const z=(low+high)/2;
+  // FIX: expandir high si el bono está muy distressed (z-spread > 10000bps).
+  // Antes el cap rígido de high=1.00 enmascaraba spreads grandes.
+  function npvAt(z){
     let npv=0;
     for(const f of arr){
       const t=f.days/365;
@@ -4929,6 +4952,15 @@ function calcZSpreadFromFlows(price, flows, curvePredict) {
       if(rCurve==null||!isFinite(rCurve)) continue;
       npv+=f.nominal/Math.pow(1+(rCurve/100)+z, t);
     }
+    return npv;
+  }
+  let low=-0.50, high=1.00;
+  let fLow=npvAt(low)-price, fHigh=npvAt(high)-price, tries=0;
+  while(fLow*fHigh>0 && tries<10){ high*=2; fHigh=npvAt(high)-price; tries++; }
+  if(fLow*fHigh>0) return null;
+  for(let i=0;i<80;i++){
+    const z=(low+high)/2;
+    const npv=npvAt(z);
     if(Math.abs(npv-price)<1e-6) return z*10000;
     if(npv>price) low=z; else high=z;
   }
@@ -4948,7 +4980,12 @@ function xirrFromFlows(price, flows, key){
     if(Math.abs(fMid)<1e-10) return mid;
     if(fLow*fMid<=0){ high=mid; fHigh=fMid; } else { low=mid; fLow=fMid; }
   }
-  return (low+high)/2;
+  // FIX: chequear convergencia final. Si NPV en el mid es muy lejos de cero,
+  // la bisección no convergió (función muy plana o discontinuidad numérica).
+  // Mejor null que TIR falsa que se cuele a la UI sin warning.
+  const finalMid = (low+high)/2;
+  if (Math.abs(npv(finalMid)) > Math.max(Math.abs(price), 1) * 1e-4) return null;
+  return finalMid;
 }
 function durationFromFlows(y, flows, key){
   const arr=flows.filter(f=>f.days>0&&f[key]>0);
@@ -8646,15 +8683,17 @@ function buildLiveTable(){
 }
 
 setInterval(()=>{
-  if(document.getElementById("tab-livescreen").style.display!=="none"){
-    buildLiveTable();
-  }
-  if(document.getElementById("tab-positions").style.display!=="none"){
-    renderPositions();
-  }
-  if(document.getElementById("tab-resumen").style.display!=="none"){
-    renderVolume();
-  }
+  try {
+    if(document.getElementById("tab-livescreen")?.style.display !== "none"){
+      buildLiveTable();
+    }
+    if(document.getElementById("tab-positions")?.style.display !== "none"){
+      renderPositions();
+    }
+    if(document.getElementById("tab-resumen")?.style.display !== "none"){
+      renderVolume();
+    }
+  } catch(e) { console.warn('[1s-timer]', e); }
 },1000);
 
 // ═══ LIVE PRICES (via Python server.py → Google Sheets) ═════════
@@ -8762,12 +8801,12 @@ async function fetchPricesFromServer(){
     });
     if(!_priceConnected){
       _priceConnected=true;
-      status.innerHTML='<span class="live-badge"></span>Conectado';
-      document.getElementById("btnConnect").style.display="none";
-      document.getElementById("btnDisconnect").style.display="";
+      if(status) status.innerHTML='<span class="live-badge"></span>Conectado';
+      const _bc=document.getElementById("btnConnect"); if(_bc) _bc.style.display="none";
+      const _bd=document.getElementById("btnDisconnect"); if(_bd) _bd.style.display="";
     }
     const ts=new Date().toLocaleTimeString("es-AR");
-    log.innerHTML=`<span class="api-ok">✓ ${updated} precios · ${ts}</span>`;
+    if(log) log.innerHTML=`<span class="api-ok">✓ ${updated} precios · ${ts}</span>`;
     // Always update header FX chips regardless of active tab
     const _hs=document.getElementById("hdrSpotPrice");
     const _hm=document.getElementById("hdrMepPrice");
@@ -9180,7 +9219,12 @@ function getMetricsForAsset(assetId, price){
 }
 
 // ═══ POSITIONS ═══════════════════════════════════════════════════
-let _positions=JSON.parse(localStorage.getItem("cer_positions")||"[]");
+// FIX: guard contra LS corrupto. Sin esto, un JSON inválido en LS bricks
+// la app entera al evaluar el script (blank page sin recovery UI).
+let _positions=(function(){
+  try { const x=JSON.parse(localStorage.getItem("cer_positions")||"[]"); return Array.isArray(x)?x:[]; }
+  catch(e){ console.warn('[ls cer_positions] corrupt:', e); localStorage.removeItem("cer_positions"); return []; }
+})();
 
 function getAllAssets(){
   const a=[];
@@ -9202,7 +9246,7 @@ function addPosition(){
   const qty=parseFloat(document.getElementById("posQty").value)||100;
   if(!assetId||!pxEntry||pxEntry<=0){alert("Completá activo y precio");return}
   const all=getAllAssets();const asset=all.find(a=>a.id===assetId);if(!asset)return;
-  _positions.push({id:assetId,ticker:asset.ticker,type:asset.type,color:asset.color,side,pxEntry,qty,date:new Date().toISOString().slice(0,10)});
+  _positions.push({id:assetId,ticker:asset.ticker,type:asset.type,color:asset.color,side,pxEntry,qty,date:DS(new Date())});
   savePositions();document.getElementById("posPxEntry").value="";renderPositions();
 }
 function removePosition(idx){_positions.splice(idx,1);savePositions();renderPositions()}
@@ -9256,13 +9300,13 @@ function exportPositions(){
   if(!_positions.length){alert("Sin datos");return}
   let csv="ticker,type,side,qty,pxEntry,date\n";
   _positions.forEach(p=>{csv+=p.ticker+","+p.type+","+(p.side||"C")+","+(p.qty||0)+","+_gpx(p)+","+(p.date||"")+"\n"});
-  const blob=new Blob([csv],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="book_cer_"+new Date().toISOString().slice(0,10)+".csv";a.click();
+  const blob=new Blob([csv],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="book_cer_"+DS(new Date())+".csv";a.click();
 }
 function importPositions(event){
   const file=event.target.files[0];if(!file)return;
   const reader=new FileReader();reader.onload=function(e){
     const lines=e.target.result.split("\n").filter(l=>l.trim());const allA=getAllAssets();let imp=0;
-    for(let i=1;i<lines.length;i++){const p=lines[i].split(",");if(p.length<5)continue;const ticker=p[0].trim(),side=p[2].trim()||"C";const qty=parseFloat(p[3])||100,pxEntry=parseFloat(p[4]);const date=p[5]?p[5].trim():"";if(!ticker||!pxEntry)continue;const asset=allA.find(a=>a.ticker===ticker);if(!asset)continue;_positions.push({id:asset.id,ticker:asset.ticker,type:asset.type,color:asset.color,side,pxEntry,qty,date:date||new Date().toISOString().slice(0,10)});imp++}
+    for(let i=1;i<lines.length;i++){const p=lines[i].split(",");if(p.length<5)continue;const ticker=p[0].trim(),side=p[2].trim()||"C";const qty=parseFloat(p[3])||100,pxEntry=parseFloat(p[4]);const date=p[5]?p[5].trim():"";if(!ticker||!pxEntry)continue;const asset=allA.find(a=>a.ticker===ticker);if(!asset)continue;_positions.push({id:asset.id,ticker:asset.ticker,type:asset.type,color:asset.color,side,pxEntry,qty,date:date||DS(new Date())});imp++}
     savePositions();renderPositions();alert(imp+" ops importadas");};reader.readAsText(file);event.target.value="";
 }
 
@@ -9276,8 +9320,20 @@ function importPositions(event){
 //   side:"B"|"S", qty:50000, price:105.40, settle:"CI"|"24hs",
 //   cpty:"Cocos", approved:"yes"|"no"|"rej", notes:""
 // }
-let _blotter   = JSON.parse(localStorage.getItem("cer_blotter_v1")||"[]");
-let _axes      = JSON.parse(localStorage.getItem("cer_axes_v1")||"[]");
+// FIX: guard contra schema legacy. Si localStorage tiene un object viejo o
+// data corrupta, .forEach revienta y _blotter queda vacío silenciosamente.
+function _loadArrLS(key){
+  try {
+    const x = JSON.parse(localStorage.getItem(key)||"[]");
+    return Array.isArray(x) ? x : [];
+  } catch(e) {
+    console.warn('[ls]', key, 'corrupt, resetting:', e);
+    localStorage.removeItem(key);
+    return [];
+  }
+}
+let _blotter   = _loadArrLS("cer_blotter_v1");
+let _axes      = _loadArrLS("cer_axes_v1");
 let _bltLastCpty = localStorage.getItem("cer_blt_lastCpty")||"Mesa";
 let _bltLastSettle = localStorage.getItem("cer_blt_lastSettle")||"24hs";
 let _bltLastQty = parseFloat(localStorage.getItem("cer_blt_lastQty"))||100000;
@@ -9294,7 +9350,7 @@ function saveAxes(){ localStorage.setItem("cer_axes_v1", JSON.stringify(_axes));
 // localStorage: cer_agenda_v1 → [{id, name, bank, contact, notes, cats:[]}]
 // ═══════════════════════════════════════════════════════════════════
 const AG_CATS=["CER","TASA FIJA","TAMAR","DUAL","LECAP","DOLLAR LINKED","BONOS USD","CAUCION","ROFEX","MEP/CCL"];
-let _agenda = JSON.parse(localStorage.getItem("cer_agenda_v1")||"[]");
+let _agenda = _loadArrLS("cer_agenda_v1");
 let _agEditingId = null;
 let _agDraftCats = [];
 function saveAgenda(){ localStorage.setItem("cer_agenda_v1", JSON.stringify(_agenda)); }
@@ -9407,7 +9463,7 @@ function exportAgendaXLSX(){
   const ws=XLSX.utils.json_to_sheet(data);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Agenda');
-  XLSX.writeFile(wb, `agenda_${new Date().toISOString().slice(0,10)}.xlsx`);
+  XLSX.writeFile(wb, `agenda_${DS(new Date())}.xlsx`);
 }
 
 /** Mapeo asset.type → categoría AGENDA. Usado por el blotter para filtrar contrapartes. */
@@ -9826,8 +9882,12 @@ function renderBlotter(){
   // Filtros
   const dF=document.getElementById('bltDateFilter')?.value||'today';
   const sF=document.getElementById('bltStatusFilter')?.value||'all';
-  const today=new Date().toISOString().slice(0,10);
-  const weekStart=new Date(); weekStart.setDate(weekStart.getDate()-weekStart.getDay()); weekStart.setHours(0,0,0,0);
+  const today=DS(new Date());
+  // weekStart = LUNES de esta semana (Argentina). getDay()=0 (Dom) → -6 días; 1 (Lun) → 0 días.
+  const weekStart=new Date();
+  const _dow=(weekStart.getDay()+6)%7;  // Lun=0, Mar=1, ... Dom=6
+  weekStart.setDate(weekStart.getDate()-_dow);
+  weekStart.setHours(0,0,0,0);
   let trades=_blotter.slice().sort((a,b)=>(a.ts||'').localeCompare(b.ts||''));
   trades=trades.filter(t=>{
     if(dF==='today') return t.ts && t.ts.startsWith(today);
@@ -9920,7 +9980,7 @@ function renderBlotter(){
 }
 
 function renderCash(){
-  const today=new Date().toISOString().slice(0,10);
+  const today=DS(new Date());
   // Solo trades aprobados de hoy impactan caja
   const todayApproved=_blotter.filter(t=>t.ts && t.ts.startsWith(today) && t.approved==='yes');
 
@@ -10094,7 +10154,7 @@ function exportBlotterXLSX(){
     alert('SheetJS no cargó (verificá conexión). Usá CSV como fallback.');
     return;
   }
-  const today=new Date().toISOString().slice(0,10);
+  const today=DS(new Date());
   const wb=XLSX.utils.book_new();
 
   // Hoja 1: Trades
@@ -12482,7 +12542,7 @@ function snapshotResiduals(){
   const items=getAllCalculatedItems();
   if(!items.length) return;
   const h=readResidualHistory();
-  const today=new Date().toISOString().slice(0,10);
+  const today=DS(new Date());
   items.forEach(it=>{
     if(it.residual==null||!isFinite(it.residual))return;
     if(!h[it.ticker]) h[it.ticker]=[];
@@ -15665,6 +15725,19 @@ function collectIntradayData(){
   const h=now.getHours();
   if(h<10) return;
 
+  // FIX cross-midnight: si la tab quedó abierta toda la noche, los arrays
+  // tienen data de ayer. Verificar fecha del último punto y resetear si es
+  // de otro día (antes de pushear el de hoy).
+  const todayStr=DS(now);
+  function _purgeIfStale(arr){
+    if (!arr.length) return arr;
+    const lastDate=DS(arr[arr.length-1].t);
+    if (lastDate !== todayStr) { arr.length = 0; }
+    return arr;
+  }
+  _purgeIfStale(_intradaySpot);
+  _purgeIfStale(_intradayMep);
+
   const spot=getFxSpot();
   const mep=getFxMep();
 
@@ -15746,7 +15819,7 @@ function _qtRenderHistStatus(){
   }
   const dates=_qtHistory.map(s=>s.date).sort();
   const first=dates[0], last=dates[dates.length-1];
-  const todayStr=new Date().toISOString().slice(0,10);
+  const todayStr=DS(new Date());
   const hasToday=dates.includes(todayStr);
   el.innerHTML=`📂 <b style="color:var(--ac)">${_qtHistory.length}</b> snapshots · primer día <b>${first}</b> · último <b>${last}</b> ${hasToday?'<span style="color:var(--ac)">· hoy ✓</span>':'<span style="color:var(--am)">· hoy pendiente</span>'}`;
 }
@@ -15759,8 +15832,8 @@ async function qtTakeSnapshot(){
   try{
     // Recolectar estado actual de los bonos calculados
     const settleEl=document.getElementById('settleDate');
-    const settle=settleEl?.value||new Date().toISOString().slice(0,10);
-    const today=new Date().toISOString().slice(0,10);
+    const settle=settleEl?.value||DS(new Date());
+    const today=DS(new Date());
     const collect=(arr,type)=>arr.filter(b=>b._ok).map(b=>{
       const px=(typeof getCurrentPrice==='function')?getCurrentPrice(b.id):null;
       return {
@@ -16184,7 +16257,7 @@ function qtRunBacktest(){
 function _qtMaybeAutoSnapshot(){
   try{
     const last=localStorage.getItem('cer_qt_last_autosnap_v1');
-    const today=new Date().toISOString().slice(0,10);
+    const today=DS(new Date());
     if(last===today) return;
     // Solo si hay bonos calculados
     const okCount=(typeof BONDS!=='undefined'?BONDS.filter(b=>b._ok).length:0)+

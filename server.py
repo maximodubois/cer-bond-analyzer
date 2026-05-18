@@ -70,6 +70,7 @@ PRIMARY_MERV_PREFIX = os.getenv("PRIMARY_MERV_PREFIX", "MERV - XMEV")
 # AUTH — Simple PIN-based sessions
 # ══════════════════════════════════════════════════════════════════
 _sessions = {}  # token -> expiry timestamp
+_sessions_lock = threading.Lock()
 
 def auth_required():
     """Check if auth is enabled."""
@@ -77,18 +78,29 @@ def auth_required():
 
 def create_session():
     token = secrets.token_hex(32)
-    _sessions[token] = time.time() + SESSION_TTL
+    with _sessions_lock:
+        # GC oportunista antes de insertar
+        if len(_sessions) > 500:
+            now = time.time()
+            for k in [k for k, v in _sessions.items() if v < now]:
+                _sessions.pop(k, None)
+        # Hard cap: si después del GC seguimos >10k sessions vivas, rechazar.
+        # Previene DoS de un atacante con PIN correcto.
+        if len(_sessions) > 10000:
+            return None
+        _sessions[token] = time.time() + SESSION_TTL
     return token
 
 def validate_session(token):
     if not token:
         return False
-    exp = _sessions.get(token)
-    if not exp:
-        return False
-    if time.time() > exp:
-        del _sessions[token]
-        return False
+    with _sessions_lock:
+        exp = _sessions.get(token)
+        if not exp:
+            return False
+        if time.time() > exp:
+            _sessions.pop(token, None)  # safe vs KeyError race
+            return False
     return True
 
 def get_session_from_cookie(cookie_header):
@@ -637,14 +649,25 @@ class Handler(SimpleHTTPRequestHandler):
             self._save_fx_calc_ticks()
             return
         if self.path == "/login":
+            # FIX: si auth no está configurado, /login POST no debe mintear sessions
+            # (vector de DoS para inflar _sessions dict).
+            if not auth_required():
+                self._send_json({"error": "auth not configured"}, 403); return
             length = int(self.headers.get("Content-Length", 0))
+            # FIX DoS: login body es solo "pin=xxxx", máx 1 KB
+            if length > 1024:
+                self._send_json({"error": "payload too large"}, 413); return
             body = self.rfile.read(length).decode("utf-8")
-            pin = ""
-            for part in body.split("&"):
-                if part.startswith("pin="):
-                    pin = part[4:].strip()
-            if pin == AUTH_PIN:
+            # FIX: parse_qs handlea URL-decoding correcto (% espacio + etc)
+            parsed = urllib.parse.parse_qs(body)
+            pin = (parsed.get("pin") or [""])[0].strip()
+            # FIX: constant-time comparison para no leak length info
+            if AUTH_PIN and secrets.compare_digest(pin, AUTH_PIN):
                 token = create_session()
+                if not token:
+                    # Hard cap reached
+                    self._send_html(LOGIN_HTML.replace("__ERR__", "Sistema saturado, intentá más tarde"), 503)
+                    return
                 self.send_response(302)
                 self.send_header("Set-Cookie", f"cer_session={token}; Path=/; HttpOnly; SameSite=Strict; Max-Age={SESSION_TTL}")
                 self.send_header("Location", "/")
@@ -671,6 +694,9 @@ class Handler(SimpleHTTPRequestHandler):
         """
         try:
             length = int(self.headers.get("Content-Length", 0) or 0)
+            # FIX DoS: cap payload a 5 MB (snapshot diario puede ser grande).
+            if length > 5 * 1024 * 1024:
+                self._send_json({"error": "payload too large"}, 413); return
             raw = self.rfile.read(length).decode("utf-8") if length else "{}"
             snap = json.loads(raw)
             if not snap.get("date"):
@@ -700,12 +726,12 @@ class Handler(SimpleHTTPRequestHandler):
     def _save_fx_calc_ticks(self):
         """POST /api/fx/calc_ticks
         Body: {ts:int(ms,opt), rows:[{code, price, pct_day?, source?}, ...]}
-        Para ARS_OF/MEP/CCL calculados client-side desde DLR/SPOT y AL30 series.
-        Se guarda en fx_ticks (mismo schema que TwelveData/DolarAPI) — coexisten
-        por timestamp distinto.
         """
         try:
             length = int(self.headers.get("Content-Length", 0) or 0)
+            # FIX DoS: cap payload a 256 KB. Body típico es ~5 KB.
+            if length > 256 * 1024:
+                self._send_json({"error": "payload too large"}, 413); return
             raw = self.rfile.read(length).decode("utf-8") if length else "{}"
             body = json.loads(raw)
             rows = body.get("rows") or []
@@ -742,6 +768,9 @@ class Handler(SimpleHTTPRequestHandler):
         """
         try:
             length = int(self.headers.get("Content-Length", 0) or 0)
+            # FIX DoS: cap payload a 512 KB (bond ticks tiene más rows que fx).
+            if length > 512 * 1024:
+                self._send_json({"error": "payload too large"}, 413); return
             raw = self.rfile.read(length).decode("utf-8") if length else "{}"
             body = json.loads(raw)
             rows = body.get("rows") or []
@@ -818,14 +847,20 @@ def _start_fx_scheduler():
             # Mantenimiento diario (~03 UTC):
             #   - Compactación tiered: ticks > 7d se downsamplean a 1 cada 15 min
             #   - Prune duro: ticks > 60d se borran (último resort)
-            # Esto mantiene la .db chica para los commits a GitHub (cap 100 MB).
+            # FIX: usar last_compact_date persistido en kv en vez de matchear
+            # hora exacta. Así si el server reinicia entre 02:59-04:00, igual
+            # corre la compactación del día.
             try:
-                if _dt.datetime.utcnow().hour == 3:
+                today_utc = _dt.datetime.utcnow().strftime("%Y-%m-%d")
+                last = storage.kv_get("last_compact_date")
+                # Solo correr si: (a) ya pasó la hora 3 UTC y (b) hoy no se corrió
+                if _dt.datetime.utcnow().hour >= 3 and last != today_utc:
                     bd = storage.bond_compact_old_ticks(keep_raw_days=7, compact_interval_min=15)
                     fxd = storage.fx_compact_old_ticks(keep_raw_days=7, compact_interval_min=15)
                     storage.bond_prune_ticks(keep_days=60)
                     storage.fx_prune_ticks(keep_days=90)
-                    print(f"[scheduler] daily compact: bond -{bd} fx -{fxd} rows")
+                    storage.kv_set("last_compact_date", today_utc)
+                    print(f"[scheduler] daily compact {today_utc}: bond -{bd} fx -{fxd} rows")
             except Exception as e:
                 print(f"[scheduler] compact error: {e}")
             time.sleep(3600)

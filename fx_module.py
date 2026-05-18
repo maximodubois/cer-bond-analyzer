@@ -213,40 +213,56 @@ def _td_fetch_all():
 def _td_do_refresh():
     """Hace el fetch real a TwelveData + persistencia. NO chequea cadencia ni
     ventana — eso es responsabilidad del caller. Single source of truth para
-    todo lo que llame a TD."""
+    todo lo que llame a TD.
+
+    FIX perf: NO mantener _td_lock durante el HTTP request (15s timeout).
+    El HTTP corre sin lock; al volver, tomamos el lock SOLO para mutar el
+    cache global. Esto permite que get_snapshot() siga leyendo el cache
+    viejo sin bloquearse durante el fetch.
+    """
     if not TWELVEDATA_API_KEY:
         return False
+
+    # Chequeo de créditos + reserva (rápido, requiere lock interno propio)
+    allowed, state = _credits_charge(len(TD_SYMBOLS))
+    if not allowed:
+        with _td_lock:
+            _td_snapshot["last_error"] = (
+                f"quota agotada: used={state['used']}/{TD_DAILY_CAP} "
+                f"min={state['minute_used']}/8")
+        return False
+
+    # HTTP fetch SIN lock (15s timeout). Otras lecturas siguen funcionando.
+    try:
+        data = _td_fetch_all()
+    except Exception as e:
+        with _td_lock:
+            _td_snapshot["last_error"] = str(e)
+        return False
+
+    # Update atómico del cache (lock corto)
+    now = time.time()
     with _td_lock:
-        snap = _td_snapshot
-        now = time.time()
-        allowed, state = _credits_charge(len(TD_SYMBOLS))
-        if not allowed:
-            snap["last_error"] = (f"quota agotada: used={state['used']}/{TD_DAILY_CAP} "
-                                  f"min={state['minute_used']}/8")
-            return False
+        _td_snapshot["by_code"] = data
+        _td_snapshot["last_success_ts"] = now
+        _td_snapshot["ts"] = int(now * 1000)
+        _td_snapshot["last_error"] = None
+
+    # Persistencia SQLite (sin lock TD — storage tiene su propio lock)
+    ts_ms = int(now * 1000)
+    for code, q in data.items():
+        if q.get("error") or q.get("last") is None:
+            continue
         try:
-            data = _td_fetch_all()
-            snap["by_code"] = data
-            snap["last_success_ts"] = now
-            snap["ts"] = int(now * 1000)
-            snap["last_error"] = None
-            ts_ms = int(now * 1000)
-            for code, q in data.items():
-                if q.get("error") or q.get("last") is None:
-                    continue
-                try:
-                    storage.fx_tick_insert(
-                        code=code, price=q["last"],
-                        prev_close=q.get("prev_close"),
-                        pct_day=q.get("pct_day"),
-                        source="twelvedata", ts_ms=ts_ms,
-                    )
-                except Exception as e:
-                    print(f"[fx] tick persist error {code}: {e}")
-            return True
+            storage.fx_tick_insert(
+                code=code, price=q["last"],
+                prev_close=q.get("prev_close"),
+                pct_day=q.get("pct_day"),
+                source="twelvedata", ts_ms=ts_ms,
+            )
         except Exception as e:
-            snap["last_error"] = str(e)
-            return False
+            print(f"[fx] tick persist error {code}: {e}")
+    return True
 
 
 def _td_refresh_if_due():
@@ -409,18 +425,24 @@ def get_snapshot():
                     item["pct_day"] = td["pct_day"]; item["data_source"] = "twelvedata"
                     item["age_sec"] = td_age_sec
                 else:
-                    yh = _yahoo_chart(cfg["yh_symbol"], range_str="1d", interval="5m")
-                    item["last"] = yh["last"]; item["prev_close"] = yh["prev_close"]
-                    item["pct_day"] = yh["pct_day"]; item["data_source"] = "yahoo_fallback"
-                    if yh["last"] is not None:
-                        try:
-                            storage.fx_tick_insert(
-                                code=cfg["code"], price=yh["last"],
-                                prev_close=yh["prev_close"], pct_day=yh["pct_day"],
-                                source="yahoo_fallback",
-                            )
-                        except Exception:
-                            pass
+                    # FIX DoS: NO disparar Yahoo sync inline. Cada call serial de
+                    # 12s × 6 monedas = 72s respuesta → UI freezada. En cambio
+                    # leer último tick guardado (fx_ticks) o devolver stale flag.
+                    item["last"] = None; item["prev_close"] = None; item["pct_day"] = None
+                    item["data_source"] = "no_data"
+                    item["error"] = "TD cache vacío — schedule fetcher corriendo"
+                    # Intentar el último tick persistido si existe
+                    try:
+                        last = storage.fx_latest(cfg["code"])
+                        if last and last.get("price") is not None:
+                            item["last"] = last["price"]
+                            item["prev_close"] = last.get("prev_close")
+                            item["pct_day"] = last.get("pct_day")
+                            item["data_source"] = "sqlite_last_tick"
+                            item["age_sec"] = int(time.time() - last["ts"]/1000) if last.get("ts") else None
+                            item["error"] = None
+                    except Exception:
+                        pass
         except Exception as e:
             item["error"] = str(e)
         items.append(item)
