@@ -671,11 +671,15 @@ def get_status():
 # SCHEDULER hook: snapshot horario + commit DB
 # ══════════════════════════════════════════════════════════════════
 def hourly_tick():
-    """Llamada cada ~1h desde server.py. Fuerza snapshot, persiste, commitea DB."""
+    """Llamada cada ~15min desde server.py. Fuerza snapshot, persiste, commitea DB.
+
+    Throttle de 15 min: reduce ventana de pérdida en restarts de Railway
+    (filesystem efímero) de ~50min a ~15min. El hash-check en
+    commit_db_to_github evita PUTs idénticos.
+    """
     try:
         snap = get_snapshot()
-        # commit con interval mínimo 50 min para no spamear GitHub
-        ok, msg = storage.commit_db_to_github(min_interval_sec=50 * 60)
+        ok, msg = storage.commit_db_to_github(min_interval_sec=15 * 60)
         return {"snapshot_items": len(snap["items"]), "commit_ok": ok, "commit_msg": msg}
     except Exception as e:
         return {"error": str(e)}

@@ -20,6 +20,7 @@ import json
 import time
 import sqlite3
 import base64
+import hashlib
 import threading
 import urllib.request
 import urllib.error
@@ -691,6 +692,17 @@ def commit_db_to_github(message=None, min_interval_sec=300):
         blob_size = os.path.getsize(DB_PATH)
         with open(DB_PATH, "rb") as f:
             blob = f.read()
+        # Hash-check: si el blob es idéntico al último committeado, no PUTear.
+        # Evita commits "data: history.db ..." con cero cambios cuando el
+        # scheduler corre fuera de horario operativo o nadie usa la app.
+        new_hash = hashlib.sha256(blob).hexdigest()
+        last_hash = kv_get("last_db_commit_hash")
+        if last_hash == new_hash:
+            del blob
+            # Tocamos el ts igual para que el throttle no se dispare en cada
+            # request (sino quedaría intentando hashear cada N segundos).
+            kv_set("last_db_commit_ts", str(now))
+            return False, f"unchanged ({blob_size} bytes, sha={new_hash[:8]})"
         b64 = base64.b64encode(blob).decode("ascii")
         del blob  # libera ~db_size bytes inmediatamente
 
@@ -716,6 +728,7 @@ def commit_db_to_github(message=None, min_interval_sec=300):
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
                 kv_set("last_db_commit_ts", str(now))
+                kv_set("last_db_commit_hash", new_hash)
                 return True, f"ok {r.status} ({blob_size} bytes)"
         except urllib.error.HTTPError as e:
             return False, f"github PUT {e.code}: {e.read().decode('utf-8','replace')[:200]}"

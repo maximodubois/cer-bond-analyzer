@@ -725,7 +725,10 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _save_fx_calc_ticks(self):
         """POST /api/fx/calc_ticks
-        Body: {ts:int(ms,opt), rows:[{code, price, pct_day?, source?}, ...]}
+        Body: {rows:[{code, price, pct_day?, source?}, ...]}
+
+        Usa timestamp del servidor (no del body) para evitar que clocks de
+        cliente desfasados desordenen los charts. El body.ts se ignora.
         """
         try:
             length = int(self.headers.get("Content-Length", 0) or 0)
@@ -735,7 +738,7 @@ class Handler(SimpleHTTPRequestHandler):
             raw = self.rfile.read(length).decode("utf-8") if length else "{}"
             body = json.loads(raw)
             rows = body.get("rows") or []
-            ts_ms = body.get("ts")
+            ts_ms = int(time.time() * 1000)  # server-side, ignora body.ts
             n = 0
             for r in rows:
                 code = r.get("code")
@@ -762,9 +765,10 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _save_bond_ticks(self):
         """POST /api/bond/ticks
-        Body: {ts:int (ms, opt), rows:[{ticker, bond_type, price, bid, ask, tir, tna, duration}, ...]}
+        Body: {rows:[{ticker, bond_type, price, bid, ask, tir, tna, duration}, ...]}
         El cliente computa TIR/duration (toda la lógica financiera vive en JS)
-        y nos lo manda cada ~60s. Persistimos en SQLite.
+        y nos lo manda cada ~60s. Persistimos en SQLite con ts server-side
+        para evitar desfasajes por clocks de cliente.
         """
         try:
             length = int(self.headers.get("Content-Length", 0) or 0)
@@ -774,7 +778,7 @@ class Handler(SimpleHTTPRequestHandler):
             raw = self.rfile.read(length).decode("utf-8") if length else "{}"
             body = json.loads(raw)
             rows = body.get("rows") or []
-            ts_ms = body.get("ts")
+            ts_ms = int(time.time() * 1000)  # server-side, ignora body.ts
             n = storage.bond_tick_insert_many(rows, ts_ms=ts_ms)
             self._send_json({"ok": True, "inserted": n})
         except json.JSONDecodeError as e:
@@ -834,7 +838,12 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 def _start_fx_scheduler():
-    """Thread daemon: cada hora dispara hourly_tick() (snapshot FX + commit DB)."""
+    """Thread daemon: cada 15 min dispara hourly_tick() (snapshot FX + commit DB).
+
+    Cadencia 15 min (no 1h) para reducir ventana de pérdida de bond_ticks y
+    calc_ticks en restarts de Railway. El commit interno usa throttle 15min +
+    hash-check, así que si nada cambió no se sube a GitHub.
+    """
     def loop():
         # Pequeña espera al arranque para que init_sheets + restore terminen
         time.sleep(30)
@@ -869,7 +878,7 @@ def _start_fx_scheduler():
                     print(f"[scheduler] daily compact {today_utc}: bond -{bd} fx -{fxd} fwd -{fwdc} rows")
             except Exception as e:
                 print(f"[scheduler] compact error: {e}")
-            time.sleep(3600)
+            time.sleep(900)  # 15 min
     t = threading.Thread(target=loop, name="fx-scheduler", daemon=True)
     t.start()
     return t
