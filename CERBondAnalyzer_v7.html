@@ -2039,6 +2039,7 @@
             <div class="fxg-bc-card" data-k="canje">
               <div class="fxg-bc-l">CANJE CCL / MEP <span id="fxg-bc-canje-ccl" style="font-size:9px;color:#64748b;margin-left:6px"></span></div>
               <div class="fxg-bc-v" id="fxg-bc-canje">—</div>
+              <div style="font-size:9px;color:#64748b;margin-top:4px"></div>
             </div>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap">
@@ -2058,6 +2059,30 @@
             <strong style="color:#cbd5e1">PRECIO</strong>: unidades de la <em>fila</em> por 1 unidad de la <em>columna</em>. Verde = columna se apreció vs fila en el día · Rojo = se depreció.
           </div>
         </div>
+      </div>
+
+      <!-- ═══ Brecha & Canje histórico ═══ -->
+      <div class="fx-pane" style="margin-top:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px">
+          <h4 style="margin:0">Brecha &amp; Canje — Histórico</h4>
+          <div class="fx-mode-buttons" id="fxg-bc-tf-buttons">
+            <button class="fx-mode-btn" data-bctf="1D">1D</button>
+            <button class="fx-mode-btn active" data-bctf="1W">1W</button>
+            <button class="fx-mode-btn" data-bctf="1M">1M</button>
+            <button class="fx-mode-btn" data-bctf="3M">3M</button>
+            <button class="fx-mode-btn" data-bctf="ALL">ALL</button>
+          </div>
+        </div>
+        <div style="font-size:9px;color:#64748b;margin-bottom:8px;line-height:1.5">
+          <span style="color:#fbbf24">●</span> <b>BRECHA</b> = (MEP / Oficial Mayorista − 1) × 100 ·
+          <span style="color:#a78bfa">●</span> <b>CANJE</b> = (CCL / MEP − 1) × 100 ·
+          <span style="color:#22d3ee">●</span> <b>CCL</b> ARS/USD (eje derecho).
+          Snapshots cada 1 min desde el dashboard.
+        </div>
+        <div style="background:#0a0f1a;border:1px solid #131a28;border-radius:6px;padding:8px">
+          <canvas id="fxg-bc-chart" style="width:100%;height:300px;display:block"></canvas>
+        </div>
+        <div id="fxg-bc-status" style="font-size:9px;color:#64748b;margin-top:4px">—</div>
       </div>
 
       <!-- ═══ YTD Performance vs DXY ═══ -->
@@ -2682,6 +2707,133 @@
       }
     }
 
+    // ═══ Brecha & Canje histórico ═══
+    let _fxgBcTf = '1W';
+    const _fxgBcCache = { brecha:[], canje:[], ccl:[], lastTf:null };
+
+    async function _fxgLoadBcHistory(){
+      const days = _fxgBcTf === '1D' ? 1 : _fxgBcTf === '1W' ? 7 : _fxgBcTf === '1M' ? 30 : _fxgBcTf === '3M' ? 90 : 365;
+      try {
+        const [br, ca, cc] = await Promise.all([
+          fetchJSON('/api/fx/history?code=BRECHA&days='+days+'&mode=ticks').catch(()=>null),
+          fetchJSON('/api/fx/history?code=CANJE&days='+days+'&mode=ticks').catch(()=>null),
+          fetchJSON('/api/fx/history?code=ARS_CCL&days='+days+'&mode=ticks').catch(()=>null),
+        ]);
+        _fxgBcCache.brecha = (br && br.points) || [];
+        _fxgBcCache.canje  = (ca && ca.points) || [];
+        _fxgBcCache.ccl    = (cc && cc.points) || [];
+        _fxgBcCache.lastTf = _fxgBcTf;
+        _fxgDrawBcChart();
+      } catch(e) {
+        const s = document.getElementById('fxg-bc-status');
+        if (s) s.textContent = 'Error: ' + e;
+      }
+    }
+
+    function _fxgDrawBcChart(){
+      const cv = document.getElementById('fxg-bc-chart');
+      if (!cv) return;
+      const dpr = window.devicePixelRatio || 1;
+      const W = cv.clientWidth || 700, H = cv.clientHeight || 300;
+      cv.width = W*dpr; cv.height = H*dpr;
+      const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0);
+      c.clearRect(0,0,W,H);
+      const pad = {t:12, r:55, b:24, l:42};
+
+      const brecha = _fxgBcCache.brecha || [];
+      const canje  = _fxgBcCache.canje  || [];
+      const ccl    = _fxgBcCache.ccl    || [];
+      const allBC = brecha.concat(canje);
+
+      if (!allBC.length) {
+        c.fillStyle='#475569'; c.font="11px 'IBM Plex Mono',monospace"; c.textAlign='center';
+        c.fillText('Sin datos en este timeframe — esperá que se acumulen snapshots (1/min)', W/2, H/2);
+        return;
+      }
+
+      // X: tiempo común
+      const allTs = allBC.concat(ccl).map(p => p.t);
+      const tMin = Math.min(...allTs), tMax = Math.max(...allTs);
+      const tR = (tMax - tMin) || 1;
+
+      // Eje Y izq: brecha y canje (en %)
+      const bcYs = allBC.map(p => p.v);
+      const yMin = Math.min(...bcYs) - 1, yMax = Math.max(...bcYs) + 1, yR = yMax-yMin;
+
+      // Eje Y der: CCL ARS/USD
+      const cclYs = ccl.map(p => p.v);
+      const cclMin = cclYs.length ? Math.min(...cclYs)*0.995 : 0;
+      const cclMax = cclYs.length ? Math.max(...cclYs)*1.005 : 1;
+      const cclR = cclMax - cclMin || 1;
+
+      const xP = t => pad.l + (t-tMin)/tR * (W-pad.l-pad.r);
+      const yP = v => pad.t + (1-(v-yMin)/yR) * (H-pad.t-pad.b);
+      const yPC = v => pad.t + (1-(v-cclMin)/cclR) * (H-pad.t-pad.b);
+
+      // Grid Y izq
+      c.strokeStyle='#1a2233'; c.lineWidth=0.5;
+      for (let i=0; i<=5; i++) {
+        const v = yMin + yR*i/5, py = yP(v);
+        c.beginPath(); c.moveTo(pad.l, py); c.lineTo(W-pad.r, py); c.stroke();
+        c.fillStyle='#64748b'; c.font="9px 'IBM Plex Mono',monospace"; c.textAlign='right';
+        c.fillText(v.toFixed(1)+'%', pad.l-4, py+3);
+      }
+      // Eje Y der (CCL)
+      if (cclYs.length) {
+        c.fillStyle='#22d3ee'; c.textAlign='left'; c.font="9px 'IBM Plex Mono',monospace";
+        for (let i=0; i<=5; i++) {
+          const v = cclMin + cclR*i/5;
+          c.fillText('$'+v.toFixed(0), W-pad.r+3, yPC(v)+3);
+        }
+      }
+      // Eje X
+      c.fillStyle='#64748b'; c.textAlign='center';
+      const tfFmt = _fxgBcTf === '1D'
+        ? (d => d.toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'}))
+        : (d => d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'}));
+      for (let i=0; i<=4; i++) {
+        const t = tMin + tR*i/4;
+        c.fillText(tfFmt(new Date(t)), xP(t), H-8);
+      }
+
+      // Helper para dibujar línea
+      function drawLine(pts, color, width, yFn){
+        if (!pts.length) return;
+        c.save(); c.strokeStyle = color; c.lineWidth = width;
+        c.beginPath();
+        pts.forEach((p,i) => { const x=xP(p.t), y=yFn(p.v); if(i===0) c.moveTo(x,y); else c.lineTo(x,y); });
+        c.stroke(); c.restore();
+      }
+      drawLine(brecha, '#fbbf24', 1.8, yP);
+      drawLine(canje,  '#a78bfa', 1.8, yP);
+      drawLine(ccl,    '#22d3ee', 1.4, yPC);
+
+      // Labels al borde derecho con último valor
+      if (brecha.length) {
+        const last = brecha[brecha.length-1];
+        c.fillStyle='#fbbf24'; c.font="bold 9px 'IBM Plex Mono',monospace"; c.textAlign='left';
+        c.fillText('BRECHA '+last.v.toFixed(1)+'%', W-pad.r-100, yP(last.v)-4);
+      }
+      if (canje.length) {
+        const last = canje[canje.length-1];
+        c.fillStyle='#a78bfa';
+        c.fillText('CANJE '+last.v.toFixed(2)+'%', W-pad.r-100, yP(last.v)+12);
+      }
+
+      const status = document.getElementById('fxg-bc-status');
+      if (status) {
+        status.textContent = `Brecha: ${brecha.length} pts · Canje: ${canje.length} pts · CCL: ${ccl.length} pts · ${_fxgBcTf} · ${new Date().toLocaleTimeString('es-AR')}`;
+      }
+    }
+
+    document.getElementById('fxg-bc-tf-buttons').addEventListener('click', e => {
+      if (!e.target.matches('.fx-mode-btn')) return;
+      document.querySelectorAll('#fxg-bc-tf-buttons .fx-mode-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      _fxgBcTf = e.target.dataset.bctf;
+      _fxgLoadBcHistory();
+    });
+
     document.getElementById('fxg-ytd-mode-buttons').addEventListener('click', e => {
       if (!e.target.matches('.fx-mode-btn')) return;
       document.querySelectorAll('#fxg-ytd-mode-buttons .fx-mode-btn').forEach(b => b.classList.remove('active'));
@@ -2710,10 +2862,11 @@
     function startFxGlobal() {
       if (_fxgStarted) return;
       _fxgStarted = true;
-      Promise.all([loadSnapshot(), loadSeries(), loadCross(), _fxgLoadYtd()]);
-      // YTD se refresca más espaciado (data diaria de Yahoo cambia poco intraday)
+      Promise.all([loadSnapshot(), loadSeries(), loadCross(), _fxgLoadYtd(), _fxgLoadBcHistory()]);
+      // YTD y Brecha histórico se refrescan más espaciado (data ~ minutal cambia poco)
       setInterval(() => { loadSnapshot(); loadCross(); loadSeries(); }, REFRESH_MS);
       setInterval(() => { _fxgLoadYtd(); }, 5*60*1000); // YTD cada 5 min
+      setInterval(() => { _fxgLoadBcHistory(); }, 60*1000); // Brecha/Canje cada 1 min
     }
 
     // Reorder DOM al cargar: mover el card del FX Panel Global JUSTO DESPUÉS del
@@ -8590,13 +8743,27 @@ function pushFxCalcTicks(){
       // ARS_MAY pero más espaciado).
       if (v > 0) rows.push({code:'ARS_MAY', price:v, source:'DLR/SPOT'});
     }
+    let mepVal = 0, cclVal = 0, spotVal = 0;
     if (typeof getFxMep === 'function') {
-      const v = getFxMep();
-      if (v > 0) rows.push({code:'ARS_MEP', price:v, source:'AL30/AL30D'});
+      mepVal = getFxMep();
+      if (mepVal > 0) rows.push({code:'ARS_MEP', price:mepVal, source:'AL30/AL30D'});
     }
     if (typeof getFxCcl === 'function') {
-      const v = getFxCcl();
-      if (v > 0) rows.push({code:'ARS_CCL', price:v, source:'AL30/AL30C'});
+      cclVal = getFxCcl();
+      if (cclVal > 0) rows.push({code:'ARS_CCL', price:cclVal, source:'AL30/AL30C'});
+    }
+    if (typeof getFxSpot === 'function') {
+      spotVal = getFxSpot();
+    }
+    // BRECHA = (MEP / Oficial_Mayorista - 1) * 100  ← en %, guardado como "price"
+    // CANJE  = (CCL / MEP - 1) * 100                ← idem
+    if (spotVal > 0 && mepVal > 0) {
+      const brecha = (mepVal / spotVal - 1) * 100;
+      rows.push({code:'BRECHA', price:brecha, source:'MEP/Mayorista'});
+    }
+    if (mepVal > 0 && cclVal > 0) {
+      const canje = (cclVal / mepVal - 1) * 100;
+      rows.push({code:'CANJE', price:canje, source:'CCL/MEP'});
     }
   } catch(e){}
   if (!rows.length) return;
