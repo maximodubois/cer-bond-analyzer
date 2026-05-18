@@ -453,14 +453,100 @@ def bond_compact_old_ticks(keep_raw_days=7, compact_interval_min=15):
     return deleted
 
 
-def fx_compact_codes_to_hourly(code_prefixes):
-    """Política específica: códigos con prefix dado (ej ['IMP_', 'PS1_', 'PS2_',
-    'PSP1_', 'PSP2_']) → mantener TODOS los ticks del día actual (UTC), y para
-    días anteriores, compactar a 1 tick por hora.
+def fx_compact_codes_tiered(code_prefixes,
+                            tier2_minutes=15, tier2_cutoff_days=90,
+                            tier3_minutes=60, prune_days=730):
+    """Política tiered para códigos del Forward Matrix (IMP_/PS_/PSP_):
 
-    Llamar diariamente a las 00 UTC (21 ART) para compactar el día anterior.
-    Devuelve cuántas filas se borraron.
+      - Hoy (UTC):        raw 1/min (NO se toca)
+      - 1 a 90 días:      1 cada 15 min      (tier 2)
+      - 90 a 730 días:    1 cada 1 hora      (tier 3)
+      - > 730 días:       borrado            (prune)
+
+    Idempotente: si corre dos veces, segunda vez no borra nada porque ya
+    está compactado al bucket correspondiente.
+
+    Llamar diariamente desde el scheduler post-EOD (00 UTC).
+    Devuelve total de filas borradas en esta corrida.
     """
+    if not code_prefixes:
+        return 0
+    now_utc = _dt.datetime.utcnow()
+    today_start = _dt.datetime(now_utc.year, now_utc.month, now_utc.day)
+    cutoff_today_ms  = int(today_start.timestamp() * 1000)
+    cutoff_t2_ms     = int((today_start - _dt.timedelta(days=tier2_cutoff_days)).timestamp() * 1000)
+    cutoff_prune_ms  = int((today_start - _dt.timedelta(days=prune_days)).timestamp() * 1000)
+    tier2_bucket_ms  = int(tier2_minutes * 60 * 1000)
+    tier3_bucket_ms  = int(tier3_minutes * 60 * 1000)
+
+    like_clauses = " OR ".join(["code LIKE ?"] * len(code_prefixes))
+    like_args = [p + '%' for p in code_prefixes]
+
+    total_deleted = 0
+    with _DB_LOCK, _conn() as c:
+        # ─ Step 1: prune duro > prune_days ───────────────────────────
+        c.execute(
+            f"DELETE FROM fx_ticks WHERE ts < ? AND ({like_clauses})",
+            [cutoff_prune_ms] + like_args,
+        )
+        total_deleted += c.execute("SELECT changes()").fetchone()[0]
+
+        # ─ Step 2: tier 3 (90d → 730d) compactar a 1/hora ────────────
+        c.execute("DROP TABLE IF EXISTS _keep_t3")
+        c.execute(
+            f"""
+            CREATE TEMP TABLE _keep_t3 AS
+            SELECT code, MAX(ts) AS ts FROM fx_ticks
+            WHERE ts >= ? AND ts < ? AND ({like_clauses})
+            GROUP BY code, (ts / ?)
+            """,
+            [cutoff_prune_ms, cutoff_t2_ms] + like_args + [tier3_bucket_ms],
+        )
+        c.execute("CREATE INDEX IF NOT EXISTS _idx_keep_t3 ON _keep_t3(code, ts)")
+        c.execute(
+            f"""
+            DELETE FROM fx_ticks
+            WHERE ts >= ? AND ts < ? AND ({like_clauses})
+              AND NOT EXISTS (
+                SELECT 1 FROM _keep_t3 k
+                WHERE k.code = fx_ticks.code AND k.ts = fx_ticks.ts
+              )
+            """,
+            [cutoff_prune_ms, cutoff_t2_ms] + like_args,
+        )
+        total_deleted += c.execute("SELECT changes()").fetchone()[0]
+        c.execute("DROP TABLE IF EXISTS _keep_t3")
+
+        # ─ Step 3: tier 2 (hoy → 90d) compactar a 1 / 15-min ─────────
+        c.execute("DROP TABLE IF EXISTS _keep_t2")
+        c.execute(
+            f"""
+            CREATE TEMP TABLE _keep_t2 AS
+            SELECT code, MAX(ts) AS ts FROM fx_ticks
+            WHERE ts >= ? AND ts < ? AND ({like_clauses})
+            GROUP BY code, (ts / ?)
+            """,
+            [cutoff_t2_ms, cutoff_today_ms] + like_args + [tier2_bucket_ms],
+        )
+        c.execute("CREATE INDEX IF NOT EXISTS _idx_keep_t2 ON _keep_t2(code, ts)")
+        c.execute(
+            f"""
+            DELETE FROM fx_ticks
+            WHERE ts >= ? AND ts < ? AND ({like_clauses})
+              AND NOT EXISTS (
+                SELECT 1 FROM _keep_t2 k
+                WHERE k.code = fx_ticks.code AND k.ts = fx_ticks.ts
+              )
+            """,
+            [cutoff_t2_ms, cutoff_today_ms] + like_args,
+        )
+        total_deleted += c.execute("SELECT changes()").fetchone()[0]
+        c.execute("DROP TABLE IF EXISTS _keep_t2")
+    return total_deleted
+
+
+def fx_compact_codes_to_hourly(code_prefixes):
+    """LEGACY: usar fx_compact_codes_tiered. Mantenido por compat."""
     if not code_prefixes:
         return 0
     now_utc = _dt.datetime.utcnow()

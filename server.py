@@ -857,9 +857,11 @@ def _start_fx_scheduler():
                 if _dt.datetime.utcnow().hour >= 3 and last != today_utc:
                     bd = storage.bond_compact_old_ticks(keep_raw_days=7, compact_interval_min=15)
                     fxd = storage.fx_compact_old_ticks(keep_raw_days=7, compact_interval_min=15)
-                    # Forward Matrix: política específica 1/min hoy → 1/hora ayer+
-                    fwdc = storage.fx_compact_codes_to_hourly(
-                        ['IMP_', 'PS1_', 'PS2_', 'PSP1_', 'PSP2_']
+                    # Forward Matrix: tiered 1min hoy / 15min 1-90d / 1h >90d / prune >730d
+                    fwdc = storage.fx_compact_codes_tiered(
+                        ['IMP_', 'PS1_', 'PS2_', 'PSP1_', 'PSP2_'],
+                        tier2_minutes=15, tier2_cutoff_days=90,
+                        tier3_minutes=60, prune_days=730,
                     )
                     storage.bond_prune_ticks(keep_days=60)
                     storage.fx_prune_ticks(keep_days=90)
