@@ -35,6 +35,11 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 GITHUB_REPO = os.getenv("GITHUB_REPO", "maximodubois/cer-bond-analyzer")
 GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
 GITHUB_DB_PATH = "data/history.db"
+# DB_GITHUB_SYNC controla los commits periódicos del .db al repo. Default OFF
+# porque cada commit triggerea un build en Render (gasta pipeline minutes).
+# Setear DB_GITHUB_SYNC=1 para reactivar. El restore en cold start sigue
+# funcionando aunque esté off (se descarga el .db una sola vez por deploy).
+DB_GITHUB_SYNC = os.getenv("DB_GITHUB_SYNC", "0").strip() in ("1", "true", "yes", "on")
 
 _DB_LOCK = threading.RLock()
 _COMMIT_LOCK = threading.Lock()
@@ -666,7 +671,14 @@ def restore_db_from_github():
 
 
 def commit_db_to_github(message=None, min_interval_sec=300):
-    """PUT data/history.db al repo. Respeta min_interval_sec entre commits."""
+    """PUT data/history.db al repo. Respeta min_interval_sec entre commits.
+
+    Desactivado por default (DB_GITHUB_SYNC env var) porque cada commit
+    triggerea un build de Render. El restore en cold start sigue funcionando
+    (lee .db de GitHub sin commitear).
+    """
+    if not DB_GITHUB_SYNC:
+        return False, "disabled (set DB_GITHUB_SYNC=1 to enable)"
     if not GITHUB_TOKEN:
         return False, "no token"
     if not os.path.exists(DB_PATH):
@@ -714,7 +726,11 @@ def commit_db_to_github(message=None, min_interval_sec=300):
         except Exception:
             pass
 
-        msg = message or f"data: history.db {_dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"
+        # [skip render] previene que el commit triggeree un build de Render.
+        # Aplica solo a la app correspondiente; otros providers (Vercel, etc)
+        # tienen su propio token.
+        base_msg = message or f"data: history.db {_dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"
+        msg = f"{base_msg} [skip render]"
         body = {"message": msg, "content": b64, "branch": GITHUB_BRANCH}
         if sha:
             body["sha"] = sha
