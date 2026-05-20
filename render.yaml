@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: cer-bond-analyzer
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    healthCheckPath: /api/health
+    autoDeploy: true
+    # Build filter: NO triggerear build cuando solo cambian datos.
+    # data/history.db se actualiza via GitHub API desde el server cada N min,
+    # cada uno de esos commits gastaba pipeline minutes en builds inutiles.
+    # Con ignoredPaths, esos commits se ignoran para auto-deploy.
+    buildFilter:
+      ignoredPaths:
+        - data/**
+        - "**/*.db"
+        - "**/*.db-wal"
+        - "**/*.db-shm"
+        - .claude/**
+        - .agents/**
+        - "*.md"
