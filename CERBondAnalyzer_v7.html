@@ -3863,15 +3863,16 @@ async function fetchLatestCER(){
     detalle.sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
     // Store ALL historical values in cache
     detalle.forEach(d=>{ if(d.fecha&&d.valor) _bcraHistorico.set(d.fecha, d.valor); });
-    // Cap at the last day of the next CER window after today.
-    // When INDEC publishes IPC of month M (around mid M+1), BCRA publishes CER
-    // through the end of the [15/M+1 – 14/M+2] window = 14/M+2.
-    // Any data beyond that would require the next unknown IPC — exclude it.
+    // Cap al último día que BCRA publica con IPC ya conocido.
+    // Convención CER:
+    //  - IPC de mes M se publica ~14 de M+1.
+    //  - CER del [16/M+1, 15/M+2] usa IPC de M.
+    //  - O sea: con IPC de abril publicado en mayo, BCRA publica CER hasta 15/06.
+    // FIX off-by-one: antes el cap estaba en (nextAnchor - 1 día) = 14/M+2,
+    // cortando el último día válido. Ahora cap = nextAnchor = 15/M+2.
     const todayAnchor=getAnchor15(hoy);
     const nextAnchor=getNextAnchor15(todayAnchor);
-    // Cap at 14/M+2: last day before nextAnchor (= last day BCRA publishes using current known IPC).
-    // nextNextAnchor would go one window too far and pick up dates using the next unknown IPC.
-    const capStr=DS(new Date(nextAnchor.getTime()-864e5)); // day before next anchor = 14/M+2
+    const capStr=DS(nextAnchor); // 15/M+2 inclusive
     const latest=detalle.find(d=>d.fecha<=capStr)||detalle[detalle.length-1];
     document.getElementById("baseCER").value=latest.valor;
     document.getElementById("baseCERDate").value=latest.fecha;
