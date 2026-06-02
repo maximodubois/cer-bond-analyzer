@@ -3652,11 +3652,11 @@ const IM=[
   {k:"2026-08",l:"Ago 26",d:"1.7"},
   {k:"2026-09",l:"Sep 26",d:"1.6"},
   {k:"2026-10",l:"Oct 26",d:"1.5"},
-  {k:"2026-11",l:"Nov 26",d:"1.5"},
-  {k:"2026-12",l:"Dic 26",d:"1.5"},
-  {k:"2027-01",l:"Ene 27",d:"1.4"},
-  {k:"2027-02",l:"Feb 27",d:"1.2"},
-  {k:"2027-03",l:"Mar 27",d:"1.2"},
+  {k:"2026-11",l:"Nov 26",d:"1.4"},
+  {k:"2026-12",l:"Dic 26",d:"1.4"},
+  {k:"2027-01",l:"Ene 27",d:"1.3"},
+  {k:"2027-02",l:"Feb 27",d:"1.3"},
+  {k:"2027-03",l:"Mar 27",d:"1.3"},
   {k:"2027-04",l:"Abr 27",d:"1.2"},
   {k:"2027-05",l:"May 27",d:"1.2"},
   {k:"2027-06",l:"Jun 27",d:"1.2"},
@@ -5365,17 +5365,11 @@ function getUnknownMonthRange(cerBaseDate, cerRefDate){
   const lastKnown={m:lastKnownParsed.m,y:lastKnownParsed.y,label:MNAMES[lastKnownParsed.m]+" "+String(lastKnownParsed.y).slice(2),key:lastKnownKey};
 
   // Last NEEDED: CPI that feeds the window containing the ref date.
-  // If the ref date falls in the first half of the current CER window
-  // (weight < 0.5), the current window's CPI has negligible influence
-  // and we drop it — matching market convention where a bond maturing
-  // mid-month is effectively priced off the previous month's CPI.
+  // CER(refDate) = C(anchor) * (1+π_M)^(n/D) — la dependencia de π_M es real
+  // aunque sea fraccional, así que NO descartamos por weight. El mes que
+  // alimenta la ventana donde cae cerRefDate es incógnita si su IPC no salió.
   const refAnchor=getAnchor15(cerRefDate);
-  const nextRefAnchor=getNextAnchor15(refAnchor);
-  const nWin=DB(refAnchor,cerRefDate);
-  const Dwin=Math.max(1,DB(refAnchor,nextRefAnchor));
-  const weight=nWin/Dwin;
   let lnm=refAnchor.getMonth()-1, lny=refAnchor.getFullYear();
-  if(weight<0.5){ lnm-=1; } // drop trailing month whose influence is < 50%
   while(lnm<0){lnm+=12;lny--}
   const lastUnknown={m:lnm,y:lny,label:MNAMES[lnm]+" "+String(lny).slice(2),key:lny+"-"+String(lnm+1).padStart(2,"0")};
 
