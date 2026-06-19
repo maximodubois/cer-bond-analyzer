@@ -3960,11 +3960,13 @@ function getInflInputValue(key){
   const v=parseFloat(el.value);
   return isNaN(v)?null:v;
 }
-function getLastKnownInflKey(baseDateStr){
-  if(!baseDateStr) return null;
-  const baseDate=new Date(baseDateStr+"T00:00:00");
-  if(isNaN(baseDate.getTime())) return null;
-  return inflKeyForAnchor(getAnchor15(baseDate));
+function getLastKnownInflKey(_baseDateStr){
+  // El "último IPC conocido" depende del calendario de HOY, no del baseCERDate.
+  // IPC de mes M se publica ~14 de M+1. baseCERDate puede estar seteado al cap
+  // futuro de BCRA (15/M+2) y eso haría creer que el IPC de M+1 ya salió cuando
+  // todavía falta casi un mes. Comparamos siempre contra hoy.
+  const today=new Date(); today.setHours(0,0,0,0);
+  return inflKeyForAnchor(getAnchor15(today));
 }
 function getUnknownInflationMonths(baseDateStr){
   const lastKnownKey=getLastKnownInflKey(baseDateStr||document.getElementById("baseCERDate")?.value||"");
@@ -5357,9 +5359,11 @@ function buildInflMonthSpan(firstKey,lastKey,maxMonths=120){
 // so lastKnown=Mar and only Apr+ stays as unknown.
 
 function getUnknownMonthRange(cerBaseDate, cerRefDate){
-  // Last KNOWN = latest IPC month already public and therefore already determined
-  // by the current CER base window.
-  const lastKnownKey=inflKeyForAnchor(getAnchor15(cerBaseDate));
+  // Last KNOWN = latest IPC month already PUBLIC según el calendario de HOY.
+  // No se puede usar cerBaseDate porque BCRA cap se publica hasta 15/M+2 y eso
+  // adelantaría artificialmente el "último conocido" un mes.
+  const _today=new Date(); _today.setHours(0,0,0,0);
+  const lastKnownKey=inflKeyForAnchor(getAnchor15(_today));
   const lastKnownParsed=parseInflMonthKey(lastKnownKey);
   if(!lastKnownParsed) return {lastKnown:null,lastUnknown:null,months:[],fullyKnown:true,rangeError:true};
   const lastKnown={m:lastKnownParsed.m,y:lastKnownParsed.y,label:MNAMES[lastKnownParsed.m]+" "+String(lastKnownParsed.y).slice(2),key:lastKnownKey};
