@@ -3969,13 +3969,42 @@ function getInflInputValue(key){
   const v=parseFloat(el.value);
   return isNaN(v)?null:v;
 }
+// Fechas REALES de difusión del IPC por INDEC (mes_ref → fecha de publicación).
+// INDEC NO publica siempre el día 15: en 2026 varía entre el 10 y el 15.
+// Fuente: Calendario de difusión INDEC, 1er y 2do semestre 2026.
+// Dic-26 en adelante (incl. todo 2027) todavía no tiene calendario publicado
+// por INDEC, así que esos meses caen al fallback (≥15 del mes siguiente).
+const IPC_PUB_DATES={
+  "2025-12":"2026-01-13",
+  "2026-01":"2026-02-10",
+  "2026-02":"2026-03-12",
+  "2026-03":"2026-04-14",
+  "2026-04":"2026-05-14",
+  "2026-05":"2026-06-11",
+  "2026-06":"2026-07-14",
+  "2026-07":"2026-08-13",
+  "2026-08":"2026-09-10",
+  "2026-09":"2026-10-13",
+  "2026-10":"2026-11-12",
+  "2026-11":"2026-12-15",
+};
 function getLastKnownInflKey(_baseDateStr){
-  // El "último IPC conocido" depende del calendario de HOY, no del baseCERDate.
-  // IPC de mes M se publica ~14 de M+1. baseCERDate puede estar seteado al cap
-  // futuro de BCRA (15/M+2) y eso haría creer que el IPC de M+1 ya salió cuando
-  // todavía falta casi un mes. Comparamos siempre contra hoy.
+  // El "último IPC conocido" depende del calendario REAL de difusión de INDEC,
+  // no del baseCERDate ni de un día 15 rígido. IPC de mes M se publica entre el
+  // 10 y el 15 de M+1 según el mes. Usamos las fechas oficiales cuando existen
+  // y caemos al método del 15 ("conocido si hoy ≥ 15 de M+1") para meses sin
+  // calendario publicado (Dic-26 en adelante).
   const today=new Date(); today.setHours(0,0,0,0);
-  return inflKeyForAnchor(getAnchor15(today));
+  let lastByCal=null;
+  for(const mes in IPC_PUB_DATES){
+    const pub=new Date(IPC_PUB_DATES[mes]+"T00:00:00");
+    if(pub<=today && (!lastByCal||mes>lastByCal)) lastByCal=mes;
+  }
+  const byAnchor=inflKeyForAnchor(getAnchor15(today)); // fallback ~día 15
+  // Tomamos el más reciente entre el calendario real y el fallback, así los
+  // meses futuros sin calendario quedan cubiertos por el método del 15.
+  if(!lastByCal) return byAnchor;
+  return lastByCal>=byAnchor?lastByCal:byAnchor;
 }
 function getUnknownInflationMonths(baseDateStr){
   const lastKnownKey=getLastKnownInflKey(baseDateStr||document.getElementById("baseCERDate")?.value||"");
@@ -5368,11 +5397,11 @@ function buildInflMonthSpan(firstKey,lastKey,maxMonths=120){
 // so lastKnown=Mar and only Apr+ stays as unknown.
 
 function getUnknownMonthRange(cerBaseDate, cerRefDate){
-  // Last KNOWN = latest IPC month already PUBLIC según el calendario de HOY.
-  // No se puede usar cerBaseDate porque BCRA cap se publica hasta 15/M+2 y eso
-  // adelantaría artificialmente el "último conocido" un mes.
-  const _today=new Date(); _today.setHours(0,0,0,0);
-  const lastKnownKey=inflKeyForAnchor(getAnchor15(_today));
+  // Last KNOWN = último IPC ya PUBLICADO según el calendario REAL de difusión
+  // de INDEC (ver IPC_PUB_DATES). No se usa cerBaseDate (el cap de BCRA se
+  // publica hasta 15/M+2 y adelantaría el "último conocido" un mes) ni un día
+  // 15 rígido (INDEC publica entre el 10 y el 15 según el mes).
+  const lastKnownKey=getLastKnownInflKey();
   const lastKnownParsed=parseInflMonthKey(lastKnownKey);
   if(!lastKnownParsed) return {lastKnown:null,lastUnknown:null,months:[],fullyKnown:true,rangeError:true};
   const lastKnown={m:lastKnownParsed.m,y:lastKnownParsed.y,label:MNAMES[lastKnownParsed.m]+" "+String(lastKnownParsed.y).slice(2),key:lastKnownKey};
