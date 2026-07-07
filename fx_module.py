@@ -363,18 +363,41 @@ def _dolarapi_quote(casa):
 
 
 _ars_prev_close = {}
+_CASA_TO_CODE = {c["dolarapi_casa"]: c["code"] for c in CURRENCIES if c.get("dolarapi_casa")}
 
 
 def _ars_pct_day(casa, current_mid):
+    """% día vs cierre del día anterior persistido en fx_daily.
+
+    FIX: antes la referencia era el primer tick del día guardado en memoria →
+    cada restart del server (Render/Railway) reseteaba la referencia a mitad de
+    rueda y el pct_day de Oficial/MEP/CCL/Blue volvía a 0. Ahora la referencia
+    es el close del último día previo en SQLite (sobrevive restarts); fallback
+    al mid actual solo si no hay historia (código nuevo → pct 0 el primer día).
+
+    Nota: usa fecha UTC para ser consistente con los buckets de fx_daily. El
+    rollover UTC (21hs ART) cae fuera de la ventana operativa (10-17 ART).
+    """
     if current_mid is None:
         return None
-    today = (_dt.datetime.utcnow() - _dt.timedelta(hours=3)).strftime("%Y-%m-%d")
+    today = _dt.datetime.utcnow().strftime("%Y-%m-%d")
     prev = _ars_prev_close.get(casa)
     if not prev or prev["date"] != today:
-        _ars_prev_close[casa] = {"date": today, "open_mid": current_mid}
-        return 0.0
-    om = prev["open_mid"]
-    return (current_mid / om - 1.0) * 100.0 if om else None
+        ref = None
+        code = _CASA_TO_CODE.get(casa)
+        if code:
+            try:
+                row = storage.fx_daily_prev_close(code, today)
+                if row and row.get("close"):
+                    ref = float(row["close"])
+            except Exception:
+                ref = None
+        if ref is None:
+            ref = current_mid
+        prev = {"date": today, "ref": ref}
+        _ars_prev_close[casa] = prev
+    ref = prev["ref"]
+    return (current_mid / ref - 1.0) * 100.0 if ref else None
 
 
 # ══════════════════════════════════════════════════════════════════

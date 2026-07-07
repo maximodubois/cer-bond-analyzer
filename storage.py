@@ -201,14 +201,19 @@ def bond_snapshot_upsert(snapshot):
 
 
 def bond_snapshots_all(limit=365):
-    """Devuelve la lista completa de snapshots (más recientes últimos), formato compatible."""
+    """Devuelve los últimos `limit` snapshots (más recientes últimos), formato compatible.
+
+    FIX: antes usaba ORDER BY date ASC LIMIT n → devolvía los n MÁS VIEJOS y,
+    con >n filas en la tabla, los snapshots nuevos desaparecían de /api/history
+    (z-scores, pairs y backtest congelados en data vieja). Ahora: DESC + reverse.
+    """
     with _DB_LOCK, _conn() as c:
         rows = c.execute(
-            "SELECT payload FROM bond_snapshots ORDER BY date ASC LIMIT ?",
+            "SELECT payload FROM bond_snapshots ORDER BY date DESC LIMIT ?",
             (limit,),
         ).fetchall()
     out = []
-    for r in rows:
+    for r in reversed(rows):
         try:
             out.append(json.loads(r["payload"]))
         except json.JSONDecodeError:
@@ -282,6 +287,18 @@ def fx_latest(code):
             "SELECT ts, price, prev_close, pct_day, source FROM fx_ticks "
             "WHERE code=? ORDER BY ts DESC LIMIT 1",
             (code,),
+        ).fetchone()
+        return dict(r) if r else None
+
+
+def fx_daily_prev_close(code, before_date):
+    """Cierre del último día ANTERIOR a `before_date` (str YYYY-MM-DD, UTC).
+    Referencia persistente para pct_day: sobrevive restarts del server."""
+    with _DB_LOCK, _conn() as c:
+        r = c.execute(
+            "SELECT date, close FROM fx_daily WHERE code=? AND date < ? "
+            "ORDER BY date DESC LIMIT 1",
+            (code, before_date),
         ).fetchone()
         return dict(r) if r else None
 

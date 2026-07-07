@@ -2197,9 +2197,14 @@
           const sel = it.code === state.selectedCode ? ' active' : '';
           const ds = it.data_source || it.source;
           const badge = sl[ds] ? '<span class="src-badge src-'+ds+'">'+sl[ds]+'</span>' : '';
+          // Dato viejo (>15 min): badge amber con la edad, para no operar
+          // mirando un precio stale sin darse cuenta.
+          const staleBadge = (it.age_sec != null && it.age_sec > 900)
+            ? '<span class="src-badge" style="background:rgba(251,191,36,0.16);color:#fbbf24" title="último dato hace '+Math.round(it.age_sec/60)+' min">⚠ '+Math.round(it.age_sec/60)+'m</span>'
+            : '';
           rows.push(
             '<tr class="fx-row'+sel+'" data-code="'+it.code+'">'
-            +'<td>'+it.label+badge+'</td>'
+            +'<td>'+it.label+badge+staleBadge+'</td>'
             +'<td>'+(it.error ? '<span class="fx-error">err</span>' : fmtPrice(it.last))+'</td>'
             +'<td class="'+pctClass(it.pct_day)+'">'+(it.error?'—':fmtPct(it.pct_day))+'</td>'
             +'<td><span class="spark" id="fxg-spark-'+it.code+'">·</span></td>'
@@ -3341,9 +3346,6 @@ const FER=new Set([
 
 // ═══ BONOS CER ═════════════════════
 const BONDS=[
-  {id:"X15Y6",ticker:"X15Y6",name:"LECER 15-May-26",mat:"2026-05-15",vno:100,cup:0,emDate:"2026-02-27",cerEm:701.614,isin:"AR0616461569",color:"#38bdf8"},
-  {id:"X29Y6",ticker:"X29Y6",name:"LECER 29-May-26",mat:"2026-05-29",vno:100,cup:0,emDate:"2025-11-28",cerEm:651.8981,isin:"AR0513742863",color:"#67e8f9"},
-  {id:"TZX26",ticker:"TZX26",name:"BONCER 30-Jun-26",mat:"2026-06-30",vno:100,cup:0,emDate:"2024-02-01",cerEm:200.388,isin:"AR0643350728",color:"#34d399"},
   {id:"X31L6",ticker:"X31L6",name:"LECER 31-Jul-26",mat:"2026-07-31",vno:100,cup:0,emDate:"2026-01-30",cerEm:685.5506,isin:"AR0189940411",color:"#F86D36"},
   {id:"X30S6",ticker:"X30S6",name:"LECER 30-Sep-26",mat:"2026-09-30",vno:100,cup:0,emDate:"2026-03-16",cerEm:714.9849,isin:"AR0362438175",color:"#fb923c"},
   {id:"TZXO6",ticker:"TZXO6",name:"BONCER 30-Oct-26",mat:"2026-10-30",vno:100,cup:0,emDate:"2024-10-31",cerEm:480.1526,isin:"AR0881212424",color:"#e879f9"},
@@ -3357,7 +3359,7 @@ const BONDS=[
   {id:"TZXD7",ticker:"TZXD7",name:"BONCER 15-Dic-27",mat:"2027-12-15",vno:100,cup:0,emDate:"2024-03-15",cerEm:271.04755550913,isin:"AR0611949808",color:"#f472b6"},
   {id:"TZXM8",ticker:"TZXM8",name:"BONCER 31-Mar-28",mat:"2028-03-31",vno:100,cup:0,emDate:"2026-04-01",cerEm:725.2064,isin:"",color:"#c084fc"},
   {id:"TZX28",ticker:"TZX28",name:"BONCER 30-Jun-28",mat:"2028-06-30",vno:100,cup:0,emDate:"2024-02-01",cerEm:200.38801458912,isin:"",color:"#c084fc"},
-  {id:"TZXS8",ticker:"TZXS8",name:"BONCER 31-Sep-28",mat:"2028-09-29",vno:100,cup:0,emDate:"2026-03-31",cerEm:723.0600,isin:"",color:"#c084fc"},
+  {id:"TZXS8",ticker:"TZXS8",name:"BONCER 29-Sep-28",mat:"2028-09-29",vno:100,cup:0,emDate:"2026-03-31",cerEm:723.0600,isin:"",color:"#c084fc"},
   {id:"TXMD8",ticker:"TXMD8",name:"Dual Diciembre 28",mat:"2028-12-15",vno:100,cup:0,emDate:"2026-06-12",cerEm:779.8864,isin:"",color:"#c554fc"},
   {id:"TZXM9",ticker:"TZXM9",name:"BONCER 28-Mar-29",mat:"2029-03-28",vno:100,cup:0,emDate:"2026-04-01",cerEm:725.2064,isin:"",color:"#c084fc"},
   {id:"TXMD9",ticker:"TXMD9",name:"Dual Diciembre 29",mat:"2029-12-14",vno:100,cup:0,emDate:"2026-06-12",cerEm:779.8864,isin:"",color:"#c566fc"},
@@ -3379,12 +3381,6 @@ const BONDS=[
 
 // ═══ TASA FIJA ═══
 const FIXED=[
-  {id:"S17A6",ticker:"S17A6",type:"LECAP",mat:"2026-04-17",emDate:"2025-12-15",temIssue:0.0240,price:0,color:"#c084fc"},
-  {id:"S30A6",ticker:"S30A6",type:"LECAP",mat:"2026-04-30",emDate:"2025-09-30",temIssue:0.0353,price:0,color:"#a78bfa"},
-  {id:"S15Y6",ticker:"S15Y6",type:"LECAP",mat:"2026-05-15",emDate:"2026-03-16",temIssue:0.0260,price:0,color:"#e879f9"},
-  {id:"S29Y6",ticker:"S29Y6",type:"LECAP",mat:"2026-05-29",emDate:"2025-05-30",temIssue:0.0235,price:0,color:"#d946ef"},
-  {id:"S12J6",ticker:"S12J6",type:"LECAP",mat:"2026-06-12",emDate:"2026-04-30",temIssue:0.021,price:0,color:"#f0abfc"},
-  {id:"T30J6",ticker:"T30J6",type:"BONCAP",mat:"2026-06-30",emDate:"2025-01-17",temIssue:0.0215,price:0,color:"#f0abfc"},
   {id:"S17L6",ticker:"S17L6",type:"LECAP",mat:"2026-07-17",emDate:"2026-03-31",temIssue:0.0216,price:0,color:"#f0abfc"},
   {id:"S31L6",ticker:"S31L6",type:"LECAP",mat:"2026-07-31",emDate:"2026-01-30",temIssue:0.0275,price:0,color:"#c084fc"},
   {id:"S14G6",ticker:"S14G6",type:"LECAP",mat:"2026-08-14",emDate:"2026-04-17",temIssue:0.0200,price:0,color:"#a78bfa"},
@@ -3403,14 +3399,12 @@ const FIXED=[
 // margen1816 y margen90 en bps (ej: 300 = +300bps sobre TAMAR)
 const TAMAR_DEFAULT_FALLBACK_TNA=26.2375;
 const TAMAR_BONDS=[
-  {id:"M30A6", ticker:"M30A6", name:"LETAMAR 30-Abr-26",  type:"LETAMAR",  mat:"2026-04-30", emDate:"2025-11-28", margen1816:400, margen90:400, color:"#e6a817"},
-  {id:"TTJ26", ticker:"TTJ26", name:"Dual TAMAR 30-Jun-26",type:"DUAL",     mat:"2026-06-30", emDate:"2025-01-29", margen1816:0,   margen90:0,   temFija:0.0219, color:"#d4a017"},
   {id:"M31G6", ticker:"M31G6", name:"LETAMAR 31-Ago-26",  type:"LETAMAR",  mat:"2026-08-31", emDate:"2025-11-10", margen1816:500, margen90:500, color:"#c4960f"},
   {id:"TTS26", ticker:"TTS26", name:"Dual TAMAR 15-Sep-26",type:"DUAL",     mat:"2026-09-15", emDate:"2025-01-29", margen1816:0,   margen90:0,   temFija:0.0217, color:"#b8900a"},
   {id:"TTD26", ticker:"TTD26", name:"Dual TAMAR 15-Dic-26",type:"DUAL",     mat:"2026-12-15", emDate:"2025-01-29", margen1816:0,   margen90:0,   temFija:0.0214, color:"#a88505"},
   {id:"TMF27", ticker:"TMF27", name:"Bono TAMAR 26-Feb-27",type:"BONTAMAR", mat:"2027-02-26", emDate:"2026-02-13", margen1816:650, margen90:650, color:"#987a00"},
-  {id:"TMG27", ticker:"TMG27", name:"Bono TAMAR 30-Ago-27",type:"BONTAMAR", mat:"2027-08-31", emDate:"2026-04-01", margen1816:600, margen90:600, color:"#7a6300"},
-  {id:"TMF28", ticker:"TMF28", name:"Bono TAMAR 28-Feb-28",type:"BONTAMAR", mat:"2028-02-25", emDate:"2026-04-20", margen1816:650, margen90:650, color:"#5e4c00"},
+  {id:"TMG27", ticker:"TMG27", name:"Bono TAMAR 31-Ago-27",type:"BONTAMAR", mat:"2027-08-31", emDate:"2026-04-01", margen1816:600, margen90:600, color:"#7a6300"},
+  {id:"TMF28", ticker:"TMF28", name:"Bono TAMAR 25-Feb-28",type:"BONTAMAR", mat:"2028-02-25", emDate:"2026-04-20", margen1816:650, margen90:650, color:"#5e4c00"},
   {id:"TXMJ8", ticker:"TXMJ8", name:"Bono DUAL Jun-28",type:"DUAL", mat:"2028-06-30", emDate:"2026-05-15", margen1816:300, margen90:300, color:"#d946ef"},
   {id:"TMG28", ticker:"TMG28", name:"Bono TAMAR 30-Ago-28",type:"BONTAMAR", mat:"2028-08-30", emDate:"2026-04-30", margen1816:690, margen90:690, color:"#3f3300"},
   {id:"TXMD8", ticker:"TXMD8", name:"Bono DUAL Dic-28",type:"DUAL", mat:"2028-12-15", emDate:"2026-06-12", margen1816:300, margen90:300, color:"#d946ef"},
@@ -3583,11 +3577,10 @@ let _tamarMonthlyTouched=new Set();
 
 // ═══ BONOS DOLLAR LINKED ══════════
 const DL_BONDS=[
-  {id:"TZV26", ticker:"TZV26", name:"DL JUNIO 2026", mat:"2026-06-30", color:"#67e8f9"},
   {id:"D31L6", ticker:"D31L6", name:"DL JULIO 2026", mat:"2026-07-31", color:"#69e8f9"},
   {id:"D31G6", ticker:"D31G6", name:"DL AGOSTO 2026", mat:"2026-08-31", color:"#69e8f9"},
   {id:"D30S6",  ticker:"D30S6",  name:"DL SEPTIEMBRE 2026", mat:"2026-09-30", color:"#06b6d4"},
-  {id:"D31M7",  ticker:"D31M7",  name:"DL MARZO 2027", mat:"2027-03-07", color:"#06b6d4"},
+  {id:"D31M7",  ticker:"D31M7",  name:"DL MARZO 2027", mat:"2027-03-31", color:"#06b6d4"},
   {id:"TZV27",  ticker:"TZV27",  name:"DL JUNIO 2027", mat:"2027-06-30", color:"#06b6d4"},
   {id:"TZV28",  ticker:"TZV28",  name:"DL JUNIO 2028", mat:"2028-06-30", color:"#06b6d4"},
   {id:"TZVD8",  ticker:"TZVD8",  name:"DL DICIEMBRE 2028", mat:"2028-12-15", color:"#06b6d4"},
@@ -3595,9 +3588,6 @@ const DL_BONDS=[
 
 // ═══ FUTUROS ROFEX DLR ═══════════
 const ROFEX_FUTURES=[
-  {id:"DLR/ABR26", ticker:"DLR/ABR26", name:"DLR Abr-26", exp:"2026-04-30", color:"#FDE68A"},
-  {id:"DLR/MAY26", ticker:"DLR/MAY26", name:"DLR May-26", exp:"2026-05-29", color:"#FCD34D"},
-  {id:"DLR/JUN26", ticker:"DLR/JUN26", name:"DLR Jun-26", exp:"2026-06-30", color:"#FBBF24"},
   {id:"DLR/JUL26", ticker:"DLR/JUL26", name:"DLR Jul-26", exp:"2026-07-31", color:"#F8AF12"},
   {id:"DLR/AGO26", ticker:"DLR/AGO26", name:"DLR Ago-26", exp:"2026-08-31", color:"#F59E0B"},
   {id:"DLR/SEP26", ticker:"DLR/SEP26", name:"DLR Sep-26", exp:"2026-09-30", color:"#E89008"},
@@ -3617,6 +3607,38 @@ const ROFEX_FUTURES=[
   {id:"DLR/NOV27", ticker:"DLR/NOV27", name:"DLR Nov-27", exp:"2027-11-30", color:"#251001"},
   {id:"DLR/DIC27", ticker:"DLR/DIC27", name:"DLR Dic-27", exp:"2027-12-30", color:"#1F0D01"},
 ];
+
+// ═══ ARCHIVED — instrumentos vencidos ══════════════════════════════
+// NO se consumen en ningún lado: archivo histórico para no perder los datos
+// de emisión (cerEm, temIssue, márgenes). Cuando venza un instrumento, mover
+// su línea del array activo correspondiente a este bloque.
+const ARCHIVED_INSTRUMENTS={
+  BONDS:[
+    {id:"X15Y6",ticker:"X15Y6",name:"LECER 15-May-26",mat:"2026-05-15",vno:100,cup:0,emDate:"2026-02-27",cerEm:701.614,isin:"AR0616461569",color:"#38bdf8"},
+    {id:"X29Y6",ticker:"X29Y6",name:"LECER 29-May-26",mat:"2026-05-29",vno:100,cup:0,emDate:"2025-11-28",cerEm:651.8981,isin:"AR0513742863",color:"#67e8f9"},
+    {id:"TZX26",ticker:"TZX26",name:"BONCER 30-Jun-26",mat:"2026-06-30",vno:100,cup:0,emDate:"2024-02-01",cerEm:200.388,isin:"AR0643350728",color:"#34d399"},
+  ],
+  FIXED:[
+    {id:"S17A6",ticker:"S17A6",type:"LECAP",mat:"2026-04-17",emDate:"2025-12-15",temIssue:0.0240,price:0,color:"#c084fc"},
+    {id:"S30A6",ticker:"S30A6",type:"LECAP",mat:"2026-04-30",emDate:"2025-09-30",temIssue:0.0353,price:0,color:"#a78bfa"},
+    {id:"S15Y6",ticker:"S15Y6",type:"LECAP",mat:"2026-05-15",emDate:"2026-03-16",temIssue:0.0260,price:0,color:"#e879f9"},
+    {id:"S29Y6",ticker:"S29Y6",type:"LECAP",mat:"2026-05-29",emDate:"2025-05-30",temIssue:0.0235,price:0,color:"#d946ef"},
+    {id:"S12J6",ticker:"S12J6",type:"LECAP",mat:"2026-06-12",emDate:"2026-04-30",temIssue:0.021,price:0,color:"#f0abfc"},
+    {id:"T30J6",ticker:"T30J6",type:"BONCAP",mat:"2026-06-30",emDate:"2025-01-17",temIssue:0.0215,price:0,color:"#f0abfc"},
+  ],
+  TAMAR_BONDS:[
+    {id:"M30A6", ticker:"M30A6", name:"LETAMAR 30-Abr-26",  type:"LETAMAR",  mat:"2026-04-30", emDate:"2025-11-28", margen1816:400, margen90:400, color:"#e6a817"},
+    {id:"TTJ26", ticker:"TTJ26", name:"Dual TAMAR 30-Jun-26",type:"DUAL",     mat:"2026-06-30", emDate:"2025-01-29", margen1816:0,   margen90:0,   temFija:0.0219, color:"#d4a017"},
+  ],
+  DL_BONDS:[
+    {id:"TZV26", ticker:"TZV26", name:"DL JUNIO 2026", mat:"2026-06-30", color:"#67e8f9"},
+  ],
+  ROFEX_FUTURES:[
+    {id:"DLR/ABR26", ticker:"DLR/ABR26", name:"DLR Abr-26", exp:"2026-04-30", color:"#FDE68A"},
+    {id:"DLR/MAY26", ticker:"DLR/MAY26", name:"DLR May-26", exp:"2026-05-29", color:"#FCD34D"},
+    {id:"DLR/JUN26", ticker:"DLR/JUN26", name:"DLR Jun-26", exp:"2026-06-30", color:"#FBBF24"},
+  ],
+};
 
 // ═══ FX EXTRA TICKERS (spot, MEP, CCL) ═
 const FX_EXTRA_TICKERS=["DLR/SPOT","AL30 CI","AL30D CI","AL30C CI"];
@@ -3656,33 +3678,45 @@ function _fxLoadIntraday(){
 _fxLoadIntraday(); // Load on startup
 
 // ═══ INFLATION MONTHS ══════════════
-const IM=[
-  {k:"2026-05",l:"May 26",d:"2.2"},
-  {k:"2026-06",l:"Jun 26",d:"1.9"},
-  {k:"2026-07",l:"Jul 26",d:"1.8"},
-  {k:"2026-08",l:"Ago 26",d:"1.7"},
-  {k:"2026-09",l:"Sep 26",d:"1.6"},
-  {k:"2026-10",l:"Oct 26",d:"1.5"},
-  {k:"2026-11",l:"Nov 26",d:"1.4"},
-  {k:"2026-12",l:"Dic 26",d:"1.4"},
-  {k:"2027-01",l:"Ene 27",d:"1.3"},
-  {k:"2027-02",l:"Feb 27",d:"1.3"},
-  {k:"2027-03",l:"Mar 27",d:"1.3"},
-  {k:"2027-04",l:"Abr 27",d:"1.2"},
-  {k:"2027-05",l:"May 27",d:"1.2"},
-  {k:"2027-06",l:"Jun 27",d:"1.2"},
-  {k:"2027-07",l:"Jul 27",d:"1.2"},
-  {k:"2027-08",l:"Ago 27",d:"1.2"},
-  {k:"2027-09",l:"Sep 27",d:"1.2"},
-  {k:"2027-10",l:"Oct 27",d:"1.2"},
-  {k:"2027-11",l:"Nov 27",d:"1.2"},
-  {k:"2027-12",l:"Dic 27",d:"1.2"},
-  {k:"2028-01",l:"Ene 28",d:"1.2"},
-  {k:"2028-02",l:"Feb 28",d:"1.2"},
-  {k:"2028-03",l:"Mar 28",d:"1.2"},
-  {k:"2028-04",l:"Abr 28",d:"1.2"},
-  {k:"2028-05",l:"May 28",d:"1.2"},
-];
+// FIX crítico: la grilla era estática y terminaba en May-28 → todo mes fuera
+// de la grilla entraba a buildCER como 0% mensual y aplastaba el CER
+// proyectado de los bonos con vto ≥ mitad de 2028 (TXMD8/TZXM9/TXMD9/TXMJ0):
+// TEA nominal proyectada y breakevens quedaban subestimados. Ahora la grilla
+// se genera desde 2 meses atrás (cubre el mes de referencia del ancla CER de
+// la fecha base) hasta el mes del ÚLTIMO vencimiento del universo CER/dual,
+// igual que hace buildTamarMonths() para TAMAR.
+const IM_EXPLICIT_DEFAULTS={
+  "2026-05":"2.2","2026-06":"1.9","2026-07":"1.8","2026-08":"1.7",
+  "2026-09":"1.6","2026-10":"1.5","2026-11":"1.4","2026-12":"1.4",
+  "2027-01":"1.3","2027-02":"1.3","2027-03":"1.3","2027-04":"1.2",
+  "2027-05":"1.2","2027-06":"1.2","2027-07":"1.2","2027-08":"1.2",
+  "2027-09":"1.2","2027-10":"1.2","2027-11":"1.2","2027-12":"1.2",
+  "2028-01":"1.2","2028-02":"1.2","2028-03":"1.2","2028-04":"1.2","2028-05":"1.2",
+};
+const IM_LONG_RUN_DEFAULT="1.2"; // relleno para meses sin default explícito
+function buildIM(){
+  const mShort=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  const today=new Date();
+  const start=new Date(today.getFullYear(),today.getMonth()-2,1);
+  const maxMat=BONDS.reduce((best,b)=>{
+    const d=new Date(b.mat+"T00:00:00");
+    return d>best?d:best;
+  }, new Date(start));
+  const end=new Date(maxMat.getFullYear(),maxMat.getMonth(),1);
+  const out=[];
+  const cur=new Date(start);
+  while(cur<=end){
+    const k=cur.getFullYear()+"-"+String(cur.getMonth()+1).padStart(2,"0");
+    out.push({
+      k,
+      l:`${mShort[cur.getMonth()]} ${String(cur.getFullYear()).slice(2)}`,
+      d:(IM_EXPLICIT_DEFAULTS[k]!=null)?IM_EXPLICIT_DEFAULTS[k]:IM_LONG_RUN_DEFAULT
+    });
+    cur.setMonth(cur.getMonth()+1);
+  }
+  return out;
+}
+const IM=buildIM();
 
 // ═══ DATE UTILS ════════════════════
 const DB=(a,b)=>Math.round((b-a)/864e5);
@@ -3888,8 +3922,12 @@ async function fetchLatestCER(){
     const latest=detalle.find(d=>d.fecha<=capStr)||detalle[detalle.length-1];
     document.getElementById("baseCER").value=latest.valor;
     document.getElementById("baseCERDate").value=latest.fecha;
+    // IPC de meses conocidos: pisar defaults del código con el dato real
+    // implícito en la serie CER publicada (inmune al calendario INDEC).
+    const nIpcReal=autofillKnownInflationFromBCRA();
+    if(nIpcReal>0 && typeof scheduleAutoCalc==="function") scheduleAutoCalc();
     status.textContent="conectado ✓";status.className="api-ok";
-    log.innerHTML=`<span style="color:var(--ac)">✓ CER más reciente: <b>${latest.valor}</b> al ${latest.fecha} · ${_bcraHistorico.size} valores históricos cacheados</span>`;
+    log.innerHTML=`<span style="color:var(--ac)">✓ CER más reciente: <b>${latest.valor}</b> al ${latest.fecha} · ${_bcraHistorico.size} valores históricos cacheados${nIpcReal?` · ${nIpcReal} meses IPC real aplicados`:""}</span>`;
     return detalle;
   }catch(e){
     status.textContent="error ✗";status.className="api-err";
@@ -3955,15 +3993,82 @@ async function fetchSettleCER(){
   }catch(e){ log.innerHTML=`<span class="api-err">✗ Error: ${e.message}</span>`; }
 }
 
+// ═══ INFLATION GRID: PERSISTENCIA localStorage ═════════════════════
+// Igual que blotter/posiciones/agenda: lo que tipeás en la grilla sobrevive
+// el refresh de la página. Los meses YA CONOCIDOS no se persisten — para esos
+// manda el dato real de BCRA (autofillKnownInflationFromBCRA).
+const INFL_LS_KEY="cer_infl_overrides_v1";
+function _inflLoadOverrides(){
+  try{ const x=JSON.parse(localStorage.getItem(INFL_LS_KEY)||"{}"); return (x&&typeof x==="object")?x:{}; }
+  catch(_e){ return {}; }
+}
+function _inflSaveOverride(key,val){
+  const o=_inflLoadOverrides();
+  if(val==null||val===""){ delete o[key]; } else { o[key]=val; }
+  try{ localStorage.setItem(INFL_LS_KEY,JSON.stringify(o)); }catch(_e){}
+}
+function _inflApplyOverrides(){
+  const o=_inflLoadOverrides();
+  Object.keys(o).forEach(k=>{
+    const el=document.getElementById("i_"+k);
+    if(el && !el.readOnly) el.value=o[k]; // readOnly = mes conocido → manda BCRA
+  });
+}
+
+// Autocompleta los meses de IPC YA CONOCIDOS con la inflación implícita real
+// de la serie CER publicada por BCRA: ipc(M) = CER(15/M+2)/CER(15/M+1) − 1.
+// (Verificado contra la serie oficial: el factor diario del CER rota SIEMPRE
+// el día 16, sea cual sea el día de difusión del INDEC — 10 al 16 según su
+// calendario. Derivar el IPC del cociente entre anclas del 15 es exacto e
+// inmune a ese calendario: usa lo que BCRA efectivamente publicó.)
+// FIX: antes el mes conocido quedaba oculto con el default hardcodeado del
+// código → si difería del print real, el error se componía en TODA la curva
+// CER proyectada sin poder corregirse desde la UI.
+function autofillKnownInflationFromBCRA(){
+  if(!_bcraHistorico.size) return 0;
+  const lastKnownKey=getLastKnownInflKey(document.getElementById("baseCERDate")?.value||"");
+  if(!lastKnownKey) return 0;
+  let applied=0;
+  IM.forEach(m=>{
+    if(m.k>lastKnownKey) return;
+    const [y,mo]=m.k.split("-").map(Number);
+    const a1=new Date(y,mo,15);   // 15 de M+1 (mo es 1-based → índice mo = mes siguiente)
+    const a2=new Date(y,mo+1,15); // 15 de M+2
+    const c1=_bcraHistorico.get(DS(a1));
+    const c2=_bcraHistorico.get(DS(a2));
+    if(!c1||!c2) return;
+    const ipc=((c2/c1)-1)*100;
+    const el=document.getElementById("i_"+m.k);
+    if(el){
+      el.value=ipc.toFixed(2);
+      el.dataset.bcraReal="1";
+      el.title="IPC real implícito en la serie CER BCRA: "+ipc.toFixed(2)+"%";
+      applied++;
+    }
+  });
+  return applied;
+}
+
 // ═══ BUILD UI ══════════════════════
 function buildInflGrid(){
-  document.getElementById("inflGrid").innerHTML=IM.map(m=>`
+  const grid=document.getElementById("inflGrid");
+  grid.innerHTML=IM.map(m=>`
     <div class="ig" id="infl_${m.k}">
       <div class="il" id="infl_lbl_${m.k}" data-base-label="${m.l}">${m.l}</div>
       <div class="ic"><input type="number" class="ii" id="i_${m.k}" data-infl-month="${m.k}" step="0.1" value="${m.d}"><span class="p">%</span></div>
     </div>
   `).join("");
   applyKnownInflationState();
+  _inflApplyOverrides();
+  if(!grid._inflPersistHooked){
+    grid._inflPersistHooked=true;
+    grid.addEventListener("input",e=>{
+      const t=e.target;
+      if(t&&t.classList&&t.classList.contains("ii")&&t.dataset.inflMonth&&!t.readOnly){
+        _inflSaveOverride(t.dataset.inflMonth,t.value);
+      }
+    });
+  }
 }
 function getInflInputValue(key){
   const el=document.getElementById("i_"+key);
@@ -4435,42 +4540,9 @@ async function fetchLatestTAMAR(){
   }
 }
 
-function buildTAMARCards(){
-  const row=document.getElementById("tamarRow");
-  if(!row) return;
-  if(!TAMAR_BONDS.length){
-    row.innerHTML='<div class="note" style="padding:10px;text-align:center;color:var(--tm)">Agrega bonos al array TAMAR_BONDS para verlos aqui.</div>';
-    return;
-  }
-  row.innerHTML='<div class="section-band">TAMAR</div>'+TAMAR_BONDS.map(t=>`
-    <div class="list-row" style="border-left:3px solid ${t.color}" id="tamarc_${t.id}">
-      <div class="list-head">
-        <div>
-          <div class="list-title">
-            <span class="tag" style="background:${t.color}22;color:${t.color}">${t.ticker}</span>
-            <span class="tag" style="background:var(--bld);color:var(--bl)">TAMAR</span>
-          </div>
-          <div class="list-meta">${t.name||t.ticker} | Vto: ${FD(new Date(t.mat+"T00:00:00"))}<br>
-            Margen contractual emisión: <strong>+${getTamarMarginBps(t).toFixed(0)} bps</strong>
-          </div>
-        </div>
-        <div class="list-inputs">
-          <div class="price-row">
-            <div class="ig"><label><span class="live-badge off" id="tlb_${t.id}"></span>Precio Live</label><div class="px-live stale" id="tpl_${t.id}">-</div></div>
-            <div class="ig"><label style="color:var(--am)">Manual</label><input type="number" id="tpm_${t.id}" class="px-manual" step="0.01" value="" placeholder="vacío=live" oninput="onManualPriceTamar('${t.id}')"></div>
-          </div>
-          <input type="hidden" id="tpx_${t.id}" value="">
-        </div>
-        <div class="list-metrics" style="margin-top:0;padding-top:0;border-top:none">
-          <div class="metric"><div class="mv" style="color:var(--bl)" id="td_${t.id}">-</div><div class="ml">días al vto</div></div>
-          <div class="metric"><div class="mv" style="color:var(--bl)" id="tmargin_${t.id}">-</div><div class="ml">Margen hoy</div></div>
-          <div class="metric"><div class="mv" style="color:var(--bl)" id="tbe_${t.id}">-</div><div class="ml">BE TAMAR</div></div>
-          <div class="metric"><div class="ms" style="color:var(--td)" id="tcomp_${t.id}">-</div><div class="ml">comparable</div></div>
-        </div>
-      </div>
-    </div>
-  `).join("");
-}
+// NOTA: buildTAMARCards() vive en la sección INIT (única definición).
+// Acá había una copia idéntica duplicada — eliminada para evitar que una
+// edición futura a la copia muerta no tenga efecto.
 function buildComparableSelect(){
   const sel=document.getElementById("fixedComparable");
   sel.innerHTML='<option value="">Manual</option>'+FIXED.map(f=>`<option value="${f.id}">${f.ticker} · ${f.type}</option>`).join("");

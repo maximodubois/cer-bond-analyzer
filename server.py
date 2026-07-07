@@ -12,7 +12,6 @@ import os
 import sys
 import json
 import re
-import base64
 import datetime as _dt
 import threading
 # Fix Unicode output on Windows (cp1252 can't handle emoji)
@@ -54,7 +53,6 @@ HISTORY_FILE = os.path.join(SCRIPT_DIR_HIST, "data", "history.json")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 GITHUB_REPO  = os.getenv("GITHUB_REPO", "maximodubois/cer-bond-analyzer")
 GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
-GITHUB_HISTORY_PATH = "data/history.json"
 _HISTORY_LOCK = threading.Lock()
 
 # Primary API (Matba/Rofex) — depth-5 market data
@@ -437,49 +435,6 @@ def history_upsert(snapshot):
     if err:
         return None, err
     return storage.bond_snapshots_all(limit=365), None
-
-def github_commit_history(history, commit_message=None):
-    """Comitea data/history.json al repo via API. Requiere GITHUB_TOKEN."""
-    if not GITHUB_TOKEN:
-        return False, "GITHUB_TOKEN no configurado"
-    api = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GITHUB_HISTORY_PATH}"
-    headers = {
-        "Authorization": f"Bearer {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github+json",
-        "User-Agent": "CERBondAnalyzer/1.0",
-    }
-    # Get current sha (si existe)
-    sha = None
-    try:
-        req = urllib.request.Request(api + f"?ref={GITHUB_BRANCH}", headers=headers)
-        with urllib.request.urlopen(req, timeout=15) as r:
-            meta = json.loads(r.read().decode("utf-8"))
-            sha = meta.get("sha")
-    except urllib.error.HTTPError as e:
-        if e.code != 404:
-            return False, f"github GET {e.code}: {e.read().decode('utf-8', 'replace')[:200]}"
-    except Exception as e:
-        return False, f"github GET: {e}"
-    # PUT
-    content_str = json.dumps(history, ensure_ascii=False, indent=2)
-    b64 = base64.b64encode(content_str.encode("utf-8")).decode("ascii")
-    msg = commit_message or f"data: snapshot {_dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"
-    body = {"message": msg, "content": b64, "branch": GITHUB_BRANCH}
-    if sha:
-        body["sha"] = sha
-    try:
-        req = urllib.request.Request(
-            api,
-            data=json.dumps(body).encode("utf-8"),
-            headers={**headers, "Content-Type": "application/json"},
-            method="PUT",
-        )
-        with urllib.request.urlopen(req, timeout=20) as r:
-            return True, f"commit ok {r.status}"
-    except urllib.error.HTTPError as e:
-        return False, f"github PUT {e.code}: {e.read().decode('utf-8', 'replace')[:200]}"
-    except Exception as e:
-        return False, f"github PUT: {e}"
 
 
 class Handler(SimpleHTTPRequestHandler):

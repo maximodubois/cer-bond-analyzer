@@ -31,6 +31,10 @@ Antes de ejecutar cualquier tarea, seleccioná el skill correcto:
 - **Bounds check obligatorio** en cualquier loop sobre fechas/meses
 - **`lp.last`** es el campo exclusivo para LAST — no mezclar con bid/offer
 - El archivo `index.html` es monolítico — no separar en múltiples archivos
+- **Instrumentos vencidos**: mover su línea del array activo a `ARCHIVED_INSTRUMENTS` (no borrar — conserva cerEm/temIssue/márgenes)
+- **Grilla de inflación (`IM`)**: es dinámica (`buildIM()`), va desde 2 meses atrás hasta el último vto de `BONDS`. Defaults en `IM_EXPLICIT_DEFAULTS`, cola en `IM_LONG_RUN_DEFAULT`. NO volver a hardcodearla
+- **IPC de meses conocidos**: se autocompleta desde la serie CER real de BCRA (`autofillKnownInflationFromBCRA`, ratio de anclas del 15). El rollover del CER es SIEMPRE el día 16 (verificado empíricamente contra la serie oficial), independiente del día de difusión del INDEC
+- **Escenario de inflación del usuario**: persiste en localStorage (`cer_infl_overrides_v1`) — no pisarlo al rebuildear la grilla
 
 ## Convenciones de código
 
