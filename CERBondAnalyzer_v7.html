@@ -524,6 +524,7 @@
   <button class="tab-btn" onclick="switchTab('cer')">CER</button>
   <button class="tab-btn" onclick="switchTab('bonares')">BONARES</button>
   <button class="tab-btn" onclick="switchTab('arbtasas')">ARB. TASAS</button>
+  <button class="tab-btn" onclick="switchTab('rvquant')">RV QUANT</button>
 </div>
 </div>
 
@@ -3329,6 +3330,115 @@
 </div>
 
 <!-- SheetJS para exportar a Excel multi-hoja -->
+<div id="tab-rvquant" style="display:none">
+
+  <!-- 1. FORWARD BREAKEVENS -->
+  <div class="card">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="st" style="margin:0">Breakevens forward — inflación implícita por tramo</div>
+        <div class="note" style="margin:4px 0 0 0;font-size:10px">
+          BE spot(t) = (1+TEA fija interp(t)) / (1+TIR real CER(t)) − 1. Forward entre vencimientos:
+          ((1+BE₂)^t₂ / (1+BE₁)^t₁)^(1/(t₂−t₁)) − 1. Se compara contra <b>tu grilla</b> (CER proyectado entre las mismas fechas).
+          <span style="color:var(--ac)">Verde</span>: el mercado paga MÁS inflación que tu escenario en ese tramo (vender inflación / ir a fija).
+          <span style="color:var(--w)">Rojo</span>: paga menos (comprar CER). Curva fija interpolada lineal en días; <i>ext</i> = extrapolado flat más allá de la última LECAP.
+        </div>
+      </div>
+      <span id="rvBeInfo" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace">—</span>
+    </div>
+    <div id="rvBeTable" style="overflow-x:auto">—</div>
+  </div>
+
+  <!-- 2. TC REAL IMPLÍCITO ROFEX -->
+  <div class="card">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="st" style="margin:0">TC real implícito — ROFEX vs breakeven CER</div>
+        <div class="note" style="margin:4px 0 0 0;font-size:10px">
+          Cruza la devaluación implícita de cada futuro DLR (vs spot mayorista) contra la inflación breakeven del mismo plazo.
+          Real TEA = (1+dev)/(1+BE infl) − 1. <span style="color:var(--ac)">Positivo</span>: el mercado pricea depreciación REAL del peso hasta ese vto
+          (futuro "caro" en términos reales). <span style="color:var(--w)">Negativo</span>: apreciación real (futuro barato vs inflación breakeven).
+          Fut deflactado = futuro llevado a pesos de hoy con la inflación BE.
+        </div>
+      </div>
+      <span id="rvFxInfo" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace">—</span>
+    </div>
+    <div id="rvFxTable" style="overflow-x:auto">—</div>
+  </div>
+
+  <!-- 3. CARRY & ROLL -->
+  <div class="card">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="st" style="margin:0">Carry &amp; Roll — total return esperado por escenario</div>
+        <div class="note" style="margin:4px 0 0 0;font-size:10px">
+          TR al horizonte repricendo cada BONCER/LECER sobre la curva real fiteada (log-lineal, conservando su spread residual) +
+          accrual CER del escenario. <b>Base</b> = tu grilla; <b>Desinf</b> / <b>Nominalidad</b> = grilla ∓ shock TEM en los meses no conocidos.
+          Carry = devengamiento a TIR constante; Roll = revaluación por rodar sobre la curva. Bonos que vencen dentro del horizonte se marcan (TR realizado al vto).
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <div class="ig"><label>Horizonte</label>
+          <select id="rvCrHorizon" onchange="renderRVQuant()" style="padding:4px 8px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;font-size:11px;font-family:'IBM Plex Mono',monospace">
+            <option value="30" selected>30 días</option>
+            <option value="60">60 días</option>
+            <option value="90">90 días</option>
+          </select>
+        </div>
+        <div class="ig"><label>Shock TEM (pp)</label>
+          <input type="number" id="rvCrShock" value="0.30" step="0.05" min="0" onchange="renderRVQuant()" style="width:64px;text-align:right;font-size:11px;font-family:'IBM Plex Mono',monospace">
+        </div>
+      </div>
+    </div>
+    <div id="rvCrTable" style="overflow-x:auto">—</div>
+  </div>
+
+  <!-- 4+6. PAIR TRADE: Z-SCORE HISTÓRICO + DV01-NEUTRAL SIZING -->
+  <div class="card">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="st" style="margin:0">Pair trade — z-score histórico + sizing DV01-neutral</div>
+        <div class="note" style="margin:4px 0 0 0;font-size:10px">
+          Spread = TIR real A − TIR real B con TU historia (bond_ticks 1-min en SQLite del server; buckets de 15 min).
+          Los ticks intradía viven en el server y se comitean a GitHub UNA vez por día (17hs ART, con <code>[skip render]</code>) — cero builds intradía.
+          z = (spread actual − media) / σ. |z| ≥ 2: extremo histórico. Sizing: VN B = VN A × DV01ᴀ / DV01ᴮ (neutraliza movimiento paralelo de tasa real).
+        </div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:auto auto auto auto auto 1fr;gap:8px;align-items:end;margin-bottom:10px;flex-wrap:wrap">
+      <div class="ig"><label>Long (A)</label>
+        <select id="rvPairA" style="font-size:12px;font-family:'IBM Plex Mono',monospace;padding:5px;min-width:110px"></select>
+      </div>
+      <div class="ig"><label>Short (B)</label>
+        <select id="rvPairB" style="font-size:12px;font-family:'IBM Plex Mono',monospace;padding:5px;min-width:110px"></select>
+      </div>
+      <div class="ig"><label>Lookback</label>
+        <select id="rvPairDays" style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:5px">
+          <option value="7">7 días</option>
+          <option value="15">15 días</option>
+          <option value="30" selected>30 días</option>
+          <option value="60">60 días</option>
+        </select>
+      </div>
+      <div class="ig"><label>VN A</label>
+        <input type="number" id="rvPairVn" value="1000000" step="100000" style="width:110px;text-align:right;font-size:11px;font-family:'IBM Plex Mono',monospace" oninput="rvRenderPairStats()">
+      </div>
+      <button class="btn-api btn-sm" onclick="rvFetchPairHistory()" id="rvPairBtn">▶ Analizar</button>
+      <span id="rvPairInfo" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;text-align:right">—</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div>
+        <div id="rvPairStats" style="font-family:'IBM Plex Mono',monospace;font-size:11px">Elegí un par y tocá ▶ Analizar.</div>
+        <div id="rvPairSizing" style="margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:11px"></div>
+      </div>
+      <div>
+        <canvas id="rvPairChart" style="width:100%;height:150px;background:#0a0f1a;border:1px solid #1a2540;border-radius:8px"></canvas>
+        <div id="rvPairChartNote" style="font-size:9px;color:var(--td);margin-top:4px;font-family:'IBM Plex Mono',monospace"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 // ═══ FERIADOS BURSÁTILES AR ════════
@@ -5779,7 +5889,7 @@ function drawImplInflChart(results){
 // ═══ INIT ══════════════════════════
 // ═══ TABS ═════════════════════════════════════════════════════════
 function switchTab(tab){
-  ["calculadoras","resumen","analysis","quantplus","livescreen","positions","pases","databcra","fx","cer","bonares","arbtasas"].forEach(t=>{
+  ["calculadoras","resumen","analysis","quantplus","livescreen","positions","pases","databcra","fx","cer","bonares","arbtasas","rvquant"].forEach(t=>{
     const el=document.getElementById("tab-"+t);
     if(el) el.style.display=t===tab?"":"none";
   });
@@ -5796,7 +5906,8 @@ function switchTab(tab){
       ||(tab==="fx"&&txt==="fx")
       ||(tab==="cer"&&txt==="cer")
       ||(tab==="bonares"&&txt==="bonares")
-      ||(tab==="arbtasas"&&txt.includes("arb"));
+      ||(tab==="arbtasas"&&txt.includes("arb"))
+      ||(tab==="rvquant"&&txt.includes("rv quant"));
     b.classList.toggle("active",isActive);
   });
   if(tab==="resumen") renderResumen();
@@ -5809,6 +5920,7 @@ function switchTab(tab){
   if(tab==="cer"){ try{ renderCERTab(); }catch(e){ console.warn('[cer-tab]',e); } }
   if(tab==="bonares"){ try{ renderBonares(); }catch(e){ console.warn('[bonares]',e); } }
   if(tab==="arbtasas"){ try{ atInitTab(); }catch(e){ console.warn('[arbtasas]',e); } }
+  if(tab==="rvquant"){ try{ rvInitTab(); renderRVQuant(); }catch(e){ console.warn('[rvquant]',e); } }
   setTimeout(initSortableTables,100);
 }
 
@@ -8961,6 +9073,12 @@ async function fetchPricesFromServer(){
     try {
       if (document.getElementById('tab-quantplus')?.style.display !== 'none') {
         if (typeof atRenderCheapRich === 'function') atRenderCheapRich();
+      }
+    } catch(_e){}
+    // Auto-refresh RV Quant si está visible
+    try {
+      if (document.getElementById('tab-rvquant')?.style.display !== 'none') {
+        if (typeof renderRVQuant === 'function') renderRVQuant();
       }
     } catch(_e){}
     // Hook para callbacks externos que dependen de _livePrices (axes, etc.)
@@ -13336,6 +13454,378 @@ function makeSortable(tableEl){
 }
 function initSortableTables(){
   document.querySelectorAll('.lt').forEach(t=>makeSortable(t));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RV QUANT · breakevens forward, TC real ROFEX, carry&roll, pairs z-score
+// Todo O(n) sobre resultados de calculate() — se refresca con cada tick.
+// ═══════════════════════════════════════════════════════════════════
+function _rvFmt(v,d=2){ return (v!=null&&isFinite(v))?v.toFixed(d):"—"; }
+function _rvBps(v){ return (v!=null&&isFinite(v))?((v>=0?"+":"")+(v*100).toFixed(0)):"—"; }
+function _rvSettleDate(){
+  const sd=document.getElementById("settleDate")?.value;
+  return sd?new Date(sd+"T00:00:00"):ABD(new Date(),1);
+}
+
+// Curva nominal tasa fija: interp lineal en días sobre LECAP/BONCAP calculadas.
+function _rvFixedCurve(){
+  const pts=filterActive(FIXED).filter(f=>f._ok&&f._tea!=null&&f._days>0)
+    .map(f=>({d:f._days,y:f._tea})).sort((a,b)=>a.d-b.d);
+  if(pts.length<2) return null;
+  return {
+    minD:pts[0].d, maxD:pts[pts.length-1].d,
+    tea:(days)=>{
+      if(days<=pts[0].d) return pts[0].y;
+      if(days>=pts[pts.length-1].d) return pts[pts.length-1].y; // flat extrap
+      for(let i=1;i<pts.length;i++){
+        if(days<=pts[i].d){
+          const a=pts[i-1],b=pts[i];
+          return a.y+(b.y-a.y)*(days-a.d)/(b.d-a.d);
+        }
+      }
+      return pts[pts.length-1].y;
+    }
+  };
+}
+
+function _rvGetCER(shiftPP){
+  const bv=parseFloat(document.getElementById("baseCER")?.value);
+  const bd=document.getElementById("baseCERDate")?.value;
+  if(!bv||!bd) return null;
+  const lastKnown=getLastKnownInflKey(bd);
+  const inflMap={};
+  IM.forEach(m=>{
+    let v=parseFloat(document.getElementById("i_"+m.k)?.value)||0;
+    if(shiftPP && (!lastKnown||m.k>lastKnown)) v=v+shiftPP; // shock solo a meses NO conocidos
+    inflMap[m.k]=v;
+  });
+  try{ return buildCER(bv,bd,inflMap); }catch(_e){ return null; }
+}
+
+// BE spot por bono CER (vs curva fija interpolada al mismo plazo)
+function _rvBePoints(settle){
+  const fc=_rvFixedCurve();
+  if(!fc) return {points:[],fc:null};
+  const points=filterActive(BONDS).filter(b=>b._ok&&b._tr!=null)
+    .map(b=>{
+      const days=DB(settle,new Date(b.mat+"T00:00:00"));
+      if(days<=0) return null;
+      const teaFija=fc.tea(days);
+      const be=((1+teaFija/100)/(1+b._tr/100)-1)*100;
+      return {ticker:b.ticker,color:b.color,days,matD:new Date(b.mat+"T00:00:00"),
+              teaFija,tirReal:b._tr,be,extrap:days>fc.maxD};
+    }).filter(Boolean).sort((a,b)=>a.days-b.days);
+  return {points,fc};
+}
+
+// ── 1. FORWARD BREAKEVENS ──────────────────────────────────────────
+function renderRvBreakevens(){
+  const el=document.getElementById("rvBeTable"); if(!el) return;
+  const info=document.getElementById("rvBeInfo");
+  const settle=_rvSettleDate();
+  const {points}=_rvBePoints(settle);
+  if(points.length<2){ el.innerHTML='<div class="note">Tocá <b>Calculá</b> en Calculadoras (necesito TIRes de CER y LECAPs).</div>'; return; }
+  const getCER=_rvGetCER(0);
+  let rows="", prev=null;
+  points.forEach(p=>{
+    let fwd=null, tramoLbl, dDays, d1=null, d2=p.matD;
+    if(!prev){ fwd=p.be; tramoLbl=`HOY → ${p.ticker}`; dDays=p.days; d1=settle; }
+    else{
+      const t1=prev.days/365, t2=p.days/365;
+      dDays=p.days-prev.days;
+      if(dDays<15){ prev=p; return; } // tramos <15d: ruido puro
+      fwd=(Math.pow(Math.pow(1+p.be/100,t2)/Math.pow(1+prev.be/100,t1),1/(t2-t1))-1)*100;
+      tramoLbl=`${prev.ticker} → ${p.ticker}`; d1=prev.matD;
+    }
+    const fwdTem=(Math.pow(1+fwd/100,1/12)-1)*100;
+    let scen=null;
+    if(getCER&&d1&&d2){
+      const c1=getCER(d1), c2=getCER(d2);
+      if(c1&&c2&&dDays>0) scen=(Math.pow(c2/c1,365/dDays)-1)*100;
+    }
+    const diff=(scen!=null&&fwd!=null)?(fwd-scen):null;
+    const diffC=diff==null?"var(--td)":(diff>0?"var(--ac)":"var(--w)");
+    rows+=`<tr>
+      <td class="tk" style="color:${p.color}">${tramoLbl}${p.extrap?' <span style="color:var(--am);font-size:8px">ext</span>':''}</td>
+      <td class="num">${dDays}</td>
+      <td class="num">${_rvFmt(p.be)}%</td>
+      <td class="num" style="font-weight:700">${_rvFmt(fwd)}%</td>
+      <td class="num">${_rvFmt(fwdTem)}%</td>
+      <td class="num">${_rvFmt(scen)}%</td>
+      <td class="num" style="color:${diffC};font-weight:700">${diff!=null?_rvBps(diff)+" bps":"—"}</td>
+      <td style="color:${diffC};font-size:9px">${diff==null?"—":(diff>0.15?"mercado paga + inflación → FIJA":diff<-0.15?"mercado paga − inflación → CER":"neutro")}</td>
+    </tr>`;
+    prev=p;
+  });
+  el.innerHTML=`<table class="lt"><thead><tr>
+    <th>Tramo fwd</th><th class="num">días</th><th class="num">BE spot t₂ (TEA)</th>
+    <th class="num">Fwd BE TEA</th><th class="num">Fwd BE TEM</th><th class="num">Tu escenario TEA</th>
+    <th class="num">Mercado − escenario</th><th>Señal</th></tr></thead><tbody>${rows}</tbody></table>`;
+  if(info) info.textContent=`${points.length} vencimientos CER · ${new Date().toLocaleTimeString("es-AR")}`;
+}
+
+// ── 2. TC REAL IMPLÍCITO ROFEX ─────────────────────────────────────
+function renderRvRealFx(){
+  const el=document.getElementById("rvFxTable"); if(!el) return;
+  const info=document.getElementById("rvFxInfo");
+  const spot=getFxSpot();
+  if(!spot){ el.innerHTML='<div class="note">Sin spot mayorista (DLR/SPOT) live.</div>'; return; }
+  const settle=_rvSettleDate();
+  const {points}=_rvBePoints(settle);
+  if(points.length<2){ el.innerHTML='<div class="note">Necesito la curva breakeven (tocá <b>Calculá</b>).</div>'; return; }
+  const beAt=(days)=>{
+    if(days<=points[0].days) return {be:points[0].be,extrap:days<points[0].days*0.5};
+    if(days>=points[points.length-1].days) return {be:points[points.length-1].be,extrap:true};
+    for(let i=1;i<points.length;i++){
+      if(days<=points[i].days){
+        const a=points[i-1],b=points[i];
+        return {be:a.be+(b.be-a.be)*(days-a.days)/(b.days-a.days),extrap:false};
+      }
+    }
+    return {be:points[points.length-1].be,extrap:true};
+  };
+  const hoy=new Date(); hoy.setHours(0,0,0,0);
+  let rows="", n=0;
+  ROFEX_FUTURES.forEach(f=>{
+    const lp=_livePrices[f.ticker]||{};
+    const px=lp.last||lp.mid||0;
+    const days=DB(hoy,new Date(f.exp+"T00:00:00"));
+    if(!px||days<=0) return;
+    const devTea=(Math.pow(px/spot,365/days)-1)*100;
+    const devTna=(px/spot-1)*365/days*100;
+    const {be,extrap}=beAt(days);
+    const realTea=((1+devTea/100)/(1+be/100)-1)*100;
+    const futDefl=px/Math.pow(1+be/100,days/365);
+    const rc=realTea>0.5?"var(--ac)":realTea<-0.5?"var(--w)":"var(--td)";
+    rows+=`<tr>
+      <td class="tk" style="color:${f.color}">${f.ticker.replace("DLR/","")}${extrap?' <span style="color:var(--am);font-size:8px">ext</span>':''}</td>
+      <td class="num">$${px.toFixed(2)}</td>
+      <td class="num">${days}</td>
+      <td class="num">${_rvFmt(devTna)}%</td>
+      <td class="num">${_rvFmt(devTea)}%</td>
+      <td class="num">${_rvFmt(be)}%</td>
+      <td class="num" style="color:${rc};font-weight:700">${(realTea>=0?"+":"")+_rvFmt(realTea)}%</td>
+      <td class="num">$${futDefl.toFixed(2)}</td>
+      <td style="color:${rc};font-size:9px">${realTea>0.5?"deprec. REAL priceada (fut caro vs BE)":realTea<-0.5?"aprec. REAL priceada (fut barato vs BE)":"≈ neutro real"}</td>
+    </tr>`;
+    n++;
+  });
+  if(!n){ el.innerHTML='<div class="note">Sin futuros DLR con precio live.</div>'; return; }
+  el.innerHTML=`<table class="lt"><thead><tr>
+    <th>Fut</th><th class="num">Px</th><th class="num">días</th><th class="num">Dev TNA</th><th class="num">Dev TEA</th>
+    <th class="num">BE infl TEA</th><th class="num">REAL TEA</th><th class="num">Fut deflactado</th><th>Lectura</th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
+  if(info) info.textContent=`spot mayorista $${spot.toFixed(2)} · ${n} futuros · ${new Date().toLocaleTimeString("es-AR")}`;
+}
+
+// ── 3. CARRY & ROLL POR ESCENARIO ─────────────────────────────────
+function renderRvCarryRoll(){
+  const el=document.getElementById("rvCrTable"); if(!el) return;
+  const settle=_rvSettleDate();
+  const cerLiq=parseFloat(document.getElementById("cerLiq")?.value);
+  const h=parseInt(document.getElementById("rvCrHorizon")?.value)||30;
+  const shock=Math.abs(parseFloat(document.getElementById("rvCrShock")?.value)||0.30);
+  const getCERb=_rvGetCER(0), getCERdes=_rvGetCER(-shock), getCERnom=_rvGetCER(+shock);
+  if(!getCERb||!cerLiq){ el.innerHTML='<div class="note">Completá CER base / CER liq y tocá <b>Calculá</b>.</div>'; return; }
+  const fitPts=filterActive(BONDS).filter(b=>b._ok&&b._dur>0&&b._tr!=null).map(b=>({x:b._dur,y:b._tr}));
+  const fit=_cerFitLogCurve(fitPts);
+  const out=[];
+  filterActive(BONDS).filter(b=>b._ok&&b._tr!=null).forEach(b=>{
+    const P=getCurrentPrice(b.id); if(!P) return;
+    const matD=new Date(b.mat+"T00:00:00");
+    const days=DB(settle,matD); if(days<=0) return;
+    const trOne=(gc)=>{
+      const flows=getBondSchedule(b,settle,gc,cerLiq);
+      if(!flows.length) return null;
+      const cashIn=flows.filter(f=>f.days<=h).reduce((s,f)=>s+f.nominal,0);
+      const fut=flows.filter(f=>f.days>h);
+      if(!fut.length) return {tr:cashIn/P-1, matured:true};
+      const nomSum=fut.reduce((s,f)=>s+f.nominal,0);
+      const durH=fut.reduce((s,f)=>s+(f.days-h)/365*f.nominal,0)/nomSum;
+      const resid=(fit&&b._dur>0)?(b._tr-fit(b._dur)):0;
+      const rH=fit?(fit(Math.max(durH,0.02))+resid):b._tr;
+      const settleH=new Date(settle); settleH.setDate(settleH.getDate()+h);
+      let pH=0;
+      fut.forEach(f=>{
+        const dH=f.days-h;
+        const c1=gc(settleH), c2=f.cerPay||gc(SBD(f.date,10));
+        const pi=(c1&&c2&&dH>0)?(Math.pow(c2/c1,365/dH)-1):0;
+        const yH=(1+rH/100)*(1+pi)-1;
+        pH+=f.nominal/Math.pow(1+yH,dH/365);
+      });
+      return {tr:(pH+cashIn)/P-1, matured:false};
+    };
+    const base=trOne(getCERb); if(!base) return;
+    const des=trOne(getCERdes), nom=trOne(getCERnom);
+    const carry=Math.pow(1+(b._tn||0)/100,Math.min(h,days)/365)-1;
+    const roll=base.tr-carry;
+    const annDays=base.matured?days:h;
+    const teaBase=(Math.pow(1+base.tr,365/annDays)-1)*100;
+    out.push({b,P,days,base,des,nom,carry,roll,teaBase});
+  });
+  if(!out.length){ el.innerHTML='<div class="note">Sin bonos calculados.</div>'; return; }
+  out.sort((a,b)=>b.teaBase-a.teaBase);
+  let rows="";
+  out.forEach(o=>{
+    const c=v=>v==null?"var(--td)":(v>=0?"var(--ac)":"var(--w)");
+    rows+=`<tr>
+      <td class="tk" style="color:${o.b.color}">${o.b.ticker}${o.base.matured?' <span style="color:var(--am);font-size:8px">vence&lt;h</span>':''}</td>
+      <td class="num">${o.P.toFixed(2)}</td>
+      <td class="num">${_rvFmt(o.b._tr)}%</td>
+      <td class="num">${_rvFmt(o.b._dur)}</td>
+      <td class="num" style="color:${c(o.carry)}">${_rvFmt(o.carry*100)}%</td>
+      <td class="num" style="color:${c(o.roll)}">${_rvFmt(o.roll*100)}%</td>
+      <td class="num" style="font-weight:700;color:${c(o.base.tr)}">${_rvFmt(o.base.tr*100)}%</td>
+      <td class="num" style="font-weight:700;color:${c(o.teaBase)}">${_rvFmt(o.teaBase)}%</td>
+      <td class="num" style="color:${c(o.des?o.des.tr:null)}">${o.des?_rvFmt(o.des.tr*100)+"%":"—"}</td>
+      <td class="num" style="color:${c(o.nom?o.nom.tr:null)}">${o.nom?_rvFmt(o.nom.tr*100)+"%":"—"}</td>
+    </tr>`;
+  });
+  el.innerHTML=`<table class="lt"><thead><tr>
+    <th>Bono</th><th class="num">Px</th><th class="num">TIR real</th><th class="num">Dur</th>
+    <th class="num">Carry ${h}d</th><th class="num">Roll ${h}d</th><th class="num">TR base ${h}d</th><th class="num">TR TEA</th>
+    <th class="num">TR desinf (−${shock.toFixed(2)})</th><th class="num">TR nominalidad (+${shock.toFixed(2)})</th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ── 4+6. PAIR Z-SCORE + DV01 SIZING ────────────────────────────────
+let _rvPairData=null; // {a:{ticker,points},b:{ticker,points},days}
+function rvInitTab(){
+  const selA=document.getElementById("rvPairA"), selB=document.getElementById("rvPairB");
+  if(!selA||!selB||selA.options.length) return;
+  const opts=filterActive(BONDS).map(b=>`<option value="${b.id}">${b.ticker}</option>`).join("");
+  selA.innerHTML=opts; selB.innerHTML=opts;
+  let saved=null;
+  try{ saved=JSON.parse(localStorage.getItem("cer_rv_pair_v1")||"null"); }catch(_e){}
+  if(saved){
+    if(saved.a&&BONDS.find(x=>x.id===saved.a)) selA.value=saved.a;
+    if(saved.b&&BONDS.find(x=>x.id===saved.b)) selB.value=saved.b;
+    if(saved.days) document.getElementById("rvPairDays").value=saved.days;
+  } else if(selB.options.length>1){ selB.selectedIndex=1; }
+  ["rvPairA","rvPairB","rvPairDays"].forEach(id=>{
+    document.getElementById(id).addEventListener("change",()=>{
+      try{ localStorage.setItem("cer_rv_pair_v1",JSON.stringify({
+        a:selA.value,b:selB.value,days:document.getElementById("rvPairDays").value})); }catch(_e){}
+    });
+  });
+}
+async function rvFetchPairHistory(){
+  const selA=document.getElementById("rvPairA"), selB=document.getElementById("rvPairB");
+  const info=document.getElementById("rvPairInfo");
+  const days=parseInt(document.getElementById("rvPairDays").value)||30;
+  const A=BONDS.find(x=>x.id===selA.value), B=BONDS.find(x=>x.id===selB.value);
+  if(!A||!B||A.id===B.id){ if(info) info.textContent="Elegí dos bonos distintos"; return; }
+  if(info) info.textContent="cargando historia...";
+  try{
+    const [ra,rb]=await Promise.all([
+      fetch(`/api/bond/series?ticker=${encodeURIComponent(A.ticker)}&days=${days}`,{credentials:"same-origin"}).then(r=>r.json()),
+      fetch(`/api/bond/series?ticker=${encodeURIComponent(B.ticker)}&days=${days}`,{credentials:"same-origin"}).then(r=>r.json()),
+    ]);
+    _rvPairData={a:{ticker:A.ticker,points:ra.points||[]},b:{ticker:B.ticker,points:rb.points||[]},days};
+    if(info) info.textContent=`${(ra.points||[]).length} ticks A · ${(rb.points||[]).length} ticks B`;
+  }catch(e){
+    _rvPairData=null;
+    if(info) info.textContent="sin historia (¿server offline?)";
+  }
+  rvRenderPairStats();
+}
+function rvRenderPairStats(){
+  const stEl=document.getElementById("rvPairStats"), szEl=document.getElementById("rvPairSizing");
+  if(!stEl) return;
+  const selA=document.getElementById("rvPairA"), selB=document.getElementById("rvPairB");
+  const A=BONDS.find(x=>x.id===selA?.value), B=BONDS.find(x=>x.id===selB?.value);
+  if(!A||!B){ stEl.textContent="Elegí un par."; return; }
+  const liveSpread=(A._ok&&B._ok&&A._tr!=null&&B._tr!=null)?(A._tr-B._tr):null;
+  // spread histórico (buckets 15 min)
+  let hist=[];
+  if(_rvPairData&&_rvPairData.a.ticker===A.ticker&&_rvPairData.b.ticker===B.ticker){
+    const bk=ms=>Math.floor(ms/900000);
+    const mA=new Map(), mB=new Map();
+    _rvPairData.a.points.forEach(p=>{ if(p.tir!=null) mA.set(bk(p.ts),p.tir); });
+    _rvPairData.b.points.forEach(p=>{ if(p.tir!=null) mB.set(bk(p.ts),p.tir); });
+    mA.forEach((v,k)=>{ if(mB.has(k)) hist.push({t:k*900000,s:v-mB.get(k)}); });
+    hist.sort((x,y)=>x.t-y.t);
+  }
+  let html=`<div style="margin-bottom:6px"><span class="tk" style="color:${A.color}">${A.ticker}</span> − <span class="tk" style="color:${B.color}">${B.ticker}</span> (TIR real)</div>`;
+  html+=`<div>Spread live: <b style="color:var(--t)">${liveSpread!=null?_rvBps(liveSpread)+" bps":"—"}</b></div>`;
+  if(hist.length>=8){
+    const vals=hist.map(p=>p.s);
+    const mean=vals.reduce((a,b)=>a+b,0)/vals.length;
+    const sd=Math.sqrt(vals.reduce((a,b)=>a+(b-mean)*(b-mean),0)/Math.max(vals.length-1,1));
+    const cur=liveSpread!=null?liveSpread:vals[vals.length-1];
+    const z=sd>1e-9?(cur-mean)/sd:null;
+    const below=vals.filter(v=>v<=cur).length;
+    const pct=below/vals.length*100;
+    const zC=z==null?"var(--td)":(Math.abs(z)>=2?"var(--w)":Math.abs(z)>=1?"var(--am)":"var(--ac)");
+    html+=`<div style="margin-top:4px">Media ${_rvPairData.days}d: <b>${_rvBps(mean)} bps</b> · σ: <b>${_rvBps(sd)} bps</b></div>`;
+    html+=`<div>Rango: ${_rvBps(Math.min(...vals))} / ${_rvBps(Math.max(...vals))} bps · n=${vals.length} buckets 15m</div>`;
+    html+=`<div style="margin-top:6px;font-size:14px">z-score: <b style="color:${zC}">${z!=null?z.toFixed(2):"—"}</b> · percentil <b style="color:${zC}">${pct.toFixed(0)}%</b></div>`;
+    html+=`<div style="font-size:9px;color:${zC};margin-top:2px">${z==null?"":Math.abs(z)>=2?(z>0?"spread MUY alto vs historia → comprimir: long B / short A":"spread MUY bajo vs historia → abrir: long A / short B"):Math.abs(z)>=1?"spread estirado, monitorear":"spread en rango normal"}</div>`;
+    _rvDrawPairChart(hist,mean,sd,cur);
+  } else {
+    html+=`<div style="margin-top:6px;color:var(--td)">Sin historia suficiente (${hist.length} buckets 15m). Tocá ▶ Analizar${hist.length===0?" — los ticks viven en el SQLite del server":""}.</div>`;
+    _rvDrawPairChart([],null,null,null);
+  }
+  stEl.innerHTML=html;
+  // ── DV01-neutral sizing ──
+  if(szEl){
+    const vnA=parseFloat(document.getElementById("rvPairVn")?.value)||0;
+    const PA=getCurrentPrice(A.id), PB=getCurrentPrice(B.id);
+    if(A._ok&&B._ok&&PA&&PB&&A._dur&&B._dur&&vnA>0){
+      const dv01A=PA*A._dur*1e-4, dv01B=PB*B._dur*1e-4; // $ por bp por 100 VN
+      const vnB=vnA*dv01A/dv01B;
+      const dvA$=vnA/100*dv01A, dvB$=vnB/100*dv01B;
+      const cd=30;
+      const cA=vnA/100*PA*(Math.pow(1+(A._tn||0)/100,cd/365)-1);
+      const cB=vnB/100*PB*(Math.pow(1+(B._tn||0)/100,cd/365)-1);
+      const net=cA-cB;
+      szEl.innerHTML=`<div class="il" style="margin-bottom:4px;color:var(--acl)">SIZING DV01-NEUTRAL (long A / short B)</div>
+        <div>VN A: <b>${vnA.toLocaleString("es-AR")}</b> → VN B: <b style="color:var(--t)">${Math.round(vnB).toLocaleString("es-AR")}</b> <span style="color:var(--td)">(ratio ${(dv01A/dv01B).toFixed(3)})</span></div>
+        <div>DV01 A: <b>$${dvA$.toLocaleString("es-AR",{maximumFractionDigits:0})}</b>/bp · DV01 B: <b>$${dvB$.toLocaleString("es-AR",{maximumFractionDigits:0})}</b>/bp</div>
+        <div>Carry neto 30d (nominal): <b style="color:${net>=0?"var(--ac)":"var(--w)"}">$${net.toLocaleString("es-AR",{maximumFractionDigits:0})}</b></div>`;
+    } else {
+      szEl.innerHTML='<div style="color:var(--td);font-size:10px">Sizing: necesito precio y duration de ambos (tocá Calculá).</div>';
+    }
+  }
+}
+function _rvDrawPairChart(hist,mean,sd,cur){
+  const cv=document.getElementById("rvPairChart"); if(!cv) return;
+  const W=cv.clientWidth||400, H=cv.clientHeight||150;
+  cv.width=W; cv.height=H;
+  const c=cv.getContext("2d");
+  c.clearRect(0,0,W,H);
+  const note=document.getElementById("rvPairChartNote");
+  if(!hist.length){ c.fillStyle="#475569"; c.font="10px 'IBM Plex Mono',monospace"; c.textAlign="center";
+    c.fillText("Sin datos — ▶ Analizar",W/2,H/2); if(note) note.textContent=""; return; }
+  const pad={l:44,r:10,t:8,b:16};
+  const ts=hist.map(p=>p.t), vs=hist.map(p=>p.s);
+  let yMin=Math.min(...vs), yMax=Math.max(...vs);
+  if(mean!=null&&sd!=null){ yMin=Math.min(yMin,mean-2.2*sd); yMax=Math.max(yMax,mean+2.2*sd); }
+  const yR=(yMax-yMin)||1, tMin=ts[0], tR=(ts[ts.length-1]-tMin)||1;
+  const xP=t=>pad.l+(t-tMin)/tR*(W-pad.l-pad.r);
+  const yP=v=>pad.t+(1-(v-yMin)/yR)*(H-pad.t-pad.b);
+  if(mean!=null&&sd!=null){
+    c.fillStyle="rgba(148,163,184,0.07)";
+    c.fillRect(pad.l,yP(mean+2*sd),W-pad.l-pad.r,yP(mean-2*sd)-yP(mean+2*sd));
+    [[mean,"#94a3b8"],[mean+2*sd,"#f59e0b"],[mean-2*sd,"#f59e0b"]].forEach(([v,col])=>{
+      c.strokeStyle=col; c.setLineDash([4,4]); c.lineWidth=0.8;
+      c.beginPath(); c.moveTo(pad.l,yP(v)); c.lineTo(W-pad.r,yP(v)); c.stroke(); c.setLineDash([]);
+    });
+  }
+  c.fillStyle="#64748b"; c.font="8px 'IBM Plex Mono',monospace"; c.textAlign="right";
+  for(let i=0;i<=4;i++){ const v=yMin+yR*i/4; c.fillText((v*100).toFixed(0)+"bp",pad.l-4,yP(v)+3); }
+  c.strokeStyle="#00e5a0"; c.lineWidth=1.4; c.beginPath();
+  hist.forEach((p,i)=>{ const x=xP(p.t),y=yP(p.s); if(i===0)c.moveTo(x,y); else c.lineTo(x,y); });
+  c.stroke();
+  if(cur!=null){ c.fillStyle="#fbbf24"; c.beginPath(); c.arc(W-pad.r-3,yP(cur),3.4,0,7); c.fill(); }
+  if(note) note.textContent=`${new Date(ts[0]).toLocaleDateString("es-AR")} → ${new Date(ts[ts.length-1]).toLocaleDateString("es-AR")} · punteada: media ±2σ · punto: spread actual`;
+}
+
+function renderRVQuant(){
+  try{ renderRvBreakevens(); }catch(e){ console.warn("[rv-be]",e); }
+  try{ renderRvRealFx(); }catch(e){ console.warn("[rv-fx]",e); }
+  try{ renderRvCarryRoll(); }catch(e){ console.warn("[rv-cr]",e); }
+  try{ rvRenderPairStats(); }catch(e){ console.warn("[rv-pair]",e); }
 }
 
 // ═══ INIT ════════════════════════════════════════════════════════

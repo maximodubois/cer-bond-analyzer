@@ -687,14 +687,18 @@ def restore_db_from_github():
     return True, f"{len(blob)} bytes"
 
 
-def commit_db_to_github(message=None, min_interval_sec=300):
+def commit_db_to_github(message=None, min_interval_sec=300, force=False):
     """PUT data/history.db al repo. Respeta min_interval_sec entre commits.
 
     Desactivado por default (DB_GITHUB_SYNC env var) porque cada commit
     triggerea un build de Render. El restore en cold start sigue funcionando
     (lee .db de GitHub sin commitear).
+
+    force=True saltea la llave DB_GITHUB_SYNC: lo usa SOLO el commit EOD
+    diario (17hs ART) del scheduler. El mensaje lleva [skip render], así que
+    ni ese único commit diario dispara un build.
     """
-    if not DB_GITHUB_SYNC:
+    if not DB_GITHUB_SYNC and not force:
         return False, "disabled (set DB_GITHUB_SYNC=1 to enable)"
     if not GITHUB_TOKEN:
         return False, "no token"

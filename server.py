@@ -833,6 +833,30 @@ def _start_fx_scheduler():
                     print(f"[scheduler] daily compact {today_utc}: bond -{bd} fx -{fxd} fwd -{fwdc} rows")
             except Exception as e:
                 print(f"[scheduler] compact error: {e}")
+            # ── Commit EOD del .db a GitHub: UNA vez por día, 17hs ART ──
+            # Los bond_ticks/fx_ticks intradía viven SOLO en el SQLite local
+            # (cero pushes intradía → cero builds de Render). Este único
+            # commit diario respalda la historia del día y además lleva
+            # [skip render] en el mensaje, así que tampoco dispara build.
+            # El z-score intradía del dashboard lee /api/bond/series (SQLite
+            # local), no GitHub.
+            try:
+                now_utc = _dt.datetime.utcnow()
+                art_now = now_utc - _dt.timedelta(hours=3)
+                art_date = art_now.strftime("%Y-%m-%d")
+                last_eod = storage.kv_get("last_eod_commit_date")
+                if GITHUB_TOKEN and art_now.hour >= 17 and last_eod != art_date:
+                    ok, msg = storage.commit_db_to_github(
+                        message=f"data: EOD snapshot {art_date} 17hs ART",
+                        min_interval_sec=0,
+                        force=True,
+                    )
+                    # "unchanged" también cuenta como hecho (no hay nada nuevo)
+                    if ok or (isinstance(msg, str) and msg.startswith("unchanged")):
+                        storage.kv_set("last_eod_commit_date", art_date)
+                    print(f"[scheduler] EOD commit {art_date}: ok={ok} — {msg}")
+            except Exception as e:
+                print(f"[scheduler] EOD commit error: {e}")
             time.sleep(900)  # 15 min
     t = threading.Thread(target=loop, name="fx-scheduler", daemon=True)
     t.start()
