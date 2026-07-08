@@ -1363,6 +1363,37 @@
 <div id="tab-positions" style="display:none">
 
   <!-- ════════════════════════════════════════════════════════════════
+       CARTERA — Inventario persistente con PPP (base manual + blotter)
+       ════════════════════════════════════════════════════════════════ -->
+  <div class="card" id="carteraCard">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+      <div>
+        <div class="st" style="margin:0">💼 CARTERA · Posición con PPP</div>
+        <div class="note" style="margin:4px 0 0 0;font-size:10px">
+          Cargá tu posición actual (ticker + VN; PPP opcional si no lo sabés) — queda guardada en tu compu (localStorage).
+          Sobre esa base se aplican <b>automáticamente</b> las operaciones del Blotter con estado <b>APROBADA ✓</b> posteriores a la carga:
+          compras promedian PPP, ventas bajan VN y realizan PnL contra el PPP. Para <b>ajustar a mano sin operación</b>: volvé a cargar el
+          ticker con el VN/PPP correcto (pisa la base y resetea el corte temporal), o usá ⟲ Consolidar para absorber los trades aplicados en la base.
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
+        <div class="ig"><label>Ticker</label>
+          <input type="text" id="cartTicker" list="tmTickerList" autocomplete="off" placeholder="TZXD6" style="width:90px;text-transform:uppercase;font-size:11px;font-family:'IBM Plex Mono',monospace">
+        </div>
+        <div class="ig"><label>VN</label>
+          <input type="number" id="cartVn" step="1000" placeholder="1000000" style="width:110px;text-align:right;font-size:11px;font-family:'IBM Plex Mono',monospace">
+        </div>
+        <div class="ig"><label>PPP (opcional)</label>
+          <input type="number" id="cartPpp" step="0.01" placeholder="no lo sé" style="width:90px;text-align:right;font-size:11px;font-family:'IBM Plex Mono',monospace">
+        </div>
+        <button class="btn-api btn-sm" onclick="cartAdd()">＋ Cargar / Pisar base</button>
+      </div>
+    </div>
+    <div id="cartTable" style="overflow-x:auto">—</div>
+    <div id="cartTotals" style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:11px"></div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════
        AGENDA — Libreta de traders/contrapartes (alimenta Blotter autocomplete)
        ════════════════════════════════════════════════════════════════ -->
   <style>
@@ -3436,6 +3467,110 @@
         <div id="rvPairChartNote" style="font-size:9px;color:var(--td);margin-top:4px;font-family:'IBM Plex Mono',monospace"></div>
       </div>
     </div>
+  </div>
+
+  <!-- 5. BUTTERFLY -->
+  <div class="card">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="st" style="margin:0">Butterfly — curvatura de la curva CER</div>
+        <div class="note" style="margin:4px 0 0 0;font-size:10px">
+          Fly = 2×TIR(body) − TIR(ala corta) − TIR(ala larga), en bps, con z-score sobre TU historia (bond_ticks, buckets 15 min).
+          Fly ALTO vs historia = el body está barato relativo a las alas → <b>comprar body / vender alas</b> (long butterfly). Fly BAJO = al revés.
+          Sizing DV01-neutral: cada ala toma la mitad del DV01 del body.
+        </div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:auto auto auto auto auto auto 1fr;gap:8px;align-items:end;margin-bottom:10px;flex-wrap:wrap">
+      <div class="ig"><label>Ala corta (A)</label>
+        <select id="rvFlyA" style="font-size:12px;font-family:'IBM Plex Mono',monospace;padding:5px;min-width:100px"></select>
+      </div>
+      <div class="ig"><label>Body (B)</label>
+        <select id="rvFlyB" style="font-size:12px;font-family:'IBM Plex Mono',monospace;padding:5px;min-width:100px"></select>
+      </div>
+      <div class="ig"><label>Ala larga (C)</label>
+        <select id="rvFlyC" style="font-size:12px;font-family:'IBM Plex Mono',monospace;padding:5px;min-width:100px"></select>
+      </div>
+      <div class="ig"><label>Lookback</label>
+        <select id="rvFlyDays" style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:5px">
+          <option value="7">7 días</option><option value="15">15 días</option>
+          <option value="30" selected>30 días</option><option value="60">60 días</option>
+        </select>
+      </div>
+      <div class="ig"><label>VN body</label>
+        <input type="number" id="rvFlyVn" value="1000000" step="100000" style="width:110px;text-align:right;font-size:11px;font-family:'IBM Plex Mono',monospace" oninput="rvRenderFlyStats()">
+      </div>
+      <button class="btn-api btn-sm" onclick="rvFetchFlyHistory()">▶ Analizar</button>
+      <span id="rvFlyInfo" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;text-align:right">—</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div>
+        <div id="rvFlyStats" style="font-family:'IBM Plex Mono',monospace;font-size:11px">Elegí ala corta / body / ala larga y tocá ▶ Analizar.</div>
+        <div id="rvFlySizing" style="margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:11px"></div>
+      </div>
+      <div>
+        <canvas id="rvFlyChart" style="width:100%;height:150px;background:#0a0f1a;border:1px solid #1a2540;border-radius:8px"></canvas>
+        <div id="rvFlyChartNote" style="font-size:9px;color:var(--td);margin-top:4px;font-family:'IBM Plex Mono',monospace"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. CARRY / VOL -->
+  <div class="card">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="st" style="margin:0">Ranking Carry/Vol — cuánto te pagan por unidad de riesgo</div>
+        <div class="note" style="margin:4px 0 0 0;font-size:10px">
+          Ratio tipo Sharpe: TR TEA esperado (del módulo Carry &amp; Roll, escenario base) ÷ vol anualizada de precio
+          (σ diaria de TIR real desde bond_ticks × duration × √252). Ratio alto = carry gordo con poca vol; ratio bajo = te pagan poco por el riesgo.
+          Requiere que el Carry &amp; Roll de arriba esté calculado.
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn-api btn-sm" onclick="rvCalcCarryVol()" id="rvCvBtn">▶ Calcular vol (30d)</button>
+        <span id="rvCvInfo" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace">—</span>
+      </div>
+    </div>
+    <div id="rvCvTable" style="overflow-x:auto">—</div>
+  </div>
+
+  <!-- 7. ALERTAS -->
+  <div class="card">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="st" style="margin:0">Alertas — avisos automáticos con cada tick</div>
+        <div class="note" style="margin:4px 0 0 0;font-size:10px">
+          Se evalúan en CADA actualización de precios, estés en la tab que estés. Al gatillarse: banner arriba de todo + beep +
+          ⚠ en el título de la pestaña. Cooldown 15 min por regla. Persisten en tu compu (localStorage).
+        </div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:auto auto auto auto auto auto 1fr;gap:8px;align-items:end;margin-bottom:10px;flex-wrap:wrap">
+      <div class="ig"><label>Tipo</label>
+        <select id="alType" onchange="alTypeChanged()" style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:5px">
+          <option value="tir">TIR real bono</option>
+          <option value="spread">Spread TIR real (A−B)</option>
+          <option value="price">Precio bono</option>
+        </select>
+      </div>
+      <div class="ig"><label>Bono A</label>
+        <select id="alBondA" style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:5px;min-width:95px"></select>
+      </div>
+      <div class="ig" id="alBondBWrap" style="display:none"><label>Bono B</label>
+        <select id="alBondB" style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:5px;min-width:95px"></select>
+      </div>
+      <div class="ig"><label>Cond.</label>
+        <select id="alOp" style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:5px">
+          <option value=">">≥</option><option value="<">≤</option>
+        </select>
+      </div>
+      <div class="ig"><label>Valor <span id="alValUnit" style="text-transform:none">(%)</span></label>
+        <input type="number" id="alVal" step="0.1" style="width:80px;text-align:right;font-size:11px;font-family:'IBM Plex Mono',monospace">
+      </div>
+      <button class="btn-api btn-sm" onclick="alAdd()">＋ Agregar</button>
+      <span style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;text-align:right" id="alInfo"></span>
+    </div>
+    <div id="alList" style="font-family:'IBM Plex Mono',monospace;font-size:11px">—</div>
   </div>
 
 </div>
@@ -5912,7 +6047,7 @@ function switchTab(tab){
   });
   if(tab==="resumen") renderResumen();
   if(tab==="livescreen") { try{ renderRun(); }catch(_e){} }
-  if(tab==="positions"){ renderPositions(); renderBlotter(); renderAxes(); try{renderAgenda()}catch(_e){} }
+  if(tab==="positions"){ renderPositions(); renderBlotter(); renderAxes(); try{renderAgenda()}catch(_e){} try{renderCartera()}catch(_e){} }
   if(tab==="quantplus"){ try{ qtInit(); }catch(_e){console.warn('[qt]',_e)} try{ atRenderCheapRich(); }catch(_e){} try{ ycaLoadTimestamps(); }catch(_e){} }
   if(tab==="pases") buildPaseSelect();
   if(tab==="quantplus") refreshQuantPlus();
@@ -5920,7 +6055,7 @@ function switchTab(tab){
   if(tab==="cer"){ try{ renderCERTab(); }catch(e){ console.warn('[cer-tab]',e); } }
   if(tab==="bonares"){ try{ renderBonares(); }catch(e){ console.warn('[bonares]',e); } }
   if(tab==="arbtasas"){ try{ atInitTab(); }catch(e){ console.warn('[arbtasas]',e); } }
-  if(tab==="rvquant"){ try{ rvInitTab(); renderRVQuant(); }catch(e){ console.warn('[rvquant]',e); } }
+  if(tab==="rvquant"){ try{ rvInitTab(); rvInitFly(); alInitUI(); renderRVQuant(); }catch(e){ console.warn('[rvquant]',e); } }
   setTimeout(initSortableTables,100);
 }
 
@@ -9081,6 +9216,14 @@ async function fetchPricesFromServer(){
         if (typeof renderRVQuant === 'function') renderRVQuant();
       }
     } catch(_e){}
+    // Cartera MTM si Posiciones está visible
+    try {
+      if (document.getElementById('tab-positions')?.style.display !== 'none') {
+        if (typeof renderCartera === 'function') renderCartera();
+      }
+    } catch(_e){}
+    // Alertas: SIEMPRE, estés en la tab que estés
+    try { if (typeof alertsEval === 'function') alertsEval(); } catch(_e){}
     // Hook para callbacks externos que dependen de _livePrices (axes, etc.)
     if(Array.isArray(window._postPriceUpdate)){
       window._postPriceUpdate.forEach(fn=>{ try{fn()}catch(e){} });
@@ -10135,6 +10278,7 @@ function saveTradeFromModal(){
   saveBlotter();
   closeTradeModal();
   renderBlotter();
+  try{ renderCartera(); }catch(_e){}
 }
 
 function editTrade(id){
@@ -10147,12 +10291,14 @@ function deleteTrade(id){
   if(!confirm('Borrar este trade?')) return;
   _blotter=_blotter.filter(x=>x.id!==id);
   saveBlotter(); renderBlotter();
+  try{ renderCartera(); }catch(_e){}
 }
 function toggleApprove(id){
   const t=_blotter.find(x=>x.id===id);
   if(!t) return;
   t.approved = (t.approved==='yes')?'no':(t.approved==='no')?'rej':'yes';
   saveBlotter(); renderBlotter();
+  try{ renderCartera(); }catch(_e){}
 }
 function cloneTrade(id){
   const t=_blotter.find(x=>x.id===id);
@@ -13663,6 +13809,7 @@ function renderRvCarryRoll(){
     const teaBase=(Math.pow(1+base.tr,365/annDays)-1)*100;
     out.push({b,P,days,base,des,nom,carry,roll,teaBase});
   });
+  window._rvCrLast=out; // lo consume el ranking Carry/Vol
   if(!out.length){ el.innerHTML='<div class="note">Sin bonos calculados.</div>'; return; }
   out.sort((a,b)=>b.teaBase-a.teaBase);
   let rows="";
@@ -13788,13 +13935,13 @@ function rvRenderPairStats(){
     }
   }
 }
-function _rvDrawPairChart(hist,mean,sd,cur){
-  const cv=document.getElementById("rvPairChart"); if(!cv) return;
+function _rvDrawPairChart(hist,mean,sd,cur,cvId="rvPairChart",noteId="rvPairChartNote"){
+  const cv=document.getElementById(cvId); if(!cv) return;
   const W=cv.clientWidth||400, H=cv.clientHeight||150;
   cv.width=W; cv.height=H;
   const c=cv.getContext("2d");
   c.clearRect(0,0,W,H);
-  const note=document.getElementById("rvPairChartNote");
+  const note=document.getElementById(noteId);
   if(!hist.length){ c.fillStyle="#475569"; c.font="10px 'IBM Plex Mono',monospace"; c.textAlign="center";
     c.fillText("Sin datos — ▶ Analizar",W/2,H/2); if(note) note.textContent=""; return; }
   const pad={l:44,r:10,t:8,b:16};
@@ -13821,11 +13968,401 @@ function _rvDrawPairChart(hist,mean,sd,cur){
   if(note) note.textContent=`${new Date(ts[0]).toLocaleDateString("es-AR")} → ${new Date(ts[ts.length-1]).toLocaleDateString("es-AR")} · punteada: media ±2σ · punto: spread actual`;
 }
 
+// ── 5. BUTTERFLY ───────────────────────────────────────────────────
+let _rvFlyData=null; // {a,b,c:{ticker,points},days}
+function rvInitFly(){
+  const ids=["rvFlyA","rvFlyB","rvFlyC"];
+  const selA=document.getElementById("rvFlyA");
+  if(!selA||selA.options.length) return;
+  const opts=filterActive(BONDS).map(b=>`<option value="${b.id}">${b.ticker}</option>`).join("");
+  ids.forEach(id=>{ document.getElementById(id).innerHTML=opts; });
+  let saved=null;
+  try{ saved=JSON.parse(localStorage.getItem("cer_rv_fly_v1")||"null"); }catch(_e){}
+  if(saved){
+    ids.forEach((id,i)=>{ const v=[saved.a,saved.b,saved.c][i]; if(v&&BONDS.find(x=>x.id===v)) document.getElementById(id).value=v; });
+    if(saved.days) document.getElementById("rvFlyDays").value=saved.days;
+  } else {
+    const n=selA.options.length;
+    if(n>=3){ document.getElementById("rvFlyB").selectedIndex=Math.floor(n/2); document.getElementById("rvFlyC").selectedIndex=n-1; }
+  }
+  ids.concat(["rvFlyDays"]).forEach(id=>{
+    document.getElementById(id).addEventListener("change",()=>{
+      try{ localStorage.setItem("cer_rv_fly_v1",JSON.stringify({
+        a:document.getElementById("rvFlyA").value, b:document.getElementById("rvFlyB").value,
+        c:document.getElementById("rvFlyC").value, days:document.getElementById("rvFlyDays").value})); }catch(_e){}
+    });
+  });
+}
+async function rvFetchFlyHistory(){
+  const info=document.getElementById("rvFlyInfo");
+  const days=parseInt(document.getElementById("rvFlyDays").value)||30;
+  const A=BONDS.find(x=>x.id===document.getElementById("rvFlyA").value);
+  const B=BONDS.find(x=>x.id===document.getElementById("rvFlyB").value);
+  const C=BONDS.find(x=>x.id===document.getElementById("rvFlyC").value);
+  if(!A||!B||!C||new Set([A.id,B.id,C.id]).size<3){ if(info) info.textContent="Elegí 3 bonos distintos"; return; }
+  if(info) info.textContent="cargando historia...";
+  try{
+    const gets=[A,B,C].map(x=>fetch(`/api/bond/series?ticker=${encodeURIComponent(x.ticker)}&days=${days}`,{credentials:"same-origin"}).then(r=>r.json()));
+    const [ra,rb,rc]=await Promise.all(gets);
+    _rvFlyData={a:{ticker:A.ticker,points:ra.points||[]},b:{ticker:B.ticker,points:rb.points||[]},c:{ticker:C.ticker,points:rc.points||[]},days};
+    if(info) info.textContent=`${(ra.points||[]).length}/${(rb.points||[]).length}/${(rc.points||[]).length} ticks`;
+  }catch(e){ _rvFlyData=null; if(info) info.textContent="sin historia (¿server offline?)"; }
+  rvRenderFlyStats();
+}
+function rvRenderFlyStats(){
+  const stEl=document.getElementById("rvFlyStats"), szEl=document.getElementById("rvFlySizing");
+  if(!stEl) return;
+  const A=BONDS.find(x=>x.id===document.getElementById("rvFlyA")?.value);
+  const B=BONDS.find(x=>x.id===document.getElementById("rvFlyB")?.value);
+  const C=BONDS.find(x=>x.id===document.getElementById("rvFlyC")?.value);
+  if(!A||!B||!C){ stEl.textContent="Elegí el fly."; return; }
+  const liveFly=(A._ok&&B._ok&&C._ok&&A._tr!=null&&B._tr!=null&&C._tr!=null)?(2*B._tr-A._tr-C._tr):null;
+  let hist=[];
+  if(_rvFlyData&&_rvFlyData.a.ticker===A.ticker&&_rvFlyData.b.ticker===B.ticker&&_rvFlyData.c.ticker===C.ticker){
+    const bk=ms=>Math.floor(ms/900000);
+    const mk=pts=>{ const m=new Map(); pts.forEach(p=>{ if(p.tir!=null) m.set(bk(p.ts),p.tir); }); return m; };
+    const mA=mk(_rvFlyData.a.points), mB=mk(_rvFlyData.b.points), mC=mk(_rvFlyData.c.points);
+    mB.forEach((v,k)=>{ if(mA.has(k)&&mC.has(k)) hist.push({t:k*900000,s:2*v-mA.get(k)-mC.get(k)}); });
+    hist.sort((x,y)=>x.t-y.t);
+  }
+  let html=`<div style="margin-bottom:6px"><span class="tk" style="color:${A.color}">${A.ticker}</span> / <b style="color:${B.color}">${B.ticker}</b> / <span class="tk" style="color:${C.color}">${C.ticker}</span></div>`;
+  html+=`<div>Fly live: <b style="color:var(--t)">${liveFly!=null?_rvBps(liveFly)+" bps":"—"}</b></div>`;
+  if(hist.length>=8){
+    const vals=hist.map(p=>p.s);
+    const mean=vals.reduce((a,b)=>a+b,0)/vals.length;
+    const sd=Math.sqrt(vals.reduce((a,b)=>a+(b-mean)*(b-mean),0)/Math.max(vals.length-1,1));
+    const cur=liveFly!=null?liveFly:vals[vals.length-1];
+    const z=sd>1e-9?(cur-mean)/sd:null;
+    const pct=vals.filter(v=>v<=cur).length/vals.length*100;
+    const zC=z==null?"var(--td)":(Math.abs(z)>=2?"var(--w)":Math.abs(z)>=1?"var(--am)":"var(--ac)");
+    html+=`<div style="margin-top:4px">Media ${_rvFlyData.days}d: <b>${_rvBps(mean)} bps</b> · σ: <b>${_rvBps(sd)} bps</b> · n=${vals.length}</div>`;
+    html+=`<div style="margin-top:6px;font-size:14px">z-score: <b style="color:${zC}">${z!=null?z.toFixed(2):"—"}</b> · percentil <b style="color:${zC}">${pct.toFixed(0)}%</b></div>`;
+    html+=`<div style="font-size:9px;color:${zC};margin-top:2px">${z==null?"":Math.abs(z)>=2?(z>0?"body BARATO vs alas → long butterfly (comprar body / vender alas)":"body CARO vs alas → short butterfly (vender body / comprar alas)"):Math.abs(z)>=1?"curvatura estirada, monitorear":"curvatura en rango normal"}</div>`;
+    _rvDrawPairChart(hist,mean,sd,cur,"rvFlyChart","rvFlyChartNote");
+  } else {
+    html+=`<div style="margin-top:6px;color:var(--td)">Sin historia suficiente (${hist.length} buckets). Tocá ▶ Analizar.</div>`;
+    _rvDrawPairChart([],null,null,null,"rvFlyChart","rvFlyChartNote");
+  }
+  stEl.innerHTML=html;
+  if(szEl){
+    const vnB=parseFloat(document.getElementById("rvFlyVn")?.value)||0;
+    const PA=getCurrentPrice(A.id), PB=getCurrentPrice(B.id), PC=getCurrentPrice(C.id);
+    if(A._ok&&B._ok&&C._ok&&PA&&PB&&PC&&A._dur&&B._dur&&C._dur&&vnB>0){
+      const dA=PA*A._dur*1e-4, dB=PB*B._dur*1e-4, dC=PC*C._dur*1e-4;
+      const vnA=0.5*vnB*dB/dA, vnC=0.5*vnB*dB/dC;
+      szEl.innerHTML=`<div class="il" style="margin-bottom:4px;color:var(--acl)">SIZING DV01-NEUTRAL (50/50 en alas)</div>
+        <div>Body ${B.ticker}: VN <b>${vnB.toLocaleString("es-AR")}</b> (DV01 $${(vnB/100*dB).toLocaleString("es-AR",{maximumFractionDigits:0})}/bp)</div>
+        <div>Ala ${A.ticker}: VN <b style="color:var(--t)">${Math.round(vnA).toLocaleString("es-AR")}</b> · Ala ${C.ticker}: VN <b style="color:var(--t)">${Math.round(vnC).toLocaleString("es-AR")}</b></div>
+        <div style="color:var(--td);font-size:9px;margin-top:2px">Long fly = comprar body, vender alas (y viceversa). Cada ala lleva la mitad del DV01 del body.</div>`;
+    } else {
+      szEl.innerHTML='<div style="color:var(--td);font-size:10px">Sizing: necesito precio y duration de los 3 (tocá Calculá).</div>';
+    }
+  }
+}
+
+// ── 6. RANKING CARRY / VOL ─────────────────────────────────────────
+let _rvCvCache=null; // {ts, rows:[{ticker,teaBase,volBpsDia,volPxAnual,ratio}]}
+async function rvCalcCarryVol(){
+  const el=document.getElementById("rvCvTable"), info=document.getElementById("rvCvInfo"), btn=document.getElementById("rvCvBtn");
+  if(!el) return;
+  const cr=window._rvCrLast||[];
+  if(!cr.length){ el.innerHTML='<div class="note">Primero necesito el Carry &amp; Roll de arriba (tocá Calculá y esperá un tick).</div>'; return; }
+  if(btn) btn.disabled=true;
+  const rows=[];
+  for(let i=0;i<cr.length;i++){
+    const o=cr[i];
+    if(info) info.textContent=`vol ${o.b.ticker} (${i+1}/${cr.length})...`;
+    try{
+      const r=await fetch(`/api/bond/series?ticker=${encodeURIComponent(o.b.ticker)}&days=30`,{credentials:"same-origin"}).then(x=>x.json());
+      const pts=(r.points||[]).filter(p=>p.tir!=null);
+      // último tir por día UTC → diffs diarios → σ en pp
+      const byDay=new Map();
+      pts.forEach(p=>byDay.set(new Date(p.ts).toISOString().slice(0,10),p.tir));
+      const days=[...byDay.keys()].sort();
+      const diffs=[];
+      for(let j=1;j<days.length;j++) diffs.push(byDay.get(days[j])-byDay.get(days[j-1]));
+      let volBpsDia=null, volPxAnual=null, ratio=null;
+      if(diffs.length>=5){
+        const m=diffs.reduce((a,b)=>a+b,0)/diffs.length;
+        const sd=Math.sqrt(diffs.reduce((a,b)=>a+(b-m)*(b-m),0)/(diffs.length-1));
+        volBpsDia=sd*100;
+        volPxAnual=(o.b._dur||0)*sd*Math.sqrt(252); // % anual aprox sobre precio
+        ratio=volPxAnual>1e-6?o.teaBase/volPxAnual:null;
+      }
+      rows.push({ticker:o.b.ticker,color:o.b.color,teaBase:o.teaBase,dur:o.b._dur,volBpsDia,volPxAnual,ratio,nDias:diffs.length});
+    }catch(_e){
+      rows.push({ticker:o.b.ticker,color:o.b.color,teaBase:o.teaBase,dur:o.b._dur,volBpsDia:null,volPxAnual:null,ratio:null,nDias:0});
+    }
+  }
+  if(btn) btn.disabled=false;
+  if(info) info.textContent=`listo · ${new Date().toLocaleTimeString("es-AR")}`;
+  _rvCvCache={ts:Date.now(),rows};
+  rvRenderCarryVol();
+}
+function rvRenderCarryVol(){
+  const el=document.getElementById("rvCvTable");
+  if(!el||!_rvCvCache) return;
+  const rows=_rvCvCache.rows.slice().sort((a,b)=>(b.ratio??-1e9)-(a.ratio??-1e9));
+  let html='<table class="lt"><thead><tr><th>Bono</th><th class="num">TR TEA base</th><th class="num">Dur</th><th class="num">σ TIR (bps/día)</th><th class="num">Vol precio anual</th><th class="num">Carry/Vol</th><th class="num">días c/dato</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    const rc=r.ratio==null?"var(--td)":(r.ratio>=2?"var(--ac)":r.ratio>=1?"var(--am)":"var(--w)");
+    html+=`<tr><td class="tk" style="color:${r.color}">${r.ticker}</td>
+      <td class="num">${_rvFmt(r.teaBase)}%</td><td class="num">${_rvFmt(r.dur)}</td>
+      <td class="num">${_rvFmt(r.volBpsDia,1)}</td><td class="num">${_rvFmt(r.volPxAnual)}%</td>
+      <td class="num" style="font-weight:700;color:${rc}">${_rvFmt(r.ratio)}</td>
+      <td class="num" style="color:var(--td)">${r.nDias}</td></tr>`;
+  });
+  el.innerHTML=html+'</tbody></table>';
+}
+
+// ── 7. ALERTAS ─────────────────────────────────────────────────────
+function _alLoad(){ try{ const x=JSON.parse(localStorage.getItem("cer_alerts_v1")||"[]"); return Array.isArray(x)?x:[]; }catch(_e){ return []; } }
+function _alSave(rules){ try{ localStorage.setItem("cer_alerts_v1",JSON.stringify(rules)); }catch(_e){} }
+function alInitUI(){
+  const a=document.getElementById("alBondA"), b=document.getElementById("alBondB");
+  if(!a||a.options.length) return;
+  const opts=filterActive(BONDS).map(x=>`<option value="${x.id}">${x.ticker}</option>`).join("");
+  a.innerHTML=opts; b.innerHTML=opts;
+}
+function alTypeChanged(){
+  const t=document.getElementById("alType").value;
+  document.getElementById("alBondBWrap").style.display=(t==="spread")?"":"none";
+  document.getElementById("alValUnit").textContent=t==="spread"?"(bps)":t==="price"?"($)":"(%)";
+}
+function alAdd(){
+  const type=document.getElementById("alType").value;
+  const a=document.getElementById("alBondA").value;
+  const b=document.getElementById("alBondB").value;
+  const op=document.getElementById("alOp").value;
+  const val=parseFloat(document.getElementById("alVal").value);
+  if(isNaN(val)){ document.getElementById("alInfo").textContent="Falta el valor"; return; }
+  if(type==="spread"&&a===b){ document.getElementById("alInfo").textContent="Elegí bonos distintos"; return; }
+  const rules=_alLoad();
+  rules.push({id:"al"+Date.now(),type,a,b:type==="spread"?b:null,op,val,armed:true,lastFired:0});
+  _alSave(rules); document.getElementById("alInfo").textContent="";
+  alRenderList();
+}
+function _alCurrent(r){
+  const A=BONDS.find(x=>x.id===r.a);
+  if(!A) return null;
+  if(r.type==="tir")   return (A._ok&&A._tr!=null)?A._tr:null;
+  if(r.type==="price"){ const p=getCurrentPrice(A.id); return p||null; }
+  if(r.type==="spread"){
+    const B=BONDS.find(x=>x.id===r.b);
+    return (A._ok&&B&&B._ok&&A._tr!=null&&B._tr!=null)?(A._tr-B._tr)*100:null;
+  }
+  return null;
+}
+function _alDesc(r){
+  const tk=id=>BONDS.find(x=>x.id===id)?.ticker||id;
+  const u=r.type==="spread"?" bps":r.type==="price"?" $":"%";
+  const met=r.type==="tir"?`TIR real ${tk(r.a)}`:r.type==="price"?`Px ${tk(r.a)}`:`Spread ${tk(r.a)}−${tk(r.b)}`;
+  return `${met} ${r.op==='>'?'≥':'≤'} ${r.val}${u}`;
+}
+function alRenderList(){
+  const el=document.getElementById("alList");
+  if(!el) return;
+  const rules=_alLoad();
+  if(!rules.length){ el.innerHTML='<div style="color:var(--td)">Sin alertas. Agregá la primera arriba.</div>'; return; }
+  el.innerHTML=rules.map(r=>{
+    const cur=_alCurrent(r);
+    const u=r.type==="spread"?" bps":r.type==="price"?"":"%";
+    const hit=cur!=null&&(r.op===">"?cur>=r.val:cur<=r.val);
+    return `<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px solid var(--cb);align-items:center">
+      <div style="${r.armed?"":"opacity:0.45"}">
+        <b style="color:${hit?"var(--w)":"var(--t)"}">${hit?"⚠ ":""}${_alDesc(r)}</b>
+        <span style="color:var(--td)"> · ahora: ${cur!=null?cur.toFixed(2)+u:"—"}</span>
+        ${r.lastFired?`<span style="color:var(--td);font-size:9px"> · último aviso ${new Date(r.lastFired).toLocaleTimeString("es-AR")}</span>`:""}
+      </div>
+      <div style="display:flex;gap:4px">
+        <button class="btn-api btn-sm" onclick="alToggle('${r.id}')" style="${r.armed?"color:var(--ac);border-color:var(--ac)":""}">${r.armed?"ON":"off"}</button>
+        <button class="btn-api btn-sm" style="color:var(--w);border-color:var(--w)" onclick="alDelete('${r.id}')">✗</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+function alToggle(id){ const rules=_alLoad(); const r=rules.find(x=>x.id===id); if(r){ r.armed=!r.armed; _alSave(rules); alRenderList(); } }
+function alDelete(id){ _alSave(_alLoad().filter(x=>x.id!==id)); alRenderList(); }
+function _alBeep(){
+  try{
+    const ctx=window._alAudioCtx||(window._alAudioCtx=new (window.AudioContext||window.webkitAudioContext)());
+    [0,0.25].forEach(t0=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.frequency.value=880; o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.12,ctx.currentTime+t0);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t0+0.18);
+      o.start(ctx.currentTime+t0); o.stop(ctx.currentTime+t0+0.2);
+    });
+  }catch(_e){}
+}
+function _alBanner(msg){
+  let box=document.getElementById("alBannerBox");
+  if(!box){
+    box=document.createElement("div");
+    box.id="alBannerBox";
+    box.style.cssText="position:fixed;top:0;left:0;right:0;z-index:99999;display:flex;flex-direction:column;gap:2px";
+    document.body.appendChild(box);
+  }
+  const div=document.createElement("div");
+  div.style.cssText="background:#3a1c08;border-bottom:2px solid #f59e0b;color:#fbbf24;padding:8px 14px;font-family:'IBM Plex Mono',monospace;font-size:12px;display:flex;justify-content:space-between;align-items:center";
+  div.innerHTML=`<span>⚠ ALERTA · ${msg} · ${new Date().toLocaleTimeString("es-AR")}</span>`;
+  const x=document.createElement("button");
+  x.textContent="✕";
+  x.style.cssText="background:none;border:1px solid #f59e0b;color:#fbbf24;border-radius:3px;cursor:pointer;padding:1px 8px";
+  x.onclick=()=>{ div.remove(); if(!box.children.length) document.title=document.title.replace(/^⚠ /,""); };
+  div.appendChild(x);
+  box.appendChild(div);
+  if(!document.title.startsWith("⚠ ")) document.title="⚠ "+document.title;
+}
+function alertsEval(){
+  const rules=_alLoad();
+  if(!rules.length) return;
+  const now=Date.now();
+  let changed=false;
+  rules.forEach(r=>{
+    if(!r.armed) return;
+    const cur=_alCurrent(r);
+    if(cur==null) return;
+    const hit=(r.op===">"?cur>=r.val:cur<=r.val);
+    if(hit&&now-(r.lastFired||0)>15*60*1000){
+      r.lastFired=now; changed=true;
+      const u=r.type==="spread"?" bps":r.type==="price"?"":"%";
+      _alBanner(`${_alDesc(r)} — ahora ${cur.toFixed(2)}${u}`);
+      _alBeep();
+    }
+  });
+  if(changed){ _alSave(rules); try{ alRenderList(); }catch(_e){} }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CARTERA · inventario persistente con PPP (base manual + blotter)
+// base[TICKER] = {vn, ppp|null, asOf:ISO}. Efectivo = base + fold de
+// trades del blotter con approved==='yes' y ts POSTERIOR al asOf.
+// Recompute total en cada render → idempotente: editar/desaprobar/borrar
+// un trade en el blotter se refleja solo, sin estado duplicado.
+// ═══════════════════════════════════════════════════════════════════
+function _cartLoad(){ try{ const x=JSON.parse(localStorage.getItem("cer_cartera_v1")||"{}"); return (x&&typeof x==="object")?x:{}; }catch(_e){ return {}; } }
+function _cartSave(base){ try{ localStorage.setItem("cer_cartera_v1",JSON.stringify(base)); }catch(_e){} }
+function _cartFold(pos, side, q, px){
+  // Average-cost con soporte de cruce de lado. pos={vn,ppp,realized}
+  const dir=side==="V"?-1:1;
+  const tq=dir*q;
+  if(pos.vn===0||Math.sign(pos.vn)===Math.sign(tq)){
+    if(pos.vn===0){ pos.ppp=px; }
+    else if(pos.ppp!=null){ pos.ppp=(Math.abs(pos.vn)*pos.ppp+q*px)/(Math.abs(pos.vn)+q); }
+    // si ppp era desconocido con posición previa, sigue desconocido
+    pos.vn+=tq;
+  } else {
+    const closing=Math.min(q,Math.abs(pos.vn));
+    if(pos.ppp!=null) pos.realized+=(px-pos.ppp)/100*closing*Math.sign(pos.vn);
+    pos.vn+=tq;
+    if(pos.vn!==0&&Math.sign(pos.vn)===Math.sign(tq)) pos.ppp=px; // cruzó de lado
+    if(pos.vn===0) pos.ppp=null;
+  }
+}
+function cartEffective(){
+  const base=_cartLoad();
+  const eff={};
+  Object.keys(base).forEach(tk=>{
+    eff[tk]={vn:base[tk].vn||0, ppp:(base[tk].ppp!=null?base[tk].ppp:null), realized:0, nTrades:0, asOf:base[tk].asOf||null, hasBase:true};
+  });
+  const trades=(typeof _blotter!=="undefined"?_blotter:[])
+    .filter(t=>t.approved==="yes"&&t.ticker&&t.qty>0&&t.price>0)
+    .slice().sort((a,b)=>(a.ts||"").localeCompare(b.ts||""));
+  trades.forEach(t=>{
+    const tk=String(t.ticker).trim().toUpperCase();
+    if(!eff[tk]) eff[tk]={vn:0,ppp:null,realized:0,nTrades:0,asOf:null,hasBase:false};
+    const cutoff=eff[tk].asOf?new Date(eff[tk].asOf).getTime():0;
+    const ts=t.ts?new Date(t.ts).getTime():0;
+    if(ts<=cutoff) return; // anterior a la carga de base → ya incluido en base
+    _cartFold(eff[tk], t.side==="V"?"V":"B", parseFloat(t.qty), parseFloat(t.price));
+    eff[tk].nTrades++;
+  });
+  return eff;
+}
+function cartAdd(){
+  const tkEl=document.getElementById("cartTicker");
+  const tk=(tkEl.value||"").trim().toUpperCase();
+  const vn=parseFloat(document.getElementById("cartVn").value);
+  const pppRaw=document.getElementById("cartPpp").value;
+  const ppp=pppRaw===""?null:parseFloat(pppRaw);
+  if(!tk){ alert("Falta ticker"); return; }
+  if(isNaN(vn)){ alert("Falta VN (puede ser 0 para arrancar de cero)"); return; }
+  if(ppp!=null&&!(ppp>0)){ alert("PPP inválido"); return; }
+  if(typeof _bltFindAsset==="function"&&!_bltFindAsset(tk)&&!confirm(`Ticker "${tk}" no está en el universo. ¿Cargar igual?`)) return;
+  const base=_cartLoad();
+  base[tk]={vn,ppp,asOf:new Date().toISOString()};
+  _cartSave(base);
+  tkEl.value=""; document.getElementById("cartVn").value=""; document.getElementById("cartPpp").value="";
+  renderCartera();
+}
+function cartConsolidate(tk){
+  const eff=cartEffective()[tk];
+  if(!eff) return;
+  if(!confirm(`Consolidar ${tk}: la base pasa a VN ${Math.round(eff.vn).toLocaleString("es-AR")} / PPP ${eff.ppp!=null?eff.ppp.toFixed(2):"—"} y los trades ya aplicados quedan absorbidos. ¿Dale?`)) return;
+  const base=_cartLoad();
+  base[tk]={vn:eff.vn,ppp:eff.ppp,asOf:new Date().toISOString()};
+  _cartSave(base); renderCartera();
+}
+function cartDelete(tk){
+  if(!confirm(`Borrar ${tk} de la cartera? (los trades del blotter no se tocan; si hay aprobados posteriores van a re-aparecer como posición sin base)`)) return;
+  const base=_cartLoad(); delete base[tk]; _cartSave(base); renderCartera();
+}
+function renderCartera(){
+  const el=document.getElementById("cartTable"), tot=document.getElementById("cartTotals");
+  if(!el) return;
+  const eff=cartEffective();
+  const tks=Object.keys(eff).filter(tk=>eff[tk].hasBase||Math.abs(eff[tk].vn)>1e-9||Math.abs(eff[tk].realized)>1e-9).sort();
+  if(!tks.length){ el.innerHTML='<div class="note">Cartera vacía — cargá tu posición inicial arriba (ticker + VN, PPP si lo tenés).</div>'; if(tot) tot.innerHTML=""; return; }
+  let html='<table class="lt"><thead><tr><th>Ticker</th><th class="num">VN</th><th class="num">PPP</th><th class="num">Px</th><th class="num">TIR@PPP</th><th class="num">TIR px</th><th class="num">Valor mercado</th><th class="num">PnL no realiz.</th><th class="num">%</th><th class="num">PnL realiz.</th><th class="num">ops</th><th></th></tr></thead><tbody>';
+  let sumMv=0,sumPnl=0,sumReal=0,anyPnl=false;
+  tks.forEach(tk=>{
+    const p=eff[tk];
+    const asset=(typeof _bltFindAsset==="function")?_bltFindAsset(tk):null;
+    const color=asset?.color||"var(--t)";
+    const px=asset?(getCurrentPrice(asset.id)||(_livePrices[tk]?.last||0)):(_livePrices[tk]?.last||0);
+    const mPpp=(asset&&p.ppp)?getMetricsForAsset(asset.id,p.ppp):null;
+    const mPx=(asset&&px)?getMetricsForAsset(asset.id,px):null;
+    const mv=px?p.vn/100*px:null;
+    const pnl=(px&&p.ppp!=null)?(px-p.ppp)/100*p.vn:null;
+    const pnlPct=(pnl!=null&&p.ppp&&p.vn!==0)?(px/p.ppp-1)*100*Math.sign(p.vn):null;
+    if(mv!=null) sumMv+=mv;
+    if(pnl!=null){ sumPnl+=pnl; anyPnl=true; }
+    sumReal+=p.realized||0;
+    const pc=v=>v==null?"var(--td)":(v>=0?"var(--ac)":"var(--w)");
+    html+=`<tr>
+      <td class="tk" style="color:${color}">${tk}${p.hasBase?"":' <span style="color:var(--am);font-size:8px" title="posición generada solo por trades del blotter, sin base cargada">blt</span>'}</td>
+      <td class="num" style="font-weight:700;color:${p.vn>=0?"var(--t)":"var(--w)"}">${Math.round(p.vn).toLocaleString("es-AR")}</td>
+      <td class="num">${p.ppp!=null?p.ppp.toFixed(2):'<span style="color:var(--am)" title="PPP desconocido: cargalo en la base o se arma con las próximas compras">—</span>'}</td>
+      <td class="num">${px?px.toFixed(2):"—"}</td>
+      <td class="num">${mPpp?mPpp.tea.toFixed(2)+"%":"—"}</td>
+      <td class="num">${mPx?mPx.tea.toFixed(2)+"%":"—"}</td>
+      <td class="num">${mv!=null?"$"+mv.toLocaleString("es-AR",{maximumFractionDigits:0}):"—"}</td>
+      <td class="num" style="color:${pc(pnl)};font-weight:700">${pnl!=null?"$"+(pnl>=0?"+":"")+pnl.toLocaleString("es-AR",{maximumFractionDigits:0}):"—"}</td>
+      <td class="num" style="color:${pc(pnlPct)}">${pnlPct!=null?(pnlPct>=0?"+":"")+pnlPct.toFixed(2)+"%":"—"}</td>
+      <td class="num" style="color:${pc(p.realized)}">${p.realized?"$"+(p.realized>=0?"+":"")+p.realized.toLocaleString("es-AR",{maximumFractionDigits:0}):"—"}</td>
+      <td class="num" style="color:var(--td)">${p.nTrades||0}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-api btn-sm" title="Absorber trades aplicados en la base" onclick="cartConsolidate('${tk}')">⟲</button>
+        <button class="btn-api btn-sm" style="color:var(--w);border-color:var(--w)" onclick="cartDelete('${tk}')">✗</button>
+      </td>
+    </tr>`;
+  });
+  html+='</tbody></table>';
+  el.innerHTML=html;
+  if(tot) tot.innerHTML=`<b>Total:</b> valor mercado <b>$${sumMv.toLocaleString("es-AR",{maximumFractionDigits:0})}</b>
+    · PnL no realizado <b style="color:${sumPnl>=0?"var(--ac)":"var(--w)"}">$${(sumPnl>=0?"+":"")+sumPnl.toLocaleString("es-AR",{maximumFractionDigits:0})}${anyPnl?"":" (sin PPP)"}</b>
+    · PnL realizado <b style="color:${sumReal>=0?"var(--ac)":"var(--w)"}">$${(sumReal>=0?"+":"")+sumReal.toLocaleString("es-AR",{maximumFractionDigits:0})}</b>`;
+}
+
 function renderRVQuant(){
   try{ renderRvBreakevens(); }catch(e){ console.warn("[rv-be]",e); }
   try{ renderRvRealFx(); }catch(e){ console.warn("[rv-fx]",e); }
   try{ renderRvCarryRoll(); }catch(e){ console.warn("[rv-cr]",e); }
   try{ rvRenderPairStats(); }catch(e){ console.warn("[rv-pair]",e); }
+  try{ rvRenderFlyStats(); }catch(e){ console.warn("[rv-fly]",e); }
+  try{ rvRenderCarryVol(); }catch(e){ console.warn("[rv-cv]",e); }
+  try{ alRenderList(); }catch(e){ console.warn("[rv-al]",e); }
 }
 
 // ═══ INIT ════════════════════════════════════════════════════════
@@ -16386,7 +16923,10 @@ function calcFxSynthetic(){
     const futExp=bestFut?new Date(bestFut.exp+"T00:00:00"):null;
     const futDays=futExp?DB(settle,futExp):0;
     const spot=getFxSpot()||0;
-    const ret=(spot&&futPx&&futDays>0)?(futPx/spot-1):null;
+    // FIX: el sintético se arma COMPRANDO EL DL a su precio (FX implícito hoy)
+    // y vendiendo el futuro → retorno = futPx/dlPx − 1. Antes dividía por el
+    // spot mayorista → tasa equivocada (no coincidía con la calculadora DL).
+    const ret=(dlPx&&futPx&&futDays>0)?(futPx/dlPx-1):null;
     const tna=ret!==null?ret*365/futDays*100:null;
     const tir=ret!==null?(Math.pow(1+ret,365/futDays)-1)*100:null;
     tableRows.push({b,dlPx,futPx,spot,futDays,ret,tna,tir,fut:bestFut,futExp});
@@ -16441,9 +16981,11 @@ function calcFxSyntheticSingle(){
   const futDays=DB(settle,new Date(fut.exp+"T00:00:00"));
 
   const spot=getFxSpot()||0;
-  if(!spot||!futPx||futDays<=0){el.innerHTML='<div style="color:var(--td);font-size:11px">Sin precios live o futuro vencido</div>';return;}
+  if(!dlPx||!futPx||futDays<=0){el.innerHTML='<div style="color:var(--td);font-size:11px">Sin precio del DL / futuro, o futuro vencido</div>';return;}
 
-  const ret=futPx/spot-1;
+  // FIX: retorno del sintético = futPx/dlPx − 1 (se compra el DL a su precio,
+  // no al spot). Antes usaba spot → tasa inconsistente con la calculadora DL.
+  const ret=futPx/dlPx-1;
   const tna=ret*365/futDays*100;
   const tir=(Math.pow(1+ret,365/futDays)-1)*100;
   const spread=tna-tasaPesos;
