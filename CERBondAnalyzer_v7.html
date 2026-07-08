@@ -3551,13 +3551,17 @@
           <option value="tir">TIR real bono</option>
           <option value="spread">Spread TIR real (A−B)</option>
           <option value="price">Precio bono</option>
+          <option value="caucion">Caución TNA</option>
         </select>
       </div>
-      <div class="ig"><label>Bono A</label>
+      <div class="ig" id="alBondAWrap"><label>Bono A</label>
         <select id="alBondA" style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:5px;min-width:95px"></select>
       </div>
       <div class="ig" id="alBondBWrap" style="display:none"><label>Bono B</label>
         <select id="alBondB" style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:5px;min-width:95px"></select>
+      </div>
+      <div class="ig" id="alCaucDaysWrap" style="display:none"><label>Días caución</label>
+        <input type="number" id="alCaucDays" value="1" min="1" step="1" style="width:70px;text-align:right;font-size:11px;font-family:'IBM Plex Mono',monospace">
       </div>
       <div class="ig"><label>Cond.</label>
         <select id="alOp" style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:5px">
@@ -14126,8 +14130,10 @@ function alInitUI(){
 }
 function alTypeChanged(){
   const t=document.getElementById("alType").value;
+  document.getElementById("alBondAWrap").style.display=(t==="caucion")?"none":"";
   document.getElementById("alBondBWrap").style.display=(t==="spread")?"":"none";
-  document.getElementById("alValUnit").textContent=t==="spread"?"(bps)":t==="price"?"($)":"(%)";
+  document.getElementById("alCaucDaysWrap").style.display=(t==="caucion")?"":"none";
+  document.getElementById("alValUnit").textContent=t==="spread"?"(bps)":t==="price"?"($)":t==="caucion"?"(TNA %)":"(%)";
 }
 function alAdd(){
   const type=document.getElementById("alType").value;
@@ -14137,12 +14143,38 @@ function alAdd(){
   const val=parseFloat(document.getElementById("alVal").value);
   if(isNaN(val)){ document.getElementById("alInfo").textContent="Falta el valor"; return; }
   if(type==="spread"&&a===b){ document.getElementById("alInfo").textContent="Elegí bonos distintos"; return; }
+  let caucDays=null;
+  if(type==="caucion"){
+    caucDays=parseInt(document.getElementById("alCaucDays").value);
+    if(!(caucDays>0)){ document.getElementById("alInfo").textContent="Días de caución inválidos"; return; }
+  }
   const rules=_alLoad();
-  rules.push({id:"al"+Date.now(),type,a,b:type==="spread"?b:null,op,val,armed:true,lastFired:0});
+  rules.push({id:"al"+Date.now(),type,a:type==="caucion"?null:a,b:type==="spread"?b:null,days:caucDays,op,val,armed:true,lastFired:0});
   _alSave(rules); document.getElementById("alInfo").textContent="";
   alRenderList();
 }
+// Caución: TNA live del plazo pedido. El Sheet publica tickers CAUCION-{N}D
+// con la TNA en lp.last. Si no existe el plazo exacto, usa el más cercano
+// disponible (y lo informa en el detalle de la regla).
+function _alCaucionTna(days){
+  const exact=_livePrices["CAUCION-"+days+"D"];
+  if(exact&&exact.last>0) return {tna:exact.last,days};
+  let best=null;
+  Object.keys(_livePrices).forEach(k=>{
+    const m=k.match(/^CAUCION-(\d+)D$/);
+    if(!m) return;
+    const n=parseInt(m[1]);
+    const lp=_livePrices[k];
+    if(!(lp&&lp.last>0)) return;
+    if(!best||Math.abs(n-days)<Math.abs(best.days-days)) best={tna:lp.last,days:n};
+  });
+  return best; // null si no hay ninguna caución en pantalla
+}
 function _alCurrent(r){
+  if(r.type==="caucion"){
+    const c=_alCaucionTna(r.days||1);
+    return c?c.tna:null;
+  }
   const A=BONDS.find(x=>x.id===r.a);
   if(!A) return null;
   if(r.type==="tir")   return (A._ok&&A._tr!=null)?A._tr:null;
@@ -14155,8 +14187,16 @@ function _alCurrent(r){
 }
 function _alDesc(r){
   const tk=id=>BONDS.find(x=>x.id===id)?.ticker||id;
-  const u=r.type==="spread"?" bps":r.type==="price"?" $":"%";
-  const met=r.type==="tir"?`TIR real ${tk(r.a)}`:r.type==="price"?`Px ${tk(r.a)}`:`Spread ${tk(r.a)}−${tk(r.b)}`;
+  const u=r.type==="spread"?" bps":r.type==="price"?" $":r.type==="caucion"?"% TNA":"%";
+  let met;
+  if(r.type==="tir") met=`TIR real ${tk(r.a)}`;
+  else if(r.type==="price") met=`Px ${tk(r.a)}`;
+  else if(r.type==="caucion"){
+    const c=_alCaucionTna(r.days||1);
+    const plazo=(c&&c.days!==(r.days||1))?`${r.days}d (usa ${c.days}d)`:`${r.days||1}d`;
+    met=`Caución ${plazo}`;
+  }
+  else met=`Spread ${tk(r.a)}−${tk(r.b)}`;
   return `${met} ${r.op==='>'?'≥':'≤'} ${r.val}${u}`;
 }
 function alRenderList(){
