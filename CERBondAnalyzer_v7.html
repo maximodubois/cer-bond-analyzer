@@ -14304,7 +14304,8 @@ function cartEffective(){
   const base=_cartLoad();
   const eff={};
   Object.keys(base).forEach(tk=>{
-    eff[tk]={vn:base[tk].vn||0, ppp:(base[tk].ppp!=null?base[tk].ppp:null), realized:0, nTrades:0, asOf:base[tk].asOf||null, hasBase:true};
+    // del=true → tombstone de cartDelete: absorbe los trades hasta asOf pero no muestra fila propia
+    eff[tk]={vn:base[tk].vn||0, ppp:(base[tk].ppp!=null?base[tk].ppp:null), realized:0, nTrades:0, asOf:base[tk].asOf||null, hasBase:!base[tk].del};
   });
   const trades=(typeof _blotter!=="undefined"?_blotter:[])
     .filter(t=>t.approved==="yes"&&t.ticker&&t.qty>0&&t.price>0)
@@ -14345,8 +14346,12 @@ function cartConsolidate(tk){
   _cartSave(base); renderCartera();
 }
 function cartDelete(tk){
-  if(!confirm(`Borrar ${tk} de la cartera? (los trades del blotter no se tocan; si hay aprobados posteriores van a re-aparecer como posición sin base)`)) return;
-  const base=_cartLoad(); delete base[tk]; _cartSave(base); renderCartera();
+  if(!confirm(`Borrar ${tk} de la cartera? (los trades del blotter no se tocan, pero los aprobados hasta ahora dejan de contar acá; si aprobás trades nuevos después, la posición reaparece)`)) return;
+  // Tombstone en vez de delete: sin esto, cartEffective() re-folda TODOS los
+  // trades aprobados del blotter (cutoff 0 sin base) y la fila reaparece al toque.
+  const base=_cartLoad();
+  base[tk]={vn:0,ppp:null,asOf:new Date().toISOString(),del:true};
+  _cartSave(base); renderCartera();
 }
 function renderCartera(){
   const el=document.getElementById("cartTable"), tot=document.getElementById("cartTotals");
