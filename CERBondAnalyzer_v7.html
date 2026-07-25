@@ -3963,11 +3963,18 @@ const USD_BONDS=[
    amort:Array.from({length:44},(_,i)=>{const d=new Date(2025,0,9);d.setMonth(d.getMonth()+i*6);return {date:d.toISOString().slice(0,10), pct:100/44};})},
 
   // ── Nuevas emisiones Caputo (no canje 2020) ──
-  {id:"AN29", ticker:"AN29", name:"Bonar 2029N (6.5%)", mat:"2029-11-30", emDate:"2025-12-09", currency:"USD", law:"AR", color:"#fb923c",
+  // AN29: freq:1 INFERIDO, no confirmado. Con el 6,5% cargado, pago anual da
+  // TEA 8,89% contra 8,96% de la referencia de mesa (0,07); semestral daba 7,85
+  // (−1,11). Y despejando el cupón que cerraría exacto en cada frecuencia, sólo
+  // la anual pide 6,55% ≈ el 6,5% real (semestral pediría 7,49%, mensual 7,57%).
+  // Si los términos son otros, corregir freq acá.
+  {id:"AN29", ticker:"AN29", name:"Bonar 2029N (6.5% anual)", mat:"2029-11-30", emDate:"2025-12-09", currency:"USD", law:"AR", freq:1, color:"#fb923c",
    coupons:[{date:"2025-12-09", rate:6.500}], amort:[{date:"2029-11-30", pct:100}]},
-  {id:"AO27", ticker:"AO27", name:"Bonar 2027 (6%)", mat:"2027-10-29", emDate:"2026-02-25", currency:"USD", law:"AR", color:"#ef4444",
+  // AO27 / AO28: cupón 6% anual pagado MENSUAL y bullet. freq:12 — sin esto se
+  // modelaban semestrales y la TIR quedaba +0,8 / +0,4 pp arriba.
+  {id:"AO27", ticker:"AO27", name:"Bonar 2027 (6% mensual)", mat:"2027-10-29", emDate:"2026-02-25", currency:"USD", law:"AR", freq:12, color:"#ef4444",
    coupons:[{date:"2026-02-25", rate:6.000}], amort:[{date:"2027-10-29", pct:100}]},
-  {id:"AO28", ticker:"AO28", name:"Bonar 2028 (6%)", mat:"2028-10-31", emDate:"2026-02-25", currency:"USD", law:"AR", color:"#dc2626",
+  {id:"AO28", ticker:"AO28", name:"Bonar 2028 (6% mensual)", mat:"2028-10-31", emDate:"2026-02-25", currency:"USD", law:"AR", freq:12, color:"#dc2626",
    coupons:[{date:"2026-02-25", rate:6.000}], amort:[{date:"2028-10-31", pct:100}]},
 ];
 
@@ -3982,33 +3989,35 @@ function usdBondPriceTicker(b){
   return b.ticker + 'D';
 }
 
-// Cashflows USD: expande coupons (step-up) + amort en flujos semestrales (9-Ene/9-Jul).
-// Devuelve [{date, days, nominal, coupon, capital, residualPre}] desde el settle.
-// Para AN29/AO27/AO28 (semestral 30-May/30-Nov ó 30-Apr/30-Oct según vto) usamos el vto como ancla.
+// Cashflows USD: expande coupons (step-up) + amort desde el settle.
+// Devuelve [{date, days, nominal, coupon, capital, residualPre}].
+// La frecuencia sale de b.freq (pagos por año): 2 = semestral (default, canje
+// 2020 los paga 9-Ene/9-Jul) y 12 = mensual (AO27 y AO28).
 function usdBondCashflows(b, settle){
   const flows=[];
   const matD = new Date(b.mat+'T00:00:00');
   if (!matD || matD <= settle) return flows;
 
-  // Generar fechas de pago semestrales hacia atrás desde mat
-  // FIX date drift: JS setMonth(-6) puede normalizar overflow (31-Ago →
-  // Feb 31 → Mar 3), corriendo todas las fechas siguientes. Anchorar al
-  // día original y, si drifteó, volver al último día del mes anterior.
-  const origDay = matD.getDate();
+  const freq = b.freq || 2;              // pagos por año
+  const step = 12/freq;                  // meses entre pagos
+  const emD  = new Date(b.emDate+'T00:00:00');
+
+  // Fechas de pago hacia atrás desde el vto, ANCLADAS al mes de vencimiento.
+  // BUG FIX: antes se iba mutando la misma fecha con setMonth(-6) y, cuando el
+  // día no existía en el mes destino (31-Ago → "31-Feb"), se corregía con
+  // setDate(0) — que mueve al último día del MES ANTERIOR. Ese corrimiento se
+  // arrastraba a todas las fechas siguientes del loop. Con paso mensual el
+  // efecto era grosero: AO27 generaba 13 pagos donde van 16.
+  // Calculando cada fecha desde el mes de vto (y no desde la anterior) el
+  // arrastre desaparece: el día se recorta al último del mes sólo en ese pago.
+  const payDay = matD.getDate();
   const payDates=[];
-  let d = new Date(matD);
-  const emD = new Date(b.emDate+'T00:00:00');
-  let safety = 200; // safety net por si algún emDate inválido
-  while (d > emD && safety-- > 0) {
-    payDates.unshift(new Date(d));
-    const m = d.getMonth();
-    d.setMonth(m - 6);
-    // Si la normalización JS corrió el día, ajustar al último día válido
-    // del mes target (típico: 31-Ago → setMonth-6 → "Feb 31" → Mar 3.
-    // Corregimos a 28/29 Feb).
-    if (d.getDate() !== origDay) {
-      d.setDate(0); // último día del mes anterior al sobreflowed
-    }
+  for (let k=0; k<800; k++){
+    const d = new Date(matD.getFullYear(), matD.getMonth() - k*step, 1);
+    const lastDom = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+    d.setDate(Math.min(payDay, lastDom));
+    if (d <= emD) break;
+    payDates.unshift(d);
   }
   // Coupon lookup — BUG FIX (step-up aplicado un período antes de tiempo):
   // el cupón que se PAGA en una fecha devenga durante el semestre que TERMINA
@@ -4028,9 +4037,12 @@ function usdBondCashflows(b, settle){
     }
     return r/100; // a decimal
   }
-  // Amort lookup: % del original que se amortiza en una fecha (0 si no)
+  // Amort lookup: % del original que se amortiza en una fecha (0 si no).
+  // DS() y no toISOString(): las fechas se construyen a medianoche LOCAL y
+  // toISOString las pasa a UTC, que en cualquier offset positivo devuelve el
+  // día anterior y no matchearía la tabla de amort.
   function amortAt(payDate){
-    const ds = payDate.toISOString().slice(0,10);
+    const ds = (typeof DS==='function') ? DS(payDate) : payDate.toISOString().slice(0,10);
     const hit = b.amort.find(a => a.date === ds);
     return hit ? hit.pct : 0;
   }
@@ -4044,7 +4056,7 @@ function usdBondCashflows(b, settle){
     // para el primer cupón). De ahí sale la tasa vigente del semestre.
     const periodStart = (i>0) ? payDates[i-1] : emD;
     const rateAnnual = rateForPeriod(periodStart);
-    const coupon = residual * rateAnnual * 0.5; // semestral 30/360
+    const coupon = residual * rateAnnual / freq;   // 30/360, prorrateado por freq
     const cap = amortAt(pd);
     const total = coupon + cap;
     if (pd > settle && total > 0) {
