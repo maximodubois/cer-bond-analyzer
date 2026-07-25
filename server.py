@@ -23,6 +23,7 @@ import secrets
 import urllib.request
 import urllib.error
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor
 from http.server import HTTPServer, ThreadingHTTPServer, SimpleHTTPRequestHandler
 from http.cookies import SimpleCookie
 
@@ -471,6 +472,8 @@ class Handler(SimpleHTTPRequestHandler):
 
         if self.path == "/api/prices":
             self._send_json(fetch_prices())
+        elif self.path.startswith("/api/depth/batch"):
+            self._proxy_depth_batch()
         elif self.path.startswith("/api/depth"):
             self._proxy_depth()
         elif self.path == "/api/pib":
@@ -774,6 +777,83 @@ class Handler(SimpleHTTPRequestHandler):
             self._send_json(data)
         except Exception as e:
             self._send_json({"error": str(e)}, 500)
+
+    # Cantidad de symbols que se piden a Primary a la vez. Primary tolera bien
+    # este nivel y el cache de 3s absorbe los reintentos; subirlo mucho mas solo
+    # agrega latencia de cola sin mejorar el wall-clock.
+    _BATCH_WORKERS = 8
+    _BATCH_MAX_SYMBOLS = 160
+
+    def _proxy_depth_batch(self):
+        """GET /api/depth/batch?tickers=A,B,C&settles=CI,24hs&depth=1
+
+        Trae el book de todos los (ticker x settle) en paralelo y devuelve un
+        solo JSON. El cliente hacia 2 requests secuenciales por ticker con un
+        sleep de 800ms en el medio: 20 bonos = 40 requests + 32s de esperas.
+        Aca el wall-clock pasa a ser ~ (n / _BATCH_WORKERS) x latencia_upstream.
+        """
+        if not primary_enabled():
+            self._send_json({
+                "error": "Primary API no configurada",
+                "detail": "Defini PRIMARY_USERNAME y PRIMARY_PASSWORD como env vars.",
+            }, 503)
+            return
+        t0 = time.time()
+        try:
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            tickers = [t.strip() for t in (qs.get("tickers") or [""])[0].split(",") if t.strip()]
+            settles = [s.strip() for s in (qs.get("settles") or ["CI,24hs"])[0].split(",") if s.strip()]
+            try:
+                depth = max(1, min(5, int((qs.get("depth") or ["1"])[0])))
+            except ValueError:
+                depth = 1
+            if not tickers:
+                self._send_json({"error": "param 'tickers' requerido (lista separada por comas)"}, 400)
+                return
+
+            jobs = []
+            for tk in tickers:
+                for st in settles:
+                    sym = build_primary_symbol(tk, st)
+                    if sym:
+                        jobs.append((tk, st, sym))
+            if len(jobs) > self._BATCH_MAX_SYMBOLS:
+                self._send_json({
+                    "error": "demasiados symbols",
+                    "detail": f"{len(jobs)} pedidos, maximo {self._BATCH_MAX_SYMBOLS}",
+                }, 400)
+                return
+
+            def _one(job):
+                tk, st, sym = job
+                try:
+                    d = fetch_primary_depth(sym, depth=depth)
+                    bids = [b for b in (d.get("bids") or []) if b.get("price")]
+                    ofrs = [o for o in (d.get("offers") or []) if o.get("price")]
+                    bids.sort(key=lambda x: x["price"], reverse=True)
+                    ofrs.sort(key=lambda x: x["price"])
+                    return {
+                        "ticker": tk, "settle": st, "symbol": sym,
+                        "bid": bids[0] if bids else None,
+                        "ofr": ofrs[0] if ofrs else None,
+                        "last": d.get("last"), "close": d.get("close"),
+                    }
+                except Exception as e:
+                    return {"ticker": tk, "settle": st, "symbol": sym, "error": str(e)}
+
+            workers = max(1, min(self._BATCH_WORKERS, len(jobs)))
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                results = list(pool.map(_one, jobs))
+
+            self._send_json({
+                "results": results,
+                "count": len(results),
+                "errors": sum(1 for r in results if r.get("error")),
+                "elapsed_ms": int((time.time() - t0) * 1000),
+                "depth": depth,
+            })
+        except Exception as e:
+            self._send_json({"error": str(e), "elapsed_ms": int((time.time() - t0) * 1000)}, 500)
 
     def _send_dashboard(self):
         if not HTML_FILE or not os.path.isfile(HTML_FILE):

@@ -3494,7 +3494,9 @@
         <div class="note" style="margin:4px 0 0 0;font-size:10px">
           <b>COLOCAR</b> (lend): vendo 24hs (cobro mañana) y compro CI (entrego hoy). Tasa = (BID_24hs / ASK_CI − 1) × 365/d.<br>
           <b>TOMAR</b> (borrow): vendo CI (recibo hoy) y compro 24hs (devuelvo mañana). Tasa = (ASK_24hs / BID_CI − 1) × 365/d.<br>
-          Días considerando feriados/finsem hasta SBD(hoy,1). <b>Fuente:</b> Google Sheet (bid/ask/size por columna · CI y 24hs).
+          Días considerando feriados/finsem hasta SBD(hoy,1).<br>
+          <b>⚡ Book Primary:</b> pide el book real de todo el universo en una sola request que el server resuelve en paralelo (8 symbols a la vez).
+          <b>↻ Sheet:</b> relee lo que ya está en memoria, instantáneo. Si una pata no tiene bid/ask se muestra el mid-mid con <span style="color:var(--warn)">last</span>, que es indicativo y no ejecutable.
         </div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
@@ -3504,12 +3506,14 @@
           <option value="both" selected>CER + Tasa Fija</option>
           <option value="custom">Custom (manual)</option>
         </select>
-        <button class="btn-api btn-sm" onclick="atRunScan()" id="atRunBtn">▶ Escanear</button>
+        <button class="btn-api btn-sm" onclick="atRunScanPrimary()" id="atRunPrimaryBtn"
+          title="Trae el book real (bid/ask/size) de TODO el universo en una sola request paralelizada">⚡ Book Primary</button>
+        <button class="btn-api btn-sm" onclick="atRunScan()" id="atRunBtn" title="Relee el Sheet (instantáneo)">↻ Sheet</button>
         <button class="btn-api btn-sm" onclick="atAddCustom()" id="atAddCustomBtn" style="display:none">＋ Agregar</button>
       </div>
     </div>
     <div id="atUniverseChips" style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:4px;font-family:'IBM Plex Mono',monospace;font-size:10px"></div>
-    <div class="qt-progress" id="atProgress" style="display:none;height:4px;background:#0a0f1a;border-radius:4px;overflow:hidden;margin-bottom:6px"><div style="height:100%;background:var(--acl);width:0;transition:width 0.2s"></div></div>
+    <div class="qt-progress" id="atProgress" style="display:none;height:4px;background:var(--card2);border-radius:4px;overflow:hidden;margin-bottom:6px"><div style="height:100%;background:var(--acl);width:0;transition:width 0.2s"></div></div>
     <div id="atInfo" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;margin-bottom:6px">—</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
       <div>
@@ -3521,6 +3525,21 @@
         <div id="atTomarTbl"></div>
       </div>
     </div>
+    <!-- Tabla completa: el universo entero de una, no sólo el top 5 -->
+    <div class="st-sub" style="margin-top:14px">Universo completo — todas las tasas</div>
+    <table class="lt" id="atAllTable">
+      <thead><tr>
+        <th>Ticker</th>
+        <th class="num">Bid CI</th><th class="num">Ask CI</th>
+        <th class="num">Bid 24h</th><th class="num">Ask 24h</th>
+        <th class="num" style="color:var(--ac)" title="Vendo 24hs a su bid y compro CI a su ask">Colocar</th>
+        <th class="num" style="color:var(--neg)" title="Vendo CI a su bid y compro 24hs a su ask">Tomar</th>
+        <th class="num" title="Mid 24hs / Mid CI — referencia teórica sin cruzar spread">Mid-mid</th>
+        <th class="num" title="Mínimo entre los sizes de las dos patas">Size</th>
+        <th>Fuente</th>
+      </tr></thead>
+      <tbody id="atAllBody"></tbody>
+    </table>
   </div>
 
   <!-- B. Buscador por bono: book CI / 24hs + precios editables -->
@@ -10032,10 +10051,11 @@ async function fetchPricesFromServer(){
         if (typeof renderFxForwardMatrix === 'function') renderFxForwardMatrix();
       }
     } catch(_e){}
-    // Auto-refresh Arbitraje Tasas si está visible
+    // Auto-refresh Arbitraje Tasas si está visible. Sólo re-lee el Sheet: si el
+    // último scan fue de Primary no lo pisamos con datos peores.
     try {
       if (document.getElementById('tab-arbtasas')?.style.display !== 'none') {
-        if (!_atScanRunning && _atLastScan) atRunScan();
+        if (!_atScanRunning && _atLastScan && _atLastScan.fuente !== 'Primary') atRunScan();
       }
     } catch(_e){}
     // Auto-refresh Cheap/Rich screener si Desarrollo está visible
@@ -15975,49 +15995,180 @@ function atRemoveCustom(tk){
   atRenderUniverseChips();
 }
 
-// Escaneo SINCRÓNICO desde Google Sheets (instantáneo).
-// Lee _livePrices con múltiples variantes de naming para CI y 24hs.
-// Si querés bid/ask depth-5 real-time, usá el buscador con "↻ Primary depth=5" abajo.
+// Lee del Sheet TODO lo que haya para una pata: book si está, y last/close como
+// respaldo. Antes se descartaba el ticker entero si no tenía bid ni ask, así que
+// con un feed sin columnas de book la tabla quedaba vacía y parecía roto.
+function _atReadSheetLeg(ticker, settle){
+  const variants = (settle==='CI')
+    ? [ticker, ticker+' CI']
+    : [ticker+' 24hs', ticker+' 24', ticker+' 24h', ticker+'-24hs', ticker+'_24hs'];
+  for (const tk of variants){
+    const lp=_livePrices[tk];
+    if(!lp) continue;
+    if(lp.bid>0||lp.ask>0||lp.last>0||lp.mid>0){
+      return {
+        bid: lp.bid>0?{price:lp.bid,size:lp.bidSize||0}:null,
+        ofr: lp.ask>0?{price:lp.ask,size:lp.askSize||0}:null,
+        last: lp.last>0?lp.last:(lp.mid>0?lp.mid:null),
+        _ticker: tk,
+      };
+    }
+  }
+  return null;
+}
+
+// Arma una fila a partir de las dos patas, sin importar de dónde vengan.
+// colocar/tomar sólo salen si hay book de los dos lados (son ejecutables);
+// mid-mid sale con last y queda marcado como indicativo.
+function _atBuildRow(tk, ci, t24, days, fuente){
+  if(!ci && !t24) return {tk, error:true, reason:'sin datos'};
+  if(!ci || !t24)  return {tk, error:true, reason: !ci?'sin CI':'sin 24hs'};
+  const ciBid=ci.bid?.price||null, ciOfr=ci.ofr?.price||null;
+  const t24Bid=t24.bid?.price||null, t24Ofr=t24.ofr?.price||null;
+  const colocar=(t24Bid&&ciOfr)?((t24Bid/ciOfr)-1)*365/days*100:null;
+  const tomar  =(t24Ofr&&ciBid)?((t24Ofr/ciBid)-1)*365/days*100:null;
+  const ciMid  =(ciBid&&ciOfr)?(ciBid+ciOfr)/2:(ci.last||ciBid||ciOfr||null);
+  const t24Mid =(t24Bid&&t24Ofr)?(t24Bid+t24Ofr)/2:(t24.last||t24Bid||t24Ofr||null);
+  const mid    =(ciMid&&t24Mid)?((t24Mid/ciMid)-1)*365/days*100:null;
+  const conBook=!!(colocar!=null||tomar!=null);
+  return {
+    tk, days,
+    ci_bid:ciBid, ci_bid_size:ci.bid?.size||null,
+    ci_ofr:ciOfr, ci_ofr_size:ci.ofr?.size||null,
+    t24_bid:t24Bid, t24_bid_size:t24.bid?.size||null,
+    t24_ofr:t24Ofr, t24_ofr_size:t24.ofr?.size||null,
+    colocar, tomar, mid,
+    fuente: conBook?fuente:(fuente+' (last)'),
+    indicativo:!conBook,
+    _ciTicker:ci._ticker, _t24Ticker:t24._ticker,
+  };
+}
+
+// Escaneo desde el Sheet: sincrónico, instantáneo, sin API calls.
 function atRunScan(){
   if(_atScanRunning) return;
   const univ=atGetUniverse();
   if(!univ.length){ alert('Universo vacío'); return; }
   _atScanRunning=true;
-  const btn=document.getElementById('atRunBtn'); if(btn){ btn.disabled=true; btn.textContent='Procesando…'; }
-  const info=document.getElementById('atInfo');
+  const btn=document.getElementById('atRunBtn'); if(btn){ btn.disabled=true; btn.textContent='…'; }
   const days=_atDaysToT1();
-  const rows=[];
-  let foundCi=0, found24=0;
-  for(const tk of univ){
-    const ci = _atGetBookFromSheet(tk, 'CI');
-    const t24 = _atGetBookFromSheet(tk, '24hs');
-    if (ci) foundCi++;
-    if (t24) found24++;
-    if (!ci && !t24) { rows.push({tk, error:true, reason:'no data Sheet'}); continue; }
-    if (!ci || !t24)  { rows.push({tk, error:true, reason: !ci?'sin CI':'sin 24hs'}); continue; }
-    const tomar   = (ci.bid?.price && t24.ofr?.price) ? ((t24.ofr.price/ci.bid.price)-1)*365/days*100 : null;
-    const colocar = (t24.bid?.price && ci.ofr?.price) ? ((t24.bid.price/ci.ofr.price)-1)*365/days*100 : null;
-    rows.push({
-      tk, days,
-      ci_bid:ci.bid?.price||null, ci_bid_size:ci.bid?.size||null,
-      ci_ofr:ci.ofr?.price||null, ci_ofr_size:ci.ofr?.size||null,
-      t24_bid:t24.bid?.price||null, t24_bid_size:t24.bid?.size||null,
-      t24_ofr:t24.ofr?.price||null, t24_ofr_size:t24.ofr?.size||null,
-      tomar, colocar,
-      _ciTicker: ci._ticker, _t24Ticker: t24._ticker,
-    });
-  }
-  _atLastScan={ts:Date.now(), days, rows};
-  _atRenderTop5();
-  if (info) {
-    let msg = `✓ ${univ.length} tickers · CI: ${foundCi} · 24hs: ${found24} · ${days}d · ${new Date().toLocaleTimeString('es-AR')}  ·  fuente: Sheet`;
-    if (found24 === 0 && foundCi > 0) {
-      msg += `  ·  ⚠ No hay columnas 24hs en el Sheet. Agregá "<TICKER> 24hs" con bid/ask/size.`;
-    }
-    info.textContent = msg;
-  }
-  if (btn){ btn.disabled=false; btn.textContent='▶ Re-escanear'; }
+  const rows=univ.map(tk=>_atBuildRow(tk,_atReadSheetLeg(tk,'CI'),_atReadSheetLeg(tk,'24hs'),days,'Sheet'));
+  _atLastScan={ts:Date.now(), days, rows, fuente:'Sheet'};
+  _atRenderScan();
+  if(btn){ btn.disabled=false; btn.textContent='↻ Sheet'; }
   _atScanRunning=false;
+}
+
+// Escaneo con book REAL de Primary: una sola request al endpoint batch, que
+// resuelve los (ticker × settle) en paralelo server-side. Antes había que ir
+// bono por bono con el buscador.
+async function atRunScanPrimary(){
+  if(_atScanRunning) return;
+  const univ=atGetUniverse();
+  if(!univ.length){ alert('Universo vacío'); return; }
+  _atScanRunning=true;
+  const btn=document.getElementById('atRunPrimaryBtn');
+  if(btn){ btn.disabled=true; btn.textContent='⚡ …'; }
+  const info=document.getElementById('atInfo');
+  const prog=document.getElementById('atProgress');
+  const bar=prog?prog.querySelector('div'):null;
+  if(prog){ prog.style.display='block'; }
+  if(bar) bar.style.width='30%';
+  if(info) info.textContent=`Pidiendo book de ${univ.length} tickers × 2 liquidaciones en paralelo…`;
+  const t0=Date.now();
+  const days=_atDaysToT1();
+  try{
+    const url='/api/depth/batch?tickers='+encodeURIComponent(univ.join(','))+'&settles=CI,24hs&depth=1';
+    const r=await fetch(url);
+    const j=await r.json();
+    if(bar) bar.style.width='90%';
+    if(j.error) throw new Error(j.detail||j.error);
+    // Indexar por ticker|settle
+    const idx={};
+    (j.results||[]).forEach(x=>{
+      if(x.error) return;
+      idx[x.ticker+'|'+x.settle]={bid:x.bid||null, ofr:x.ofr||null,
+        last:(x.last>0?x.last:null), _ticker:x.symbol};
+    });
+    const rows=univ.map(tk=>{
+      const ci=idx[tk+'|CI'], t24=idx[tk+'|24hs'];
+      // Si Primary no trajo una pata, cae al Sheet antes de darla por perdida
+      return _atBuildRow(tk, ci||_atReadSheetLeg(tk,'CI'), t24||_atReadSheetLeg(tk,'24hs'), days, 'Primary');
+    });
+    _atLastScan={ts:Date.now(), days, rows, fuente:'Primary'};
+    _atRenderScan();
+    const ok=rows.filter(x=>!x.error).length;
+    if(info) info.textContent=`⚡ ${j.count} symbols en ${(j.elapsed_ms/1000).toFixed(1)}s `
+      +`(round-trip ${((Date.now()-t0)/1000).toFixed(1)}s) · ${ok}/${univ.length} bonos con las dos patas`
+      +(j.errors?` · ${j.errors} symbols con error`:'')
+      +` · ${days}d · ${new Date().toLocaleTimeString('es-AR')}`;
+  }catch(e){
+    // Liberar el lock ANTES del fallback: atRunScan() arranca con
+    // `if(_atScanRunning) return`, así que sin esto el fallback no corría y la
+    // tabla quedaba con los datos del scan anterior.
+    _atScanRunning=false;
+    atRunScan();
+    if(info) info.innerHTML=`<span style="color:var(--neg)">Primary: ${e.message}</span> — mostrando lo que hay en el Sheet`;
+  }finally{
+    if(bar) bar.style.width='100%';
+    setTimeout(()=>{ if(prog) prog.style.display='none'; if(bar) bar.style.width='0'; },400);
+    if(btn){ btn.disabled=false; btn.textContent='⚡ Book Primary'; }
+    _atScanRunning=false;
+  }
+}
+
+// Render completo: top 5 de cada lado + tabla del universo entero + resumen.
+function _atRenderScan(){
+  _atRenderTop5();
+  _atRenderAll();
+  const info=document.getElementById('atInfo');
+  if(!info||!_atLastScan) return;
+  if(_atLastScan.fuente==='Primary') return;   // Primary escribe su propio mensaje
+  const rows=_atLastScan.rows;
+  const conBook=rows.filter(r=>!r.error&&!r.indicativo).length;
+  const soloLast=rows.filter(r=>!r.error&&r.indicativo).length;
+  const sinCI=rows.filter(r=>r.reason==='sin CI').length;
+  const sin24=rows.filter(r=>r.reason==='sin 24hs').length;
+  let msg=`Sheet · ${rows.length} tickers · ${conBook} con book`;
+  if(soloLast) msg+=` · ${soloLast} sólo con last (mid-mid indicativo)`;
+  if(sin24) msg+=` · ${sin24} sin 24hs`;
+  if(sinCI) msg+=` · ${sinCI} sin CI`;
+  msg+=` · ${_atLastScan.days}d · ${new Date().toLocaleTimeString('es-AR')}`;
+  if(!conBook) msg+='  ·  ⚠ el Sheet no trae bid/ask: usá ⚡ Book Primary para las tasas ejecutables';
+  info.textContent=msg;
+}
+
+function _atRenderAll(){
+  const body=document.getElementById('atAllBody');
+  if(!body||!_atLastScan) return;
+  const rows=_atLastScan.rows;
+  const fmtSz=v=>!v?'—':v>=1e6?(v/1e6).toFixed(2)+'M':v>=1e3?(v/1e3).toFixed(1)+'K':fmtInt(v);
+  const ok=rows.filter(r=>!r.error).sort((a,b)=>(b.colocar??b.mid??-1e9)-(a.colocar??a.mid??-1e9));
+  const bad=rows.filter(r=>r.error);
+  let h=ok.map(r=>{
+    const sz=Math.min(r.t24_bid_size||Infinity, r.ci_ofr_size||Infinity);
+    const dim=r.indicativo?'opacity:0.6;':'';
+    return `<tr class="clickable-row" style="${dim}" onclick="atLoadIntoSearch('${r.tk}')" title="Click para abrirlo en el buscador">
+      <td class="tk" style="color:var(--acl)">${r.tk}</td>
+      <td class="num"${fmt.dv(r.ci_bid)}>${fmtPx(r.ci_bid)}</td>
+      <td class="num"${fmt.dv(r.ci_ofr)}>${fmtPx(r.ci_ofr)}</td>
+      <td class="num"${fmt.dv(r.t24_bid)}>${fmtPx(r.t24_bid)}</td>
+      <td class="num"${fmt.dv(r.t24_ofr)}>${fmtPx(r.t24_ofr)}</td>
+      <td class="num"${fmt.dv(r.colocar)} style="color:var(--pos);font-weight:600">${fmtPct(r.colocar)}</td>
+      <td class="num"${fmt.dv(r.tomar)} style="color:var(--neg);font-weight:600">${fmtPct(r.tomar)}</td>
+      <td class="num"${fmt.dv(r.mid)} style="color:var(--td)">${fmtPct(r.mid)}</td>
+      <td class="num" style="color:var(--tm)">${isFinite(sz)?fmtSz(sz):'—'}</td>
+      <td style="font-size:var(--fs-dense);color:${r.indicativo?'var(--warn)':'var(--tm)'}">${r.fuente||'—'}</td>
+    </tr>`;
+  }).join('');
+  h+=bad.map(r=>`<tr style="opacity:0.45">
+      <td class="tk" style="color:var(--tm)">${r.tk}</td>
+      <td colspan="8" style="color:var(--tm);font-size:var(--fs-xs)">${r.reason||'sin datos'}</td>
+      <td style="font-size:var(--fs-dense);color:var(--tm)">—</td>
+    </tr>`).join('');
+  body.innerHTML=h||skelRows(10,3,'Sin datos — tocá ⚡ Book Primary o ↻ Sheet');
+  const tbl=document.getElementById('atAllTable');
+  if(tbl&&typeof makeSortable==='function') makeSortable(tbl);
 }
 
 function _atRenderTop5(){
@@ -18328,18 +18479,33 @@ async function qtCalcTomarColocar(){
   if(prog) prog.style.display='block';
   const info=document.getElementById('qtTcInfo');
   const days=_qtDaysToT1();
-  const total=_qtTcUniverse.length*2; // CI + 24hs
-  let done=0;
   const results=[];
+  const t0=Date.now();
+  // Antes: loop secuencial con 800ms de sleep después de CADA request → 20 bonos
+  // eran 40 requests + 32 SEGUNDOS de esperas puras. Ahora una sola llamada al
+  // endpoint batch, que paraleliza server-side.
+  if(progBar) progBar.style.width='25%';
+  info.textContent=`Pidiendo book de ${_qtTcUniverse.length} bonos × 2 liquidaciones…`;
+  let idx={}, batchMs=null;
+  try{
+    const r=await fetch('/api/depth/batch?tickers='+encodeURIComponent(_qtTcUniverse.join(','))+'&settles=CI,24hs&depth=1');
+    const j=await r.json();
+    if(j.error) throw new Error(j.detail||j.error);
+    batchMs=j.elapsed_ms;
+    (j.results||[]).forEach(x=>{ if(!x.error) idx[x.ticker+'|'+x.settle]={bid:x.bid,ofr:x.ofr,last:x.last,close:x.close}; });
+  }catch(e){
+    // Fallback: el endpoint batch puede no existir en un server viejo → uno a uno
+    // pero en paralelo, sin sleeps.
+    info.textContent='Batch no disponible ('+e.message+') — pidiendo en paralelo…';
+    const jobs=[];
+    _qtTcUniverse.forEach(tk=>{ jobs.push([tk,'CI'],[tk,'24hs']); });
+    const settled=await Promise.all(jobs.map(([tk,st])=>
+      _qtFetchOneSettle(tk,st).then(d=>({tk,st,d})).catch(()=>({tk,st,d:null}))));
+    settled.forEach(({tk,st,d})=>{ if(d) idx[tk+'|'+st]=d; });
+  }
+  if(progBar) progBar.style.width='90%';
   for(const tk of _qtTcUniverse){
-    info.textContent=`Consultando ${tk} CI…`;
-    const ci=await _qtFetchOneSettle(tk,'CI');
-    done++; if(progBar) progBar.style.width=(done/total*100)+'%';
-    await new Promise(r=>setTimeout(r,800)); // throttle
-    info.textContent=`Consultando ${tk} 24hs…`;
-    const t24=await _qtFetchOneSettle(tk,'24hs');
-    done++; if(progBar) progBar.style.width=(done/total*100)+'%';
-    await new Promise(r=>setTimeout(r,800));
+    const ci=idx[tk+'|CI'], t24=idx[tk+'|24hs'];
     if(!ci||!t24){ results.push({tk, error:true}); continue; }
     // TOMAR plata: vendo CI (a bid_CI), compro 24hs (a ask_24hs) → "tomé" plata.
     // Tasa = (ask_24hs/bid_CI - 1) × 365/d. SI bid_CI faltante → null.
@@ -18358,8 +18524,12 @@ async function qtCalcTomarColocar(){
   }
   _qtTcResults={ts:Date.now(), days, rows:results};
   _qtRenderTcResults();
-  if(prog) prog.style.display='none';
-  info.textContent=`✓ ${results.length} bonos · ${days}d hasta 24hs · ${new Date().toLocaleTimeString('es-AR')}`;
+  if(progBar) progBar.style.width='100%';
+  setTimeout(()=>{ if(prog) prog.style.display='none'; if(progBar) progBar.style.width='0'; },400);
+  const ok=results.filter(r=>!r.error).length;
+  info.textContent=`✓ ${ok}/${results.length} bonos con las dos patas · ${days}d hasta 24hs`
+    +(batchMs!=null?` · batch ${(batchMs/1000).toFixed(1)}s`:'')
+    +` · total ${((Date.now()-t0)/1000).toFixed(1)}s · ${new Date().toLocaleTimeString('es-AR')}`;
   if(btn){ btn.disabled=false; btn.textContent='▶ Recalcular'; }
   _qtTcRunning=false;
 }
