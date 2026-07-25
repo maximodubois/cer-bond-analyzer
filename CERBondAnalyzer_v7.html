@@ -283,6 +283,76 @@
   .tab-btn{background:transparent;border:none;color:var(--td);font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;padding:10px 13px 9px;cursor:pointer;border-bottom:2px solid transparent;border-radius:0;transition:color 0.12s,border-color 0.12s;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;margin:0}
   .tab-btn:hover{color:var(--t)}
   .tab-btn.active{color:var(--gn);border-bottom-color:var(--gn)}
+  /* Barra agrupada */
+  .tab-bar-wrap{overflow-x:auto;scrollbar-width:thin}
+  .tab-bar{display:flex;gap:0;flex-wrap:nowrap;min-width:max-content;align-items:stretch}
+  .tab-group{display:flex;align-items:center}
+  .tab-group+.tab-group{margin-left:4px;padding-left:8px;border-left:1px solid var(--cb)}
+  .tab-group-label{font-size:var(--fs-dense);font-weight:600;text-transform:uppercase;letter-spacing:.14em;
+    color:var(--tm);font-family:'IBM Plex Mono',monospace;padding:0 8px 0 2px;white-space:nowrap;align-self:center}
+  @media(max-width:1500px){.tab-group-label{display:none}}
+  .cmdk-hint{margin-left:auto;align-self:center;display:flex;align-items:center;gap:7px;background:transparent;
+    border:1px solid var(--cb);border-radius:var(--r-sm);color:var(--tm);cursor:pointer;padding:4px 9px;
+    font-family:'IBM Plex Mono',monospace;font-size:var(--fs-xs);white-space:nowrap;transition:all 0.15s}
+  .cmdk-hint:hover{border-color:var(--gn);color:var(--gn)}
+  .cmdk-hint kbd{font-family:inherit;font-size:var(--fs-dense);background:var(--ib);border:1px solid var(--ibr);
+    border-radius:3px;padding:1px 4px;color:var(--td)}
+  /* ── Cockpit: franja de KPIs hero del RESUMEN ───────────────────── */
+  .cockpit{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:8px;margin-top:10px}
+  .ck{background:var(--card);border:1px solid var(--cb);border-radius:var(--r);padding:10px 12px 9px;
+    position:relative;overflow:hidden;transition:border-color 0.15s}
+  .ck:hover{border-color:var(--cbf)}
+  .ck::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--ck-ac,var(--cb))}
+  .ck-l{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.10em;color:var(--td);font-weight:600;
+    font-family:'IBM Plex Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ck-v{font-size:var(--fs-xl);font-weight:600;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;
+    letter-spacing:-0.02em;margin-top:5px;line-height:1.05;color:var(--ck-ac,var(--t))}
+  .ck-d{font-size:var(--fs-xs);font-family:'IBM Plex Mono',monospace;color:var(--tm);margin-top:3px;
+    font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* ── Command palette ⌘K ─────────────────────────────────────────── */
+  .cmdk-ov{position:fixed;inset:0;background:rgba(3,5,10,0.78);z-index:3000;display:flex;
+    align-items:flex-start;justify-content:center;padding:12vh 16px 16px;backdrop-filter:blur(2px)}
+  .cmdk{background:var(--card);border:1px solid var(--cbf);border-radius:var(--r-lg);width:100%;max-width:560px;
+    box-shadow:var(--sh-lg);overflow:hidden;display:flex;flex-direction:column;max-height:64vh}
+  .cmdk input{background:transparent;border:none;border-bottom:1px solid var(--cb);border-radius:0;
+    padding:14px 16px;font-size:var(--fs-md);color:var(--t);font-family:'IBM Plex Mono',monospace;width:100%}
+  .cmdk input:focus{box-shadow:none;border-color:var(--cb)}
+  .cmdk-list{overflow-y:auto;padding:6px}
+  .cmdk-it{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);cursor:pointer;
+    font-family:'IBM Plex Mono',monospace;font-size:var(--fs-sm);color:var(--td)}
+  .cmdk-it.sel{background:var(--gnd);color:var(--t)}
+  .cmdk-it .k{font-weight:600;min-width:74px;color:var(--t)}
+  .cmdk-it .m{font-size:var(--fs-xs);color:var(--tm);margin-left:auto;white-space:nowrap}
+  .cmdk-it .badge{font-size:var(--fs-dense);text-transform:uppercase;letter-spacing:.08em;padding:1px 6px;
+    border-radius:999px;border:1px solid var(--cb);color:var(--tm)}
+  .cmdk-empty{padding:18px;text-align:center;color:var(--tm);font-size:var(--fs-sm)}
+  .cmdk-foot{border-top:1px solid var(--cb);padding:7px 12px;display:flex;gap:14px;
+    font-size:var(--fs-dense);color:var(--tm);font-family:'IBM Plex Mono',monospace}
+  /* ── Tick flash: la celda pulsa cuando el precio cambia ─────────────
+     Convención de terminal: el movimiento se ve, no hay que compararlo. */
+  @keyframes tickUp{0%{background:rgba(56,201,122,0.30)}100%{background:transparent}}
+  @keyframes tickDn{0%{background:rgba(240,106,106,0.30)}100%{background:transparent}}
+  .lt td.tick-up{animation:tickUp 0.65s ease-out}
+  .lt td.tick-dn{animation:tickDn 0.65s ease-out}
+  .ck.tick-up{animation:tickUp 0.65s ease-out}
+  .ck.tick-dn{animation:tickDn 0.65s ease-out}
+  /* ── Dato viejo: no se muestra igual que uno fresco ───────────────── */
+  .px-stale{opacity:0.5;text-decoration:underline dotted var(--warn) 1px;text-underline-offset:3px}
+  .fresh-chip{font-size:var(--fs-dense);font-family:'IBM Plex Mono',monospace;color:var(--tm);
+    padding:1px 6px;border:1px solid var(--cb);border-radius:999px;white-space:nowrap}
+  .fresh-chip.warn{color:var(--warn);border-color:rgba(229,168,57,0.35)}
+  .fresh-chip.bad{color:var(--neg);border-color:rgba(240,106,106,0.35)}
+  /* ── Skeletons: mejor que "Sin datos" ─────────────────────────────── */
+  @keyframes skelPulse{0%,100%{opacity:0.35}50%{opacity:0.7}}
+  .skel{display:block;height:9px;border-radius:3px;
+    background:linear-gradient(90deg,var(--cb) 0%,var(--cbf) 50%,var(--cb) 100%);
+    animation:skelPulse 1.4s ease-in-out infinite}
+  .skel.w40{width:40%}.skel.w60{width:60%}.skel.w80{width:80%}
+  .lt tr.skel-row td{border-bottom:1px solid rgba(28,42,64,0.5)}
+  .skel-note{font-size:var(--fs-xs);color:var(--tm);text-align:center;padding:8px 0 2px}
+  @media (prefers-reduced-motion:reduce){
+    .lt td.tick-up,.lt td.tick-dn,.ck.tick-up,.ck.tick-dn,.skel{animation:none}
+  }
   /* Tables — minimal dark */
   .lt{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:var(--fs-sm);font-variant-numeric:tabular-nums}
   /* cursor/hover SÓLO donde realmente se puede ordenar: antes las 52 tablas
@@ -629,27 +699,46 @@
     </div>
     <div style="font-family:'IBM Plex Mono',monospace;text-align:right;display:flex;align-items:center;gap:6px;border-left:1px solid var(--cb);padding-left:14px">
       <span class="live-badge" id="mainLiveDot"></span>
+      <span class="fresh-chip" id="hdrFresh" title="Antigüedad del último cambio de precio observado">sin datos</span>
       <span id="headerClock" style="font-size:11px;color:var(--t)"></span>
     </div>
   </div>
 </div>
 
-<!-- TABS -->
+<!-- TABS — agrupadas por función. Antes: 13 botones planos sin jerarquía.
+     Los labels de grupo se ocultan por debajo de 1500px para que la barra
+     nunca desborde; los separadores quedan siempre. ⌘K salta a cualquier
+     pestaña o ticker sin usar la barra. -->
 <div class="tab-bar-wrap" style="border-bottom:1px solid var(--cb)">
-<div style="display:flex;gap:0;flex-wrap:nowrap;min-width:max-content">
-  <button class="tab-btn active" onclick="switchTab('resumen')">Resumen</button>
-  <button class="tab-btn" onclick="switchTab('fx')">FX</button>
-  <button class="tab-btn" onclick="switchTab('calculadoras')">Calculadoras</button>
-  <button class="tab-btn" onclick="switchTab('analysis')">Análisis</button>
-  <button class="tab-btn" onclick="switchTab('quantplus')">Desarrollo</button>
-  <button class="tab-btn" onclick="switchTab('livescreen')">Live Screen</button>
-  <button class="tab-btn" onclick="switchTab('positions')">Posiciones</button>
-  <button class="tab-btn" onclick="switchTab('pases')">Pases</button>
-  <button class="tab-btn" onclick="switchTab('databcra')">BCRA</button>
-  <button class="tab-btn" onclick="switchTab('cer')">CER</button>
-  <button class="tab-btn" onclick="switchTab('bonares')">BONARES</button>
-  <button class="tab-btn" onclick="switchTab('arbtasas')">ARB. TASAS</button>
-  <button class="tab-btn" onclick="switchTab('rvquant')">RV QUANT</button>
+<div class="tab-bar">
+  <div class="tab-group">
+    <span class="tab-group-label">Mercado</span>
+    <button class="tab-btn active" onclick="switchTab('resumen')">Resumen</button>
+    <button class="tab-btn" onclick="switchTab('fx')">FX</button>
+    <button class="tab-btn" onclick="switchTab('livescreen')">Live Screen</button>
+  </div>
+  <div class="tab-group">
+    <span class="tab-group-label">Análisis</span>
+    <button class="tab-btn" onclick="switchTab('calculadoras')">Calculadoras</button>
+    <button class="tab-btn" onclick="switchTab('analysis')">Análisis</button>
+    <button class="tab-btn" onclick="switchTab('arbtasas')">ARB. TASAS</button>
+    <button class="tab-btn" onclick="switchTab('rvquant')">RV QUANT</button>
+  </div>
+  <div class="tab-group">
+    <span class="tab-group-label">Renta fija</span>
+    <button class="tab-btn" onclick="switchTab('cer')">CER</button>
+    <button class="tab-btn" onclick="switchTab('bonares')">BONARES</button>
+    <button class="tab-btn" onclick="switchTab('pases')">Pases</button>
+    <button class="tab-btn" onclick="switchTab('databcra')">BCRA</button>
+  </div>
+  <div class="tab-group">
+    <span class="tab-group-label">Cartera</span>
+    <button class="tab-btn" onclick="switchTab('positions')">Posiciones</button>
+    <button class="tab-btn" onclick="switchTab('quantplus')">Desarrollo</button>
+  </div>
+  <button class="cmdk-hint" onclick="openCmdK()" title="Buscar pestaña o ticker (Ctrl/⌘ + K)">
+    <span>Buscar</span><kbd>⌘K</kbd>
+  </button>
 </div>
 </div>
 
@@ -739,6 +828,8 @@
 
 <!-- TAB: RESUMEN -->
 <div id="tab-resumen">
+  <!-- Fila 0: cockpit — lo que se mira primero al abrir la pantalla -->
+  <div class="cockpit" id="resumenCockpit"></div>
   <!-- Fila 1: 3 tablas comprimidas -->
   <div class="resumen-top-grid">
     <!-- CER -->
@@ -747,8 +838,9 @@
       <table class="lt">
         <thead><tr>
           <th>Ticker</th><th class="num">Var%</th><th class="num">Px</th>
-          <th class="num" style="color:var(--acl)">TIR</th>
+          <th class="num" style="color:var(--acl)" title="Fondo = z-score de la TIR real vs las últimas 20 ruedas">TIR</th>
           <th class="num" style="color:var(--acl)">TNA</th>
+          <th class="num" title="TIR real, últimas 20 ruedas del histórico">20r</th>
           <th class="num">Días</th>
         </tr></thead>
         <tbody id="resumenCERBody"><tr><td colspan="6" style="text-align:center;color:var(--tm);padding:10px">Calculá</td></tr></tbody>
@@ -760,8 +852,9 @@
       <table class="lt">
         <thead><tr>
           <th>Ticker</th><th class="num">Var%</th><th class="num">Px</th>
-          <th class="num" style="color:var(--fx)">TEA</th>
+          <th class="num" style="color:var(--fx)" title="Fondo = z-score de la TEA vs las últimas 20 ruedas">TEA</th>
           <th class="num" style="color:var(--fx)">TNA</th>
+          <th class="num" title="TNA, últimas 20 ruedas del histórico">20r</th>
           <th class="num">Días</th>
         </tr></thead>
         <tbody id="resumenFXBody"><tr><td colspan="6" style="text-align:center;color:var(--tm);padding:10px">Calculá</td></tr></tbody>
@@ -819,6 +912,24 @@
         </tr></thead>
         <tbody id="resumenCaucionesBody"><tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin datos — conectá precios</td></tr></tbody>
       </table>
+    </div>
+    <!-- CARRY & ROLL-DOWN — descomposición del retorno esperado a 30d -->
+    <div class="resumen-table-panel">
+      <div class="st" style="color:var(--fx)">Carry &amp; Roll-down 30d
+        <span style="color:var(--td);font-weight:400;text-transform:none;letter-spacing:0;font-size:var(--fs-dense)">tasa fija · sobre curva NSS fiteada</span>
+      </div>
+      <table class="lt">
+        <thead><tr>
+          <th>Ticker</th>
+          <th class="num" title="Duration modificada en años">D mod</th>
+          <th class="num" style="color:var(--ac-tf)" title="Devengamiento puro: TNA × 30/365">Carry</th>
+          <th class="num" style="color:var(--ac-tam)" title="Ganancia por deslizarse sobre la curva: Dmod × (y(D) − y(D−30d))">Roll</th>
+          <th class="num" style="color:var(--t)" title="Carry + Roll">Total 30d</th>
+          <th class="num" title="Total anualizado (×365/30)">TNA eq</th>
+        </tr></thead>
+        <tbody id="resumenCarryBody"></tbody>
+      </table>
+      <div class="note" id="resumenCarryNote"></div>
     </div>
   </div>
   <!-- Fila 2: Breakeven strip -->
@@ -4165,6 +4276,75 @@ function chartZeroLine(c,x0,x1,y){
   c.restore();
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   CAPA QUANT — z-scores, sparklines y carry/roll sobre el histórico que ya
+   guarda el snapshot diario (_qtHistory: {date, bonds:{CER,FX,TAMAR,DL}}).
+   La idea: dejar de mirar el nivel absoluto y mirar dónde está ese nivel
+   respecto de su propia historia. Un 30% de TNA no dice nada; un 30% que
+   está a +2σ de las últimas 20 ruedas sí.
+   ══════════════════════════════════════════════════════════════════════ */
+const HIST_Z_N=20;                     // ventana de media/desvío (ruedas)
+let _histIdxCache=null,_histIdxKey='';
+
+/** Indexa el histórico por ticker → serie ordenada por fecha. */
+function histSeries(){
+  const src=(typeof _qtHistory!=='undefined'&&Array.isArray(_qtHistory))?_qtHistory:[];
+  const key=src.length+'|'+(src.length?String(src[src.length-1].date):'');
+  if(_histIdxCache&&_histIdxKey===key) return _histIdxCache;
+  const idx={};
+  src.slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))).forEach(s=>{
+    const groups=s.bonds||{};
+    Object.keys(groups).forEach(g=>{
+      (groups[g]||[]).forEach(b=>{
+        if(!b||!b.ticker) return;
+        (idx[b.ticker]=idx[b.ticker]||[]).push(
+          {date:s.date,px:b.px,tr:b.tr,tn:b.tn,tna:b.tna,tnaTF:b.tnaTF,tea:b.tea,dur:b.dur});
+      });
+    });
+  });
+  _histIdxCache=idx;_histIdxKey=key;
+  return idx;
+}
+/** Serie numérica de una métrica (viejo → nuevo), últimos n puntos. */
+function histMetric(ticker,field,n){
+  const s=histSeries()[ticker]||[];
+  const out=s.map(p=>p[field]).filter(v=>v!=null&&isFinite(v));
+  return n?out.slice(-n):out;
+}
+/** z-score del valor actual contra su ventana. null si no hay muestra. */
+function histZ(ticker,field,current,n){
+  const s=histMetric(ticker,field,n||HIST_Z_N);
+  if(s.length<5) return null;
+  const m=s.reduce((a,b)=>a+b,0)/s.length;
+  const sd=Math.sqrt(s.reduce((a,b)=>a+(b-m)*(b-m),0)/s.length);
+  if(!(sd>1e-9)) return null;
+  const cur=(current!=null&&isFinite(current))?current:s[s.length-1];
+  return (cur-m)/sd;
+}
+/** Fondo divergente por z. invert=true cuando "más alto" es peor. */
+function zBg(z,invert){
+  if(z==null||!isFinite(z)||Math.abs(z)<0.75) return '';
+  const a=(Math.min(1,Math.abs(z)/2.5)*0.26).toFixed(3);
+  const good=invert?z<0:z>0;
+  return `background:rgba(${good?'56,201,122':'240,106,106'},${a});`;
+}
+function zTitle(z,label){
+  return z==null?'':` title="${label}: z=${z>0?'+':'−'}${Math.abs(z).toFixed(2)}σ vs ${HIST_Z_N} ruedas"`;
+}
+/** Sparkline SVG inline, sin dependencias. */
+function sparkline(vals,color,w,h){
+  const v=(vals||[]).filter(x=>x!=null&&isFinite(x));
+  if(v.length<3) return '<span style="color:var(--tm)">·</span>';
+  const W=w||46,H=h||14,mn=Math.min.apply(null,v),mx=Math.max.apply(null,v),r=(mx-mn)||1;
+  const pts=v.map((y,i)=>[(i/(v.length-1))*(W-2)+1, H-1-((y-mn)/r)*(H-2)]);
+  const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const last=pts[pts.length-1];
+  const col=color||(v[v.length-1]>=v[0]?'var(--pos)':'var(--neg)');
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="vertical-align:middle;overflow:visible" aria-hidden="true">`
+    +`<path d="${d}" fill="none" stroke="${col}" stroke-width="1.2" stroke-linejoin="round"/>`
+    +`<circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="1.7" fill="${col}"/></svg>`;
+}
+
 /** Pill con el último valor pegado al borde derecho de la serie. */
 function chartLastPill(c,x,y,txt,color){
   c.save();
@@ -5282,7 +5462,16 @@ function drawOneChart(canvasId,points,maxXUse,title,curveColor,onPointClick,ghos
   const dpr=window.devicePixelRatio||1,W=ct.clientWidth,H=ct.clientHeight;
   cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+"px";cv.style.height=H+"px";
   const c=cv.getContext("2d");c.setTransform(dpr,0,0,dpr,0,0);
-  const pad={t:12,r:14,b:28,l:46},cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
+  // ── Residuos vs NSS ────────────────────────────────────────────────
+  // La curva sola no dice qué está rico y qué barato: dos puntos casi
+  // pegados a la línea pueden estar a 40 bps uno del otro. La tira de abajo
+  // muestra (TNA mercado − TNA curva) en bps por instrumento. Se fitea acá
+  // arriba porque la altura de la tira cambia el padding del gráfico.
+  const _nssFit=(valid.length>=4)?fitNSS(valid):null;
+  const _resid=_nssFit?valid.map(p=>({p,bps:(p.y-_nssFit.predict(p.x))*100})):[];
+  const _showResid=!!_nssFit&&_resid.length>=4&&H>=170;
+  const RES_H=_showResid?28:0;
+  const pad={t:12,r:14,b:28+RES_H,l:46},cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
   const minX=Math.max(0,Math.min(...valid.map(p=>p.x))*0.85);
   const maxX=maxXUse;
   const ySpread=Math.max(...valid.map(p=>p.y))-Math.min(...valid.map(p=>p.y));
@@ -5354,8 +5543,8 @@ function drawOneChart(canvasId,points,maxXUse,title,curveColor,onPointClick,ghos
     }
     c.stroke();c.setLineDash([]);c._started=false;
   }
-  // NSS curve
-  const nss=fitNSS(valid);
+  // NSS curve — reusa el fit hecho arriba para la tira de residuos
+  const nss=_nssFit||fitNSS(valid);
   if(nss){
     c.strokeStyle=curveColor;c.lineWidth=2;c.setLineDash([]);c.beginPath();
     let started=false;
@@ -5371,6 +5560,30 @@ function drawOneChart(canvasId,points,maxXUse,title,curveColor,onPointClick,ghos
   if(reg){
     c.fillStyle="#ffffff66";c.font="10px 'IBM Plex Mono',monospace";c.textAlign="right";
     c.fillText("Log",W-pad.r-2,pad.t+20);
+  }
+  // Tira de residuos: barra hacia arriba = rinde MÁS que la curva = barato.
+  if(_showResid){
+    const bTop=H-pad.b+6, bH=RES_H-14, base=bTop+bH/2;
+    const maxAbs=Math.max(8,Math.max.apply(null,_resid.map(r=>Math.abs(r.bps))));
+    c.save();
+    c.strokeStyle=CHART.zero;c.lineWidth=1;c.setLineDash([2,3]);
+    c.beginPath();c.moveTo(pad.l,base+0.5);c.lineTo(W-pad.r,base+0.5);c.stroke();
+    c.setLineDash([]);
+    _resid.forEach(r=>{
+      const px=xP(r.p.x);
+      if(px<pad.l-3||px>W-pad.r+3) return;
+      const hh=Math.max(1.5,Math.abs(r.bps)/maxAbs*(bH/2));
+      const up=r.bps>0;
+      c.fillStyle=up?'rgba(56,201,122,0.85)':'rgba(240,106,106,0.85)';
+      c.fillRect(px-2.5, up?base-hh:base, 5, hh);
+    });
+    c.font=CHART.fontS;c.textAlign="left";c.fillStyle=CHART.tick;
+    c.fillText("resid NSS ±"+Math.round(maxAbs)+"bps",pad.l,bTop+bH+8);
+    c.textAlign="right";c.fillStyle="rgba(56,201,122,0.9)";
+    c.fillText("↑ barato",W-pad.r,bTop+4);
+    c.fillStyle="rgba(240,106,106,0.9)";
+    c.fillText("↓ rico",W-pad.r,bTop+bH+8);
+    c.restore();
   }
   const hoveredHit=hits.find(h=>h.key===hoverKey);
   if(hoveredHit){
@@ -6234,6 +6447,112 @@ function drawImplInflChart(results){
 
 // ═══ INIT ══════════════════════════
 // ═══ TABS ═════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════════
+   COMMAND PALETTE ⌘K — saltar a cualquier pestaña o instrumento sin buscar
+   en una barra de 13 tabs. Enter en un ticker abre su calculadora.
+   ══════════════════════════════════════════════════════════════════════ */
+const CMDK_TABS=[
+  {tab:'resumen',   label:'Resumen',      grp:'Mercado'},
+  {tab:'fx',        label:'FX',           grp:'Mercado'},
+  {tab:'livescreen',label:'Live Screen',  grp:'Mercado'},
+  {tab:'calculadoras',label:'Calculadoras',grp:'Análisis'},
+  {tab:'analysis',  label:'Análisis',     grp:'Análisis'},
+  {tab:'arbtasas',  label:'ARB. TASAS',   grp:'Análisis'},
+  {tab:'rvquant',   label:'RV QUANT',     grp:'Análisis'},
+  {tab:'cer',       label:'CER',          grp:'Renta fija'},
+  {tab:'bonares',   label:'BONARES',      grp:'Renta fija'},
+  {tab:'pases',     label:'Pases',        grp:'Renta fija'},
+  {tab:'databcra',  label:'BCRA',         grp:'Renta fija'},
+  {tab:'positions', label:'Posiciones',   grp:'Cartera'},
+  {tab:'quantplus', label:'Desarrollo',   grp:'Cartera'}
+];
+let _cmdkItems=[], _cmdkSel=0;
+
+// Índice: pestañas + todos los instrumentos vivos, con su acción de apertura.
+function _cmdkBuildIndex(){
+  const out=CMDK_TABS.map(t=>({
+    kind:'tab', key:t.label, meta:t.grp, badge:'tab',
+    run:()=>switchTab(t.tab)
+  }));
+  const add=(arr,badge,tabName,opener)=>{
+    (arr||[]).forEach(b=>{
+      if(!b||!b.ticker) return;
+      out.push({kind:'inst', key:b.ticker, meta:b.name||'', badge,
+        run:()=>{ switchTab(tabName); if(opener) try{opener(b);}catch(e){} }});
+    });
+  };
+  if(typeof BONDS!=='undefined')        add(filterActive(BONDS),'CER','resumen',b=>openBondCalculator('cer',b.id));
+  if(typeof FIXED!=='undefined')        add(FIXED,'Tasa fija','resumen',b=>openBondCalculator('fixed',b.id));
+  if(typeof TAMAR_BONDS!=='undefined')  add(TAMAR_BONDS,'TAMAR','resumen',b=>openBondCalculator('tamar',b.id));
+  if(typeof DL_BONDS!=='undefined')     add(DL_BONDS,'DL','fx',b=>openFxCalculator('dl',b.id));
+  if(typeof ROFEX_FUTURES!=='undefined')add(ROFEX_FUTURES,'ROFEX','fx',b=>openFxCalculator('fut',b.id));
+  if(typeof USD_BONDS!=='undefined')    add(filterActive(USD_BONDS),'USD','bonares',null);
+  return out;
+}
+
+function openCmdK(){
+  if(document.getElementById('cmdkOverlay')) return;
+  const all=_cmdkBuildIndex();
+  const ov=document.createElement('div');
+  ov.id='cmdkOverlay'; ov.className='cmdk-ov';
+  ov.innerHTML=`<div class="cmdk" onclick="event.stopPropagation()">
+      <input id="cmdkInput" type="text" placeholder="Pestaña o ticker…  (ej: TZV27, sintético, BCRA)" autocomplete="off" spellcheck="false">
+      <div class="cmdk-list" id="cmdkList"></div>
+      <div class="cmdk-foot"><span>↑↓ navegar</span><span>⏎ abrir</span><span>esc cerrar</span></div>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click',e=>{ if(e.target===ov) closeCmdK(); });
+
+  const inp=document.getElementById('cmdkInput');
+  const list=document.getElementById('cmdkList');
+
+  function score(it,q){
+    const k=it.key.toLowerCase(), m=(it.meta||'').toLowerCase();
+    if(!q) return it.kind==='tab'?2:1;
+    if(k===q) return 100;
+    if(k.startsWith(q)) return 60;
+    if(k.includes(q)) return 40;
+    if(m.includes(q)) return 20;
+    return 0;
+  }
+  function render(){
+    const q=inp.value.trim().toLowerCase();
+    _cmdkItems=all.map(it=>({it,s:score(it,q)})).filter(x=>x.s>0)
+      .sort((a,b)=>b.s-a.s||a.it.key.localeCompare(b.it.key)).slice(0,40).map(x=>x.it);
+    if(_cmdkSel>=_cmdkItems.length) _cmdkSel=0;
+    list.innerHTML=_cmdkItems.length
+      ? _cmdkItems.map((it,i)=>`<div class="cmdk-it${i===_cmdkSel?' sel':''}" data-i="${i}">
+            <span class="badge">${it.badge}</span><span class="k">${it.key}</span>
+            <span class="m">${it.meta||''}</span></div>`).join('')
+      : '<div class="cmdk-empty">Sin resultados</div>';
+    list.querySelectorAll('.cmdk-it').forEach(d=>{
+      d.addEventListener('mouseenter',()=>{ _cmdkSel=+d.dataset.i; render(); });
+      d.addEventListener('click',()=>{ _cmdkRun(+d.dataset.i); });
+    });
+    const sel=list.querySelector('.cmdk-it.sel');
+    if(sel) sel.scrollIntoView({block:'nearest'});
+  }
+  window._cmdkRender=render;
+  inp.addEventListener('input',()=>{ _cmdkSel=0; render(); });
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='ArrowDown'){ e.preventDefault(); _cmdkSel=Math.min(_cmdkSel+1,_cmdkItems.length-1); render(); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); _cmdkSel=Math.max(_cmdkSel-1,0); render(); }
+    else if(e.key==='Enter'){ e.preventDefault(); _cmdkRun(_cmdkSel); }
+    else if(e.key==='Escape'){ e.preventDefault(); closeCmdK(); }
+  });
+  _cmdkSel=0; render(); inp.focus();
+}
+function _cmdkRun(i){
+  const it=_cmdkItems[i];
+  closeCmdK();
+  if(it&&it.run) it.run();
+}
+function closeCmdK(){ document.getElementById('cmdkOverlay')?.remove(); }
+
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){ e.preventDefault(); openCmdK(); }
+});
+
 function switchTab(tab){
   ["calculadoras","resumen","analysis","quantplus","livescreen","positions","pases","databcra","fx","cer","bonares","arbtasas","rvquant"].forEach(t=>{
     const el=document.getElementById("tab-"+t);
@@ -6380,6 +6699,70 @@ function renderResumenLegacy(){
   }
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   FRESCURA Y TICK FLASH
+   _pxChangedAt guarda cuándo cambió por última vez el precio de cada
+   ticker (no cuándo se hizo el fetch): eso es lo que dice si el papel
+   está operando o el número que ves es de hace 40 minutos.
+   ══════════════════════════════════════════════════════════════════════ */
+const _pxChangedAt={};
+const PX_STALE_SEC=300;            // 5 min sin cambio → se marca
+
+function pxAgeSec(ticker){
+  const t=_pxChangedAt[ticker];
+  return t?Math.round((Date.now()-t)/1000):null;
+}
+/** Envuelve un valor ya formateado marcándolo si el precio está viejo. */
+function pxStaleWrap(ticker,html){
+  const a=pxAgeSec(ticker);
+  if(a==null||a<PX_STALE_SEC) return html;
+  const m=Math.round(a/60);
+  return `<span class="px-stale" title="Sin cambio de precio hace ${m} min">${html}</span>`;
+}
+
+/* Tick flash: compara el data-v de cada celda contra el render anterior y
+   pulsa verde/rojo la que se movió. La clave es ticker+columna, así el
+   flash sobrevive a reordenamientos de filas. */
+const _tickSnap={};
+function tickFlash(tbodyId){
+  const tb=document.getElementById(tbodyId);
+  if(!tb) return;
+  const prev=_tickSnap[tbodyId]||{};
+  const next={};
+  tb.querySelectorAll('tr').forEach(tr=>{
+    const key=(tr.children[0]?tr.children[0].textContent.trim():'');
+    if(!key) return;
+    [...tr.children].forEach((td,i)=>{
+      const raw=td.dataset?td.dataset.v:null;
+      if(raw==null||raw==='') return;
+      const v=parseFloat(raw);
+      if(!isFinite(v)) return;
+      const k=key+'|'+i;
+      next[k]=v;
+      const p=prev[k];
+      if(p!=null&&p!==v){
+        td.classList.remove('tick-up','tick-dn');
+        void td.offsetWidth;                       // reinicia la animación
+        td.classList.add(v>p?'tick-up':'tick-dn');
+      }
+    });
+  });
+  _tickSnap[tbodyId]=next;
+}
+
+/** Filas skeleton mientras no hay datos — mejor señal que "Sin datos". */
+function skelRows(cols,n,note){
+  let h='';
+  const w=['w80','w60','w40','w60','w80','w40','w60'];
+  for(let r=0;r<(n||3);r++){
+    h+='<tr class="skel-row">';
+    for(let c=0;c<cols;c++) h+=`<td><span class="skel ${w[(c+r)%w.length]}"></span></td>`;
+    h+='</tr>';
+  }
+  if(note) h+=`<tr><td colspan="${cols}" class="skel-note">${note}</td></tr>`;
+  return h;
+}
+
 function getPriceVariationMeta(ticker, manualInputId){
   const lp=_livePrices[ticker]||{};
   const manualEl=document.getElementById(manualInputId);
@@ -6411,16 +6794,20 @@ function renderResumen(){
       const days=DB(settle,new Date(b.mat+"T00:00:00"));
       const px=getCurrentPrice(b.id);
       const chg=getPriceVariationMeta(b.ticker,"pm_"+b.id);
+      // z-score de la TIR real: invert=false → TIR alta vs su historia = verde
+      // (rinde más que su propio promedio ⇒ barata).
+      const z=histZ(b.ticker,'tr',b._tr);
       rows+=`<tr class="clickable-row cer-row" onclick="openBondCalculator('cer','${b.id}')" title="Click para calculadora">
         <td class="tk" style="color:${b.color}">${b.ticker}</td>
         <td class="num"${fmt.dv(chg.varPct)} style="color:${chg.color};font-weight:600">${chg.text}</td>
-        <td class="num"${fmt.dv(px)}>${fmtPx(px)}</td>
-        <td class="num"${fmt.dv(b._tr)} style="color:var(--ac-cer);font-weight:600">${fmtPct(b._tr)}</td>
+        <td class="num"${fmt.dv(px)}>${pxStaleWrap(b.ticker,fmtPx(px))}</td>
+        <td class="num"${fmt.dv(b._tr)}${zTitle(z,'TIR real')} style="color:var(--ac-cer);font-weight:600;${zBg(z)}">${fmtPct(b._tr)}</td>
         <td class="num"${fmt.dv(b._tnaTF)} style="color:var(--ac-cer)">${fmtPct(b._tnaTF)}</td>
+        <td class="num">${sparkline(histMetric(b.ticker,'tr',HIST_Z_N),'var(--ac-cer)')}</td>
         <td class="num"${fmt.dv(days)} style="color:var(--td)">${fmtInt(days)}</td>
       </tr>`;
     });
-    cerBody.innerHTML=rows||'<tr><td colspan="6" style="text-align:center;color:var(--tm);padding:10px">Calculá primero</td></tr>';
+    cerBody.innerHTML=rows||skelRows(7,4,'Calculá para ver la curva CER');
   }
   const fxBody=document.getElementById("resumenFXBody");
   if(fxBody){
@@ -6429,21 +6816,23 @@ function renderResumen(){
       const days=DB(settle,new Date(f.mat+"T00:00:00"));
       const px=getCurrentPrice(f.id);
       const chg=getPriceVariationMeta(f.ticker,"fpm_"+f.id);
+      const z=histZ(f.ticker,'tea',f._tea);
       rows+=`<tr class="clickable-row fx-row" onclick="openBondCalculator('fixed','${f.id}')" title="Click para calculadora">
         <td class="tk" style="color:${f.color}">${f.ticker}</td>
         <td class="num"${fmt.dv(chg.varPct)} style="color:${chg.color};font-weight:600">${chg.text}</td>
-        <td class="num"${fmt.dv(px)}>${fmtPx(px,3)}</td>
-        <td class="num"${fmt.dv(f._tea)} style="color:var(--ac-tf);font-weight:600">${fmtPct(f._tea)}</td>
+        <td class="num"${fmt.dv(px)}>${pxStaleWrap(f.ticker,fmtPx(px,3))}</td>
+        <td class="num"${fmt.dv(f._tea)}${zTitle(z,'TEA')} style="color:var(--ac-tf);font-weight:600;${zBg(z)}">${fmtPct(f._tea)}</td>
         <td class="num"${fmt.dv(f._tna)} style="color:var(--ac-tf)">${fmtPct(f._tna)}</td>
+        <td class="num">${sparkline(histMetric(f.ticker,'tna',HIST_Z_N),'var(--ac-tf)')}</td>
         <td class="num"${fmt.dv(days)} style="color:var(--td)">${fmtInt(days)}</td>
       </tr>`;
     });
-    fxBody.innerHTML=rows||'<tr><td colspan="6" style="text-align:center;color:var(--tm);padding:10px">Calculá primero</td></tr>';
+    fxBody.innerHTML=rows||skelRows(7,4,'Calculá para ver LECAP / BONCAP');
   }
   const tamarBody=document.getElementById("resumenTAMARBody");
   if(tamarBody){
     if(!TAMAR_BONDS.length){
-      tamarBody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--tm);padding:10px">Sin datos</td></tr>';
+      tamarBody.innerHTML=skelRows(7,3,'Sin instrumentos TAMAR activos');
     } else {
       let rows="";
       TAMAR_BONDS.forEach(t=>{
@@ -6462,7 +6851,7 @@ function renderResumen(){
         rows+=`<tr class="clickable-row" onclick="openBondCalculator('tamar','${t.id}')" title="Click para calculadora">
           <td class="tk" style="color:${t.color}">${t.ticker}</td>
           <td class="num"${fmt.dv(chg.varPct)} style="color:${chg.color};font-weight:600">${chg.text}</td>
-          <td class="num"${fmt.dv(px)}>${fmtPx(px)}</td>
+          <td class="num"${fmt.dv(px)}>${pxStaleWrap(t.ticker,fmtPx(px))}</td>
           <td class="num"${fmt.dv(t._marginToday)} style="color:var(--ac-tam)">${fmtDelta(t._marginToday)}</td>
           <td class="num"${fmt.dv(tnaEq)} style="color:var(--ac-tf)">${fmtPct(tnaEq)}</td>
           <td class="num"${fmt.dv(teaEq)} style="color:var(--ac-tf)">${fmtPct(teaEq)}</td>
@@ -6492,18 +6881,18 @@ function renderResumen(){
       rows+=`<tr class="fxc-row-clickable" onclick="openFxCalculator('dl','${b.id}')" title="Click para calculadora">
         <td class="tk" style="color:${b.color}">${b.ticker}</td>
         <td class="num"${fmt.dv(varPct)} style="color:${deltaColor(varPct)};font-weight:600">${fmtDelta(varPct)}</td>
-        <td class="num"${fmt.dv(px)}>${fmtPx(px)}</td>
+        <td class="num"${fmt.dv(px)}>${pxStaleWrap(b.ticker,fmtPx(px))}</td>
         <td class="num"${fmt.dv(tna)} style="color:var(--ac-dl);font-weight:600">${fmtPct(tna)}</td>
         <td class="num"${fmt.dv(days)} style="color:var(--td)">${fmtInt(days)}</td>
       </tr>`;
     });
-    dlBody.innerHTML=rows||'<tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin datos</td></tr>';
+    dlBody.innerHTML=rows||skelRows(5,4,'Conectá precios para ver Dollar Linked');
   }
   // Sintéticos DL + Futuro — sólo los calzados (futuro que expira junto al vto
   // del bono) y con precio en las dos patas: son los realmente ejecutables.
   const synthBody=document.getElementById("resumenSynthBody");
   if(synthBody){
-    const empty='<tr><td colspan="7" style="text-align:center;color:var(--tm);padding:10px">Sin sintéticos calzados con precio</td></tr>';
+    const empty=skelRows(7,3,'Sin sintéticos calzados con precio en las dos patas');
     if(typeof buildFxSynthRows!=="function"){ synthBody.innerHTML=empty; }
     else{
       const tasaPesos=_getCaucionLast1D()||parseFloat((document.getElementById("fxSynthTasaPesos")||{}).value)||0;
@@ -6524,9 +6913,118 @@ function renderResumen(){
       synthBody.innerHTML=srows||empty;
     }
   }
+  renderResumenCockpit();
+  renderCarryRoll();
   renderResumenCurves();
   renderResumenBreakevenVertical();
   renderCaucionesResumen();
+  // Pulso en las celdas que se movieron respecto del render anterior
+  ["resumenCERBody","resumenFXBody","resumenTAMARBody","resumenDLBody",
+   "resumenSynthBody","resumenCaucionesBody"].forEach(tickFlash);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   CARRY & ROLL-DOWN — descompone el retorno esperado a 30 días en:
+     carry = TNA × h/365                       (devengamiento puro)
+     roll  = Dmod × [ y(D) − y(D − h/365) ]    (deslizarse por la curva)
+   El roll usa la curva NSS ya fiteada sobre duration (_fittedCurves.fxNSS).
+   Mirar sólo TNA esconde que dos bonos con la misma TNA pueden tener roll
+   muy distinto según la pendiente de la curva en su tramo.
+   ══════════════════════════════════════════════════════════════════════ */
+const CARRY_H_DAYS=30;
+function renderCarryRoll(){
+  const body=document.getElementById("resumenCarryBody");
+  const note=document.getElementById("resumenCarryNote");
+  if(!body) return;
+  const nss=(_fittedCurves&&_fittedCurves.fxNSS)?_fittedCurves.fxNSS:null;
+  const univ=FIXED.filter(f=>f._ok&&f._tna!=null&&f._dur!=null&&f._dur>0);
+  if(!nss||!univ.length){
+    body.innerHTML=skelRows(6,3,'Calculá primero — el roll necesita la curva NSS fiteada');
+    if(note) note.textContent='';
+    return;
+  }
+  const h=CARRY_H_DAYS/365;
+  const rows=univ.map(f=>{
+    const D=f._dur;
+    const dmod=f._tea!=null?D/(1+f._tea/100):D;
+    const yNow=nss.predict(D);
+    const yFwd=nss.predict(Math.max(0.01,D-h));
+    const carry=f._tna*h;                 // pp de retorno en el horizonte
+    const roll=dmod*(yNow-yFwd);          // pp por roll-down
+    const total=carry+roll;
+    return {f,dmod,carry,roll,total,tnaEq:total*365/CARRY_H_DAYS};
+  }).sort((a,b)=>b.total-a.total);
+  body.innerHTML=rows.map(r=>`
+    <tr class="clickable-row fx-row" onclick="openBondCalculator('fixed','${r.f.id}')" title="Click para calculadora">
+      <td class="tk" style="color:${r.f.color}">${r.f.ticker}</td>
+      <td class="num"${fmt.dv(r.dmod)} style="color:var(--td)">${fmtNum(r.dmod)}</td>
+      <td class="num"${fmt.dv(r.carry)} style="color:var(--ac-tf)">${fmtPct(r.carry)}</td>
+      <td class="num"${fmt.dv(r.roll)} style="color:${deltaColor(r.roll)}">${fmtDelta(r.roll)}</td>
+      <td class="num"${fmt.dv(r.total)} style="font-weight:600">${fmtPct(r.total)}</td>
+      <td class="num"${fmt.dv(r.tnaEq)} style="color:var(--td)">${fmtPct(r.tnaEq)}</td>
+    </tr>`).join('');
+  if(note) note.innerHTML=`Horizonte ${CARRY_H_DAYS}d · curva NSS RMSE ${fmtNum(nss.rmse,3)} pp · el roll asume curva quieta.`;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   COCKPIT — la franja que se mira primero. Todo lo demás del RESUMEN son
+   tablas; esto responde "¿cómo está el mundo?" de un vistazo.
+   ══════════════════════════════════════════════════════════════════════ */
+function renderResumenCockpit(){
+  const el=document.getElementById("resumenCockpit");
+  if(!el) return;
+  const sd=document.getElementById("settleDate").value;
+  const settle=sd?new Date(sd+"T00:00:00"):new Date();
+
+  const spot=getFxSpot()||null;
+  const mep=getFxMep()||null;
+  const spotClose=(_livePrices["DLR/SPOT"]||{}).close||0;
+  const spotVar=(spot&&spotClose)?(spot/spotClose-1)*100:null;
+  const brecha=(spot&&mep)?(mep/spot-1)*100:null;
+  const cau=_getCaucionLast1D()||null;
+
+  // Breakeven de inflación: promedio de las TEM implícitas de la curva CER
+  let bePromedio=null, beN=0;
+  const beSeries=(typeof _implInflResults!=='undefined'?_implInflResults:[])||[];
+  const beOk=beSeries.filter(r=>{const b=BONDS.find(x=>x.ticker===r.ticker);return b&&b._ok;});
+  if(beOk.length){ bePromedio=beOk.reduce((s,x)=>s+x.implPi,0)/beOk.length; beN=beOk.length; }
+
+  // Tasa fija más corta = referencia de tasa en pesos del mercado
+  let tfCorta=null,tfTk='';
+  FIXED.filter(f=>f._ok&&f._tna!=null).forEach(f=>{
+    const d=DB(settle,new Date(f.mat+"T00:00:00"));
+    if(d>0&&(tfCorta===null||d<tfCorta.d)) tfCorta={d,tna:f._tna,tk:f.ticker};
+  });
+  if(tfCorta){ tfTk=tfCorta.tk; }
+
+  // Mejor sintético DL+futuro calzado — oportunidad del día
+  let best=null;
+  if(typeof buildFxSynthRows==='function'){
+    buildFxSynthRows(settle).filter(r=>r.ok).forEach(r=>{ if(!best||r.tna>best.tna) best=r; });
+  }
+
+  const card=(label,value,sub,accent)=>
+    `<div class="ck" style="--ck-ac:${accent||'var(--t)'}">
+       <div class="ck-l">${label}</div>
+       <div class="ck-v">${value}</div>
+       <div class="ck-d">${sub||'&nbsp;'}</div>
+     </div>`;
+
+  let h='';
+  h+=card('Spot mayorista', fmtPx(spot),
+        spotVar!=null?`<span style="color:${deltaColor(spotVar)}">${fmtDelta(spotVar)}</span> vs cierre`:'sin cierre previo',
+        'var(--t)');
+  h+=card('MEP', fmtPx(mep), mep&&spot?'AL30 / AL30D':'—', 'var(--ac-tf)');
+  h+=card('Brecha', fmtPct(brecha), 'MEP sobre mayorista', brecha==null?'var(--tm)':(brecha>0?'var(--warn)':'var(--pos)'));
+  h+=card('Caución 1D', fmtPct(cau), 'TNA pesos overnight', 'var(--ac-rof)');
+  h+=card(tfTk?`Tasa fija ${tfTk}`:'Tasa fija corta', fmtPct(tfCorta?tfCorta.tna:null),
+        tfCorta?`TNA a ${fmtDays(tfCorta.d)}`:'calculá primero', 'var(--ac-tf)');
+  h+=card('BE inflación', bePromedio!=null?fmtPct(bePromedio):fmt.DASH,
+        beN?`TEM prom · ${beN} bonos CER`:'calculá primero', 'var(--ac-cer)');
+  h+=card('Mejor sintético', fmtPct(best?best.tna:null),
+        best?`${best.b.ticker} / ${best.fut.ticker.replace('DLR/','')} · ${fmtDays(best.days)}`:'sin par calzado',
+        'var(--ac-syn)');
+  el.innerHTML=h;
 }
 
 function _getCaucionLast1D(){
@@ -9386,6 +9884,10 @@ async function fetchPricesFromServer(){
     let updated=0;
     (data.data||[]).forEach(p=>{
       if(!allTickers.includes(p.ticker) && !p.ticker.startsWith("CAUCION-")) return;
+      // Sello de ÚLTIMO CAMBIO (no de último fetch): alimenta la marca de
+      // dato viejo en las tablas y el chip de frescura del header.
+      const _pv=_livePrices[p.ticker], _nl=p.last||0;
+      if(_nl>0&&(!_pv||_pv.last!==_nl)) _pxChangedAt[p.ticker]=Date.now();
       _livePrices[p.ticker]={
         bid:p.bid||0, ask:p.ask||0, last:p.last||0,
         mid:p.mid||0, bidSize:p.bidSize||0, askSize:p.askSize||0,
@@ -9415,7 +9917,7 @@ async function fetchPricesFromServer(){
       const baseCal=_calDaysToNextBusinessDays(today,1);
       const found=_findCaucionTicker(today,baseCal);
       const tna1=(found.lp.last)||0;
-      _hc.textContent=tna1?tna1.toFixed(2)+"%":"—";
+      _hc.textContent=fmtPct(tna1||null);
       if(_hcd){
         const dateStr=found.settleDate.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit"});
         _hcd.textContent=`(${dateStr})`;
@@ -17503,10 +18005,32 @@ setTimeout(()=>{
   _intradayTimer=setInterval(collectIntradayData,60000);
 },1200);
 
-// Clock
+// El histórico alimenta z-scores y sparklines del RESUMEN, así que se carga al
+// arrancar y no sólo al entrar a la tab DESARROLLO.
+setTimeout(()=>{
+  if(typeof _qtRefreshHistFromServer==='function'){
+    Promise.resolve(_qtRefreshHistFromServer())
+      .then(()=>{ _histIdxCache=null; try{ renderResumen(); }catch(_e){} })
+      .catch(()=>{});
+  }
+},1500);
+
+// Clock + chip de frescura del feed
 setInterval(()=>{
   const el=document.getElementById("headerClock");
   if(el){const now=new Date();el.textContent=now.toLocaleString("es-AR",{weekday:"short",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",second:"2-digit"});}
+  // Frescura = el cambio de precio más reciente del feed completo. Muestra sin
+  // ambigüedad si la pantalla está viva o mirando números de hace 40 minutos.
+  const fc=document.getElementById("hdrFresh");
+  if(fc){
+    const stamps=Object.values(_pxChangedAt);
+    if(!stamps.length){ fc.textContent='sin datos'; fc.className='fresh-chip'; }
+    else{
+      const age=Math.round((Date.now()-Math.max.apply(null,stamps))/1000);
+      fc.textContent = age<60 ? 'live '+age+'s' : 'hace '+Math.round(age/60)+'m';
+      fc.className='fresh-chip'+(age>=900?' bad':age>=PX_STALE_SEC?' warn':'');
+    }
+  }
 },1000);
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -17590,6 +18114,18 @@ async function qtTakeSnapshot(){
         CER:   typeof BONDS!=='undefined' ? collect(BONDS,'CER') : [],
         FX:    typeof FIXED!=='undefined' ? collect(FIXED,'FIXED') : [],
         TAMAR: typeof TAMAR_BONDS!=='undefined' ? collect(TAMAR_BONDS,'TAMAR') : [],
+        // Los DL no pasan por calculate(), así que su TNA devaluatoria se
+        // computa acá: sin esto el histórico no tiene serie para z-scores ni
+        // sparklines de dollar linked.
+        DL: (typeof DL_BONDS!=='undefined'?DL_BONDS:[]).map(b=>{
+          const lp=_livePrices[b.ticker]||{};
+          const px=lp.last||null;
+          const spot=(typeof getFxSpot==='function')?getFxSpot():0;
+          const d=DB(new Date(settle+"T00:00:00"), new Date(b.mat+"T00:00:00"));
+          const tna=(px&&spot&&d>0)?(100*spot/px-1)*365/d*100:null;
+          return {id:b.id,ticker:b.ticker,type:'DL',px,tna,tr:null,tn:null,
+                  tnaTF:null,tea:null,dur:d>0?d/365:null,mat:b.mat||null};
+        }).filter(x=>x.px!=null),
       }
     };
     const r=await fetch('/api/history/snapshot',{
