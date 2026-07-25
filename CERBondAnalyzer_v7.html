@@ -926,24 +926,7 @@
         <tbody id="resumenCaucionesBody"><tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin datos — conectá precios</td></tr></tbody>
       </table>
     </div>
-    <!-- CARRY & ROLL-DOWN — descomposición del retorno esperado a 30d -->
-    <div class="resumen-table-panel">
-      <div class="st" style="color:var(--fx)">Carry &amp; Roll-down 30d
-        <span style="color:var(--td);font-weight:400;text-transform:none;letter-spacing:0;font-size:var(--fs-dense)">tasa fija · sobre curva NSS fiteada</span>
-      </div>
-      <table class="lt">
-        <thead><tr>
-          <th>Ticker</th>
-          <th class="num" title="Duration modificada en años">D mod</th>
-          <th class="num" style="color:var(--ac-tf)" title="Devengamiento puro: TNA × 30/365">Carry</th>
-          <th class="num" style="color:var(--ac-tam)" title="Ganancia por deslizarse sobre la curva: Dmod × (y(D) − y(D−30d))">Roll</th>
-          <th class="num" style="color:var(--t)" title="Carry + Roll">Total 30d</th>
-          <th class="num" title="Total anualizado (×365/30)">TNA eq</th>
-        </tr></thead>
-        <tbody id="resumenCarryBody"></tbody>
-      </table>
-      <div class="note" id="resumenCarryNote"></div>
-    </div>
+  </div>
   </div>
   <!-- Fila 2: Breakeven strip -->
   <div class="resumen-be-strip" id="resumenBEStripRow">
@@ -3475,12 +3458,13 @@
         <th class="num">Px ARS</th>
         <th class="num">FX impl</th>
         <th class="num">TIR USD</th>
-        <th class="num">Dur</th>
+        <th class="num" title="Duration de Macaulay: vida media ponderada de los flujos, en años">Duration</th>
+        <th class="num" title="Modified duration = Macaulay / (1 + TIR). Es la sensibilidad: ΔP% ≈ −MD × Δy">MD</th>
         <th class="num">Conv</th>
         <th class="num">Próx Cupón</th>
         <th class="num">Próx Amort</th>
       </tr></thead>
-      <tbody id="bnBody"><tr><td colspan="14" style="text-align:center;color:var(--tm);padding:14px">Esperando precios…</td></tr></tbody>
+      <tbody id="bnBody"><tr><td colspan="15" style="text-align:center;color:var(--tm);padding:14px">Esperando precios…</td></tr></tbody>
     </table>
   </div>
 
@@ -3991,6 +3975,7 @@ const USD_BONDS=[
 // Bonares/Globales tienen 2 cotizaciones en Bolsar:
 //   - ticker base (ej AL30) en ARS por 100 VN (settlement local)
 //   - ticker + 'D' (ej AL30D) en USD por 100 VN (settlement MEP/cable)
+
 // Para TIR USD usamos SIEMPRE la versión D (precio directo en USD).
 function usdBondPriceTicker(b){
   // Permite override explícito si en algún caso el USD ticker difiere.
@@ -4026,12 +4011,20 @@ function usdBondCashflows(b, settle){
       d.setDate(0); // último día del mes anterior al sobreflowed
     }
   }
-  // Coupon lookup: para una fecha de pago, qué tasa anual corresponde (último step <= fecha)
-  function rateForDate(payDate){
+  // Coupon lookup — BUG FIX (step-up aplicado un período antes de tiempo):
+  // el cupón que se PAGA en una fecha devenga durante el semestre que TERMINA
+  // en esa fecha, así que la tasa que corresponde es la vigente al INICIO del
+  // período, no la del día de pago. Los step-up de los bonos del canje 2020
+  // arrancan justo en una fecha de pago (AL30/GD30: 1,75% desde 09-jul-2027),
+  // y al testear `cd <= payDate` la tasa nueva se cobraba ya en ese pago, un
+  // semestre antes de lo que corresponde. Efecto: TIR sobrestimada +0,08 a
+  // +0,25 pp SOLO en los bonos con escalón pendiente — los que no tienen
+  // (AL29, GD29, AE38, GD38) daban bien y por eso el error pasaba inadvertido.
+  function rateForPeriod(periodStart){
     let r = 0;
     for (const c of b.coupons) {
       const cd = new Date(c.date+'T00:00:00');
-      if (cd <= payDate) r = c.rate;
+      if (cd <= periodStart) r = c.rate;
       else break;
     }
     return r/100; // a decimal
@@ -4048,7 +4041,10 @@ function usdBondCashflows(b, settle){
   let residual = 100; // % VN outstanding
   for (let i=0; i<payDates.length; i++) {
     const pd = payDates[i];
-    const rateAnnual = rateForDate(pd);
+    // Inicio del período que se está cobrando: el pago anterior (o la emisión
+    // para el primer cupón). De ahí sale la tasa vigente del semestre.
+    const periodStart = (i>0) ? payDates[i-1] : emD;
+    const rateAnnual = rateForPeriod(periodStart);
     const coupon = residual * rateAnnual * 0.5; // semestral 30/360
     const cap = amortAt(pd);
     const total = coupon + cap;
@@ -4131,6 +4127,60 @@ const ROFEX_FUTURES=[
   {id:"DLR/NOV27", ticker:"DLR/NOV27", name:"DLR Nov-27", exp:"2027-11-30", color:"#251001"},
   {id:"DLR/DIC27", ticker:"DLR/DIC27", name:"DLR Dic-27", exp:"2027-12-30", color:"#1F0D01"},
 ];
+
+/* ══════════════════════════════════════════════════════════════════════
+   RAMPAS DE COLOR POR CLASE DE ACTIVO
+   Los colores venían escritos a mano instrumento por instrumento y habían
+   quedado con repetidos y con tramos ilegibles:
+     · DL     → 5 de 7 bonos compartían el mismo cyan
+     · TAMAR  → 5 con el mismo magenta, más una rampa oliva que terminaba en
+                #3f3300 (invisible sobre el fondo #07090F)
+     · ROFEX  → 18 tonos pero degradando hasta #1F0D01, o sea negro
+     · FIXED  → 13 instrumentos repartidos en apenas 5 colores
+     · CER    → 4 con el mismo violeta, que además chocaba con tasa fija
+   Acá se reasignan por familia: cada clase tiene su banda de hue (así un DL
+   sigue leyéndose como DL) y la luminosidad se mantiene entre 56% y 78%, que
+   es el rango que conserva contraste sobre el fondo. Se ordena por
+   vencimiento para que el degradé siga la curva, y se alterna la luminosidad
+   entre vecinos para que dos plazos contiguos no queden idénticos.
+   Salida en HEX (no hsl) porque hay 7 lugares que concatenan alpha como
+   `${color}22` y con hsl() eso quedaría inválido.
+   ══════════════════════════════════════════════════════════════════════ */
+function _hslToHex(h,s,l){
+  s/=100; l/=100;
+  const k=n=>(n+h/30)%12;
+  const a=s*Math.min(l,1-l);
+  const f=n=>Math.round(255*(l-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1)))));
+  return '#'+[f(0),f(8),f(4)].map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+// s bajo en las bandas oscuras (violeta, azul, rosa): el hue puro ahí tiene
+// poca luminancia y quedaría por debajo de 4.5:1 sobre el fondo.
+const ASSET_RAMPS={
+  CER  :{h0:142,h1:174,s:60},   // verde → verde-cyan
+  FIXED:{h0:250,h1:292,s:58},   // violeta → magenta
+  TAMAR:{h0:202,h1:230,s:62},   // azul
+  DL   :{h0:176,h1:196,s:76},   // cyan
+  ROFEX:{h0:26,h1:52,s:74},     // naranja → ámbar
+  USD  :{h0:300,h1:352,s:56}    // magenta → rosa
+};
+function _assignRamp(arr,key,dateField){
+  const r=ASSET_RAMPS[key];
+  if(!r||!Array.isArray(arr)||!arr.length) return;
+  const sorted=arr.slice().sort((a,b)=>String(a[dateField]||'').localeCompare(String(b[dateField]||'')));
+  const n=sorted.length;
+  sorted.forEach((it,i)=>{
+    const t=n<=1?0.5:i/(n-1);
+    const h=r.h0+(r.h1-r.h0)*t;
+    const l=(i%2===0)?66:78;    // zigzag: vecinos siempre distinguibles
+    it.color=_hslToHex(h,r.s,l);
+  });
+}
+_assignRamp(BONDS,'CER','mat');
+_assignRamp(FIXED,'FIXED','mat');
+_assignRamp(TAMAR_BONDS,'TAMAR','mat');
+_assignRamp(DL_BONDS,'DL','mat');
+_assignRamp(ROFEX_FUTURES,'ROFEX','exp');
+_assignRamp(USD_BONDS,'USD','mat');
 
 // ═══ ARCHIVED — instrumentos vencidos ══════════════════════════════
 // NO se consumen en ningún lado: archivo histórico para no perder los datos
@@ -6927,56 +6977,12 @@ function renderResumen(){
     }
   }
   renderResumenCockpit();
-  renderCarryRoll();
   renderResumenCurves();
   renderResumenBreakevenVertical();
   renderCaucionesResumen();
   // Pulso en las celdas que se movieron respecto del render anterior
   ["resumenCERBody","resumenFXBody","resumenTAMARBody","resumenDLBody",
    "resumenSynthBody","resumenCaucionesBody"].forEach(tickFlash);
-}
-
-/* ══════════════════════════════════════════════════════════════════════
-   CARRY & ROLL-DOWN — descompone el retorno esperado a 30 días en:
-     carry = TNA × h/365                       (devengamiento puro)
-     roll  = Dmod × [ y(D) − y(D − h/365) ]    (deslizarse por la curva)
-   El roll usa la curva NSS ya fiteada sobre duration (_fittedCurves.fxNSS).
-   Mirar sólo TNA esconde que dos bonos con la misma TNA pueden tener roll
-   muy distinto según la pendiente de la curva en su tramo.
-   ══════════════════════════════════════════════════════════════════════ */
-const CARRY_H_DAYS=30;
-function renderCarryRoll(){
-  const body=document.getElementById("resumenCarryBody");
-  const note=document.getElementById("resumenCarryNote");
-  if(!body) return;
-  const nss=(_fittedCurves&&_fittedCurves.fxNSS)?_fittedCurves.fxNSS:null;
-  const univ=FIXED.filter(f=>f._ok&&f._tna!=null&&f._dur!=null&&f._dur>0);
-  if(!nss||!univ.length){
-    body.innerHTML=skelRows(6,3,'Calculá primero — el roll necesita la curva NSS fiteada');
-    if(note) note.textContent='';
-    return;
-  }
-  const h=CARRY_H_DAYS/365;
-  const rows=univ.map(f=>{
-    const D=f._dur;
-    const dmod=f._tea!=null?D/(1+f._tea/100):D;
-    const yNow=nss.predict(D);
-    const yFwd=nss.predict(Math.max(0.01,D-h));
-    const carry=f._tna*h;                 // pp de retorno en el horizonte
-    const roll=dmod*(yNow-yFwd);          // pp por roll-down
-    const total=carry+roll;
-    return {f,dmod,carry,roll,total,tnaEq:total*365/CARRY_H_DAYS};
-  }).sort((a,b)=>b.total-a.total);
-  body.innerHTML=rows.map(r=>`
-    <tr class="clickable-row fx-row" onclick="openBondCalculator('fixed','${r.f.id}')" title="Click para calculadora">
-      <td class="tk" style="color:${r.f.color}">${r.f.ticker}</td>
-      <td class="num"${fmt.dv(r.dmod)} style="color:var(--td)">${fmtNum(r.dmod)}</td>
-      <td class="num"${fmt.dv(r.carry)} style="color:var(--ac-tf)">${fmtPct(r.carry)}</td>
-      <td class="num"${fmt.dv(r.roll)} style="color:${deltaColor(r.roll)}">${fmtDelta(r.roll)}</td>
-      <td class="num"${fmt.dv(r.total)} style="font-weight:600">${fmtPct(r.total)}</td>
-      <td class="num"${fmt.dv(r.tnaEq)} style="color:var(--td)">${fmtPct(r.tnaEq)}</td>
-    </tr>`).join('');
-  if(note) note.innerHTML=`Horizonte ${CARRY_H_DAYS}d · curva NSS RMSE ${fmtNum(nss.rmse,3)} pp · el roll asume curva quieta.`;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -6996,11 +7002,19 @@ function renderResumenCockpit(){
   const brecha=(spot&&mep)?(mep/spot-1)*100:null;
   const cau=_getCaucionLast1D()||null;
 
-  // Breakeven de inflación: promedio de las TEM implícitas de la curva CER
-  let bePromedio=null, beN=0;
+  // Breakeven de inflación
   const beSeries=(typeof _implInflResults!=='undefined'?_implInflResults:[])||[];
   const beOk=beSeries.filter(r=>{const b=BONDS.find(x=>x.ticker===r.ticker);return b&&b._ok;});
+  let bePromedio=null, beN=0;
   if(beOk.length){ bePromedio=beOk.reduce((s,x)=>s+x.implPi,0)/beOk.length; beN=beOk.length; }
+  // BE MÁS CORTA = la que tiene menos meses desconocidos por delante. Cuando
+  // nMonths===1 su implPi ES la inflación esperada para ese único mes; con más
+  // meses es el promedio geométrico del tramo y se aclara en el subtítulo.
+  let beNext=null;
+  beOk.forEach(r=>{
+    if(!r.firstMonth) return;
+    if(!beNext || r.nMonths<beNext.nMonths || (r.nMonths===beNext.nMonths && r.days<beNext.days)) beNext=r;
+  });
 
   // Tasa fija más corta = referencia de tasa en pesos del mercado
   let tfCorta=null,tfTk='';
@@ -7009,12 +7023,6 @@ function renderResumenCockpit(){
     if(d>0&&(tfCorta===null||d<tfCorta.d)) tfCorta={d,tna:f._tna,tk:f.ticker};
   });
   if(tfCorta){ tfTk=tfCorta.tk; }
-
-  // Mejor sintético DL+futuro calzado — oportunidad del día
-  let best=null;
-  if(typeof buildFxSynthRows==='function'){
-    buildFxSynthRows(settle).filter(r=>r.ok).forEach(r=>{ if(!best||r.tna>best.tna) best=r; });
-  }
 
   const card=(label,value,sub,accent)=>
     `<div class="ck" style="--ck-ac:${accent||'var(--t)'}">
@@ -7032,11 +7040,16 @@ function renderResumenCockpit(){
   h+=card('Caución 1D', fmtPct(cau), 'TNA pesos overnight', 'var(--ac-rof)');
   h+=card(tfTk?`Tasa fija ${tfTk}`:'Tasa fija corta', fmtPct(tfCorta?tfCorta.tna:null),
         tfCorta?`TNA a ${fmtDays(tfCorta.d)}`:'calculá primero', 'var(--ac-tf)');
-  h+=card('BE inflación', bePromedio!=null?fmtPct(bePromedio):fmt.DASH,
-        beN?`TEM prom · ${beN} bonos CER`:'calculá primero', 'var(--ac-cer)');
-  h+=card('Mejor sintético', fmtPct(best?best.tna:null),
-        best?`${best.b.ticker} / ${best.fut.ticker.replace('DLR/','')} · ${fmtDays(best.days)}`:'sin par calzado',
+  h+=card(beNext?`Inflación esperada ${beNext.firstMonth.label}`:'Inflación esperada',
+        fmtPct(beNext?beNext.implPi:null),
+        beNext
+          ? (beNext.nMonths===1
+              ? `BE ${beNext.ticker} vs ${beNext.comp}`
+              : `BE ${beNext.ticker} · TEM prom ${beNext.firstMonth.label}→${beNext.lastMonth.label}`)
+          : 'calculá primero',
         'var(--ac-syn)');
+  h+=card('BE inflación curva', bePromedio!=null?fmtPct(bePromedio):fmt.DASH,
+        beN?`TEM prom · ${beN} bonos CER`:'calculá primero', 'var(--ac-cer)');
   el.innerHTML=h;
 }
 
@@ -7089,11 +7102,78 @@ function renderCaucionesResumen(){
   body.innerHTML=rows;
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   PUNTOS DE LAS CURVAS DL / ROFEX — fuente única.
+   Antes vivían adentro de renderFX(), que sólo corre con la pestaña FX
+   visible. Resultado: si nunca abrías FX, los arrays quedaban vacíos y los
+   gráficos de DL y ROFEX del RESUMEN no dibujaban nada. Ahora se arman
+   directo de los precios live y RESUMEN no depende de haber pasado por FX.
+   ══════════════════════════════════════════════════════════════════════ */
+function refreshFxCurvePoints(){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const sd=document.getElementById("settleDate")?.value;
+  const settle=sd?new Date(sd+"T00:00:00"):ABD(today,1);
+  const spot=getFxSpot()||0;
+  const spotClose=(_livePrices["DLR/SPOT"]||{}).close||0;
+  const prevBizDay=SBD(today,1);              // ayer hábil: trade date del close
+  const prevSettle=ABD(prevBizDay,1);         // T+1 equivalente para DL
+
+  const dl=[],dlPrev=[],fut=[],futPrev=[];
+  DL_BONDS.forEach(b=>{
+    const lp=_livePrices[b.ticker]||{};
+    const matD=new Date(b.mat+"T00:00:00");
+    const d=DB(settle,matD);
+    if(spot&&lp.last&&d>0){
+      const tna=(100*spot/lp.last-1)*365/d*100;
+      if(isFinite(tna)) dl.push({x:d,y:tna,label:b.ticker,color:b.color,id:b.id});
+    }
+    const dPrev=DB(prevSettle,matD);
+    if(spotClose&&lp.close&&dPrev>0){
+      const tnaPrev=(100*spotClose/lp.close-1)*365/dPrev*100;
+      if(isFinite(tnaPrev)) dlPrev.push({x:dPrev,y:tnaPrev,label:b.ticker,color:'#6E839F'});
+    }
+  });
+  ROFEX_FUTURES.forEach(f=>{
+    const lp=_livePrices[f.ticker]||{};
+    const expD=new Date(f.exp+"T00:00:00");
+    const d=DB(today,expD);                   // futuros liquidan T+0
+    if(spot&&lp.last&&d>0){
+      const tna=(lp.last/spot-1)*365/d*100;
+      if(isFinite(tna)) fut.push({x:d,y:tna,label:f.ticker.replace("DLR/",""),color:f.color,id:f.id});
+    }
+    const dPrev=DB(prevBizDay,expD);
+    if(spotClose&&lp.close&&dPrev>0){
+      const tnaPrev=(lp.close/spotClose-1)*365/dPrev*100;
+      if(isFinite(tnaPrev)) futPrev.push({x:dPrev,y:tnaPrev,label:f.ticker.replace("DLR/",""),color:'#6E839F'});
+    }
+  });
+  _dlCurvePoints=dl; _dlCurvePrevPoints=dlPrev;
+  _futCurvePoints=fut; _futCurvePrevPoints=futPrev;
+  return {dl,dlPrev,fut,futPrev};
+}
+
 function renderResumenCurves(){
   const cd=typeof currentDurData!=='undefined'?currentDurData:null;
   const note=document.getElementById('resumenCurveNote');
+  const getMax0=(id,fb)=>{const v=parseFloat(document.getElementById(id)?.value);return(v&&v>0)?v:fb;};
+
+  // DL y ROFEX se dibujan SIEMPRE que haya precios: no dependen de calculate()
+  // ni de la pestaña FX. Antes esto vivía después del early-return de abajo,
+  // así que sin haber apretado "Calcular todo" no se dibujaban nunca.
+  refreshFxCurvePoints();
+  if(_dlCurvePoints.length||_dlCurvePrevPoints.length){
+    const pts=_dlCurvePoints.concat(_dlCurvePrevPoints);
+    const mx=Math.max.apply(null,pts.map(p=>p.x))*1.1;
+    drawFxCurveChart('resumenChartDL',_dlCurvePoints,getMax0('maxDurDL',mx),_dlCurvePrevPoints,'#22D3EE');
+  }
+  if(_futCurvePoints.length||_futCurvePrevPoints.length){
+    const pts=_futCurvePoints.concat(_futCurvePrevPoints);
+    const mx=Math.max.apply(null,pts.map(p=>p.x))*1.1;
+    drawFxCurveChart('resumenChartROFEX',_futCurvePoints,getMax0('maxDurROFEX',mx),_futCurvePrevPoints,'#E5A839');
+  }
+
   if(!cd||(!cd.fx.length&&!cd.cerReal.length&&!cd.combo.length)){
-    if(note) note.textContent='Calculá primero para ver curvas';
+    if(note) note.textContent='Calculá todo para ver las curvas en pesos (DL y ROFEX ya salen de los precios live)';
     return;
   }
   if(note) note.textContent='';
@@ -7117,14 +7197,6 @@ function renderResumenCurves(){
   if(ptsTAMAR.length){
     drawOneChart('resumenChartTAMAR', ptsTAMAR, getMax('maxDurTAMAR',autoMax), 'TAMAR','#5AAAF5',
       lbl=>{const t=TAMAR_BONDS.find(x=>x.ticker===lbl);if(t)openBondCalculator('tamar',t.id);});
-  }
-  if(_dlCurvePoints.length){
-    const dlAutoMax=getAutoDurMax(_dlCurvePoints);
-    drawFxCurveChart('resumenChartDL',_dlCurvePoints,getMax('maxDurDL',dlAutoMax),_dlCurvePrevPoints,'#22D3EE');
-  }
-  if(_futCurvePoints.length){
-    const futAutoMax=getAutoDurMax(_futCurvePoints);
-    drawFxCurveChart('resumenChartROFEX',_futCurvePoints,getMax('maxDurROFEX',futAutoMax),_futCurvePrevPoints,'#E5A839');
   }
 }
 
@@ -15697,11 +15769,17 @@ function renderBonares(){
       const tirRaw = xirrFromFlows(priceUsd, flows, 'nominal');
       if (tirRaw != null) {
         b._tea = tirRaw * 100;
-        b._dur = durationFromFlows(tirRaw, flows, 'nominal');
+        // OJO: durationFromFlows devuelve MODIFIED duration (mac/(1+y)), no
+        // Macaulay — todo el resto de la app usa _dur con ese sentido. La
+        // columna "Dur" mostraba la modified rotulada como duration; ahora se
+        // exponen las dos, y la Macaulay se reconstruye como MD × (1 + TIR).
+        b._mdur = durationFromFlows(tirRaw, flows, 'nominal');
+        b._dur  = b._mdur;                                   // sensibilidad (compat)
+        b._macdur = (b._mdur!=null) ? b._mdur*(1+tirRaw) : null;
         b._conv = convexityFromFlows(tirRaw, flows, 'nominal');
         b._ok = true;
-      } else { b._tea=null; b._dur=null; b._conv=null; b._ok=false; }
-    } else { b._tea=null; b._dur=null; b._conv=null; b._ok=false; }
+      } else { b._tea=null; b._dur=null; b._mdur=null; b._macdur=null; b._conv=null; b._ok=false; }
+    } else { b._tea=null; b._dur=null; b._mdur=null; b._macdur=null; b._conv=null; b._ok=false; }
   });
 
   // Tabla
@@ -15732,9 +15810,10 @@ function renderBonares(){
       <td class="num" style="color:${varColor};font-size:11px;font-weight:600">${varStr}</td>
       <td class="num" style="color:var(--td);font-size:10px">${pxArs?pxArs.toLocaleString('es-AR',{maximumFractionDigits:0}):'—'}</td>
       <td class="num" style="color:#E5A839;font-size:10px">${fxImpl?fxImpl.toFixed(0):'—'}</td>
-      <td class="num" style="color:#22D3EE;font-weight:600">${b._tea!=null?b._tea.toFixed(2)+'%':'—'}</td>
-      <td class="num">${b._dur!=null?b._dur.toFixed(2)+'y':'—'}</td>
-      <td class="num">${b._conv!=null?b._conv.toFixed(1):'—'}</td>
+      <td class="num"${fmt.dv(b._tea)} style="color:var(--ac-dl);font-weight:600">${fmtPct(b._tea)}</td>
+      <td class="num"${fmt.dv(b._macdur)}>${fmtNum(b._macdur)}</td>
+      <td class="num"${fmt.dv(b._mdur)} style="color:var(--td)">${fmtNum(b._mdur)}</td>
+      <td class="num"${fmt.dv(b._conv)}>${fmtNum(b._conv,1)}</td>
       <td class="num" style="font-size:10px;color:var(--td)">${nextCup}</td>
       <td class="num" style="font-size:10px;color:var(--td)">${nextAmr}</td>
     </tr>`;
@@ -16745,19 +16824,19 @@ function renderFX(){
     });
   }
 
-  // DL curve chart
-  const dlPtsValid=dlPoints.filter(p=>isFinite(p.y)&&p.x>0);
+  // DL curve chart — los puntos salen de refreshFxCurvePoints(), la misma
+  // fuente que usa el RESUMEN, para que las dos curvas no puedan divergir.
+  refreshFxCurvePoints();
+  const dlPtsValid=_dlCurvePoints;
   const allDLX=[...dlPtsValid,...dlPointsPrev].filter(p=>p.x>0);
-  _dlCurvePoints=[...dlPtsValid];_dlCurvePrevPoints=[...dlPointsPrev];
   if(dlPtsValid.length>=1||dlPointsPrev.length>=1){
     const maxX=allDLX.length?Math.max(...allDLX.map(p=>p.x))*1.1:365;
     drawFxCurveChart("fxDLCurveChart",dlPtsValid,maxX,dlPointsPrev,'#22D3EE');
   }
 
-  // Futures curve chart
-  const futPtsValid=futPoints.filter(p=>isFinite(p.y)&&p.x>0);
+  // Futures curve chart — misma fuente compartida que el RESUMEN
+  const futPtsValid=_futCurvePoints;
   const allFutX=[...futPtsValid,...futPointsPrev].filter(p=>p.x>0);
-  _futCurvePoints=[...futPtsValid];_futCurvePrevPoints=[...futPointsPrev];
   if(futPtsValid.length>=1||futPointsPrev.length>=1){
     const maxX=allFutX.length?Math.max(...allFutX.map(p=>p.x))*1.1:400;
     // Overlay LECAP/BONCAP: para cada LECAP activo, calculá su TNA simple
