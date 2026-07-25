@@ -294,9 +294,16 @@
   .tab-bar{display:flex;gap:0;flex-wrap:nowrap;min-width:max-content;align-items:stretch}
   .tab-group{display:flex;align-items:center}
   .tab-group+.tab-group{margin-left:4px;padding-left:8px;border-left:1px solid var(--cb)}
-  .tab-group-label{font-size:var(--fs-dense);font-weight:600;text-transform:uppercase;letter-spacing:.14em;
-    color:var(--tm);font-family:'IBM Plex Mono',monospace;padding:0 8px 0 2px;white-space:nowrap;align-self:center}
-  @media(max-width:1500px){.tab-group-label{display:none}}
+  /* Rótulo de grupo: NO es un tab. Los tabs son mono 10px/600 MAYÚSCULAS, así
+     que el rótulo va en minúscula y peso normal — case + peso distintos es la
+     señal que evita que se lea como una pestaña más. Sin eventos de puntero
+     para que ni siquiera reaccione al hover. */
+  .tab-group-label{font-size:var(--fs-xs);font-weight:400;text-transform:none;letter-spacing:.02em;
+    color:var(--tm);font-family:'IBM Plex Mono',monospace;padding:0 9px 0 2px;white-space:nowrap;
+    align-self:center;pointer-events:none;user-select:none;opacity:0.75}
+  /* Con rótulos la barra mide ~1552px: por debajo de eso se ocultan y quedan
+     sólo los separadores, así la barra nunca necesita scroll horizontal. */
+  @media(max-width:1580px){.tab-group-label{display:none}}
   .cmdk-hint{margin-left:auto;align-self:center;display:flex;align-items:center;gap:7px;background:transparent;
     border:1px solid var(--cb);border-radius:var(--r-sm);color:var(--tm);cursor:pointer;padding:4px 9px;
     font-family:'IBM Plex Mono',monospace;font-size:var(--fs-xs);white-space:nowrap;transition:all 0.15s}
@@ -738,7 +745,7 @@
     <button class="tab-btn" onclick="switchTab('databcra')">BCRA</button>
   </div>
   <div class="tab-group">
-    <span class="tab-group-label">Cartera</span>
+    <span class="tab-group-label">Gestión</span>
     <button class="tab-btn" onclick="switchTab('positions')">Posiciones</button>
     <button class="tab-btn" onclick="switchTab('quantplus')">Desarrollo</button>
   </div>
@@ -6469,8 +6476,8 @@ const CMDK_TABS=[
   {tab:'bonares',   label:'BONARES',      grp:'Renta fija'},
   {tab:'pases',     label:'Pases',        grp:'Renta fija'},
   {tab:'databcra',  label:'BCRA',         grp:'Renta fija'},
-  {tab:'positions', label:'Posiciones',   grp:'Cartera'},
-  {tab:'quantplus', label:'Desarrollo',   grp:'Cartera'}
+  {tab:'positions', label:'Posiciones',   grp:'Gestión'},
+  {tab:'quantplus', label:'Desarrollo',   grp:'Gestión'}
 ];
 let _cmdkItems=[], _cmdkSel=0;
 
