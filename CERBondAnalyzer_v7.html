@@ -667,6 +667,19 @@
         </tr></thead>
         <tbody id="resumenDLBody"><tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin datos</td></tr></tbody>
       </table>
+      <!-- Sintéticos DL + Futuro ROFEX (sólo los calzados = ejecutables) -->
+      <div class="st" style="color:#c084fc;margin-top:12px">Sintéticos DL + Futuro
+        <span style="color:var(--td);font-weight:400;text-transform:none;letter-spacing:0">100 × PxFut / PxDL − 1 · sólo calzados · click → calc</span>
+      </div>
+      <table class="lt">
+        <thead><tr>
+          <th>Sintético</th><th class="num">Días</th><th class="num">Px DL</th><th class="num">Px Fut</th>
+          <th class="num" style="color:#c084fc">TNA</th>
+          <th class="num" style="color:#c084fc">TIR</th>
+          <th class="num">vs $</th>
+        </tr></thead>
+        <tbody id="resumenSynthBody"><tr><td colspan="7" style="text-align:center;color:var(--tm);padding:10px">Sin datos</td></tr></tbody>
+      </table>
     </div>
     <!-- CAUCIONES -->
     <div class="resumen-table-panel">
@@ -1850,7 +1863,9 @@
   <!-- SYNTHETICS: DL vs Futuro, Spot vs Futuro -->
   <div class="card">
     <div class="st" style="color:#c084fc">Sintéticos FX — Arbitraje DL / Futuros / Spot</div>
-    <div class="note" style="margin-bottom:10px">Retorno Directo = Px Futuro / Px DL − 1. El precio del bono DL es el FX implícito hoy; el precio del futuro es el FX implícito al vencimiento. TNA = Retorno × 365/días. Hacé click en una fila para ver el detalle.</div>
+    <div class="note" style="margin-bottom:10px">Comprás el bono DL (paga 100 USD por lámina de 100 VN al vto) y vendés el futuro DLR calzado → los ARS al vto quedan lockeados en 100 × Px Futuro.
+      <b style="color:#c084fc">Retorno = 100 × Px Futuro / Px DL − 1</b>. FX implícito hoy del bono = Px DL / 100. TNA = Retorno × 365/días · TIR = (1+Retorno)^(365/días) − 1.
+      Los días son hasta el <b>vto del bono</b> (cuando entran los pesos). Si el futuro no calza con el vto el sintético no queda lockeado y se marca <span style="color:var(--am)">⚠</span>. Hacé click en una fila para ver el detalle.</div>
 
     <!-- Strategy selector -->
     <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
@@ -1860,17 +1875,26 @@
 
     <!-- DL vs Futuro -->
     <div id="fxSynthDLF">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;align-items:end">
         <div class="ig"><label>Bono DL</label>
-          <select id="fxSynthDL" style="font-size:11px" onchange="calcFxSynthetic()"></select>
+          <select id="fxSynthDL" style="font-size:11px" onchange="_fxSynthOnSelectChange()"></select>
         </div>
         <div class="ig"><label>Futuro ROFEX</label>
-          <select id="fxSynthFut" style="font-size:11px" onchange="calcFxSynthetic()"></select>
+          <select id="fxSynthFut" style="font-size:11px" onchange="_fxSynthOnSelectChange()"></select>
+        </div>
+        <div class="ig"><label>Px DL (% VN) <span style="color:var(--td);font-size:8px;text-transform:none;letter-spacing:0">editable</span></label>
+          <input type="number" id="fxSynthPxDL" step="0.01" placeholder="live" style="font-size:11px" oninput="calcFxSyntheticSingle()">
+        </div>
+        <div class="ig"><label>Px Futuro (ARS/USD) <span style="color:var(--td);font-size:8px;text-transform:none;letter-spacing:0">editable</span></label>
+          <input type="number" id="fxSynthPxFut" step="0.01" placeholder="live" style="font-size:11px" oninput="calcFxSyntheticSingle()">
         </div>
         <div class="ig"><label>Tasa Pesos TNA % <span id="fxSynthTasaPesosLive" style="color:var(--gn);font-size:8px;text-transform:none;letter-spacing:0"></span></label>
-          <input type="number" id="fxSynthTasaPesos" step="0.1" placeholder="ej: 30" value="30" style="font-size:11px" onchange="calcFxSynthetic()">
+          <input type="number" id="fxSynthTasaPesos" step="0.1" placeholder="ej: 30" value="30" style="font-size:11px" oninput="calcFxSyntheticSingle()">
         </div>
-        <button class="btn-api" onclick="calcFxSynthetic()">Calcular</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn-api" onclick="calcFxSynthetic()" style="flex:1">Calcular</button>
+          <button class="btn-api btn-sm" onclick="_fxSynthLoadLivePx()" title="Volver a los precios live">↺ live</button>
+        </div>
       </div>
       <div id="fxSynthDLFResult" style="margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.8">Seleccioná DL y futuro para ver el spread</div>
       <div id="fxSynthDLFSingle" style="font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.8"></div>
@@ -6291,6 +6315,31 @@ function renderResumen(){
       </tr>`;
     });
     dlBody.innerHTML=rows||'<tr><td colspan="5" style="text-align:center;color:var(--tm);padding:10px">Sin datos</td></tr>';
+  }
+  // Sintéticos DL + Futuro — sólo los calzados (futuro que expira junto al vto
+  // del bono) y con precio en las dos patas: son los realmente ejecutables.
+  const synthBody=document.getElementById("resumenSynthBody");
+  if(synthBody){
+    const empty='<tr><td colspan="7" style="text-align:center;color:var(--tm);padding:10px">Sin sintéticos calzados con precio</td></tr>';
+    if(typeof buildFxSynthRows!=="function"){ synthBody.innerHTML=empty; }
+    else{
+      const tasaPesos=_getCaucionLast1D()||parseFloat((document.getElementById("fxSynthTasaPesos")||{}).value)||0;
+      let srows="";
+      buildFxSynthRows(settle).filter(r=>r.ok).sort((a,b)=>a.days-b.days).forEach(r=>{
+        const spread=tasaPesos?r.tna-tasaPesos:null;
+        const futLbl=r.fut.ticker.replace("DLR/","");
+        srows+=`<tr class="fxc-row-clickable" onclick="openFxCalculator('dl','${r.b.id}',{tab:'synth',futId:'${r.fut.id}'})" title="Click para calculadora del sintético">
+          <td class="tk"><span style="color:${r.b.color}">${r.b.ticker}</span><span style="color:var(--td)"> / </span><span style="color:var(--fut)">${futLbl}</span></td>
+          <td class="num">${r.days}</td>
+          <td class="num">${r.dlPx.toFixed(2)}</td>
+          <td class="num">${r.futPx.toFixed(2)}</td>
+          <td class="num" style="color:#c084fc;font-weight:600">${r.tna.toFixed(2)}%</td>
+          <td class="num" style="color:#c084fc">${r.tir.toFixed(2)}%</td>
+          <td class="num" style="color:${spread==null?'var(--td)':spread>0?'var(--ac)':'var(--w)'}">${spread==null?'—':(spread>0?'+':'')+spread.toFixed(2)+'pp'}</td>
+        </tr>`;
+      });
+      synthBody.innerHTML=srows||empty;
+    }
   }
   renderResumenCurves();
   renderResumenBreakevenVertical();
@@ -16007,10 +16056,14 @@ function renderFX(){
 
   // Populate synthetics selects
   populateFxSynthSelects();
+  calcFxSynthetic();
 }
 
 // ═══ FX CALCULATOR MODAL ═════════════════════════════════════════
-function openFxCalculator(type, id){
+// opts (opcional): {tab:'synth'|'spot', futId:'DLR/XXXNN'} — para abrir directo
+// en la pestaña SINTÉTICO con un futuro puntual precargado.
+function openFxCalculator(type, id, opts){
+  const _o=opts||{};
   document.getElementById('fxCalcModal')?.remove();
 
   const today=new Date(); today.setHours(0,0,0,0);
@@ -16064,6 +16117,8 @@ function openFxCalculator(type, id){
       const fp = (_livePrices[f.ticker]||{}).last;
       if (fp && delta < bestDelta) { _compFut = f; bestDelta = delta; }
     });
+    // Futuro forzado desde afuera (ej: fila de sintéticos del RESUMEN)
+    if (_o.futId) { const _ff = ROFEX_FUTURES.find(f => f.id === _o.futId); if (_ff) _compFut = _ff; }
   }
 
   overlay.innerHTML=`
@@ -16383,10 +16438,12 @@ function openFxCalculator(type, id){
       const id = (document.getElementById('fxsy-fut')||{}).value;
       return ROFEX_FUTURES.find(f => f.id === id) || null;
     }
-    function _synthDays(fut) {
-      if (!fut) return days;
-      const fd = new Date(fut.exp+'T00:00:00');
-      return DB(today, fd);
+    // Horizonte del sintético = días hasta el vto del BONO (cuando entran los
+    // pesos). El futuro sólo lockea el FX; si no calza se avisa en el detalle.
+    function _synthDays(fut) { return days; }
+    function _synthGap(fut) {
+      if (!fut) return null;
+      return DB(new Date(fut.exp+'T00:00:00'), endDate); // >0: bono vence después
     }
     function _synthLoadLive() {
       // PX DL = last del bono, PX Fut = last del futuro seleccionado
@@ -16446,13 +16503,19 @@ function openFxCalculator(type, id){
         const det = document.getElementById('fxsy-detail');
         if (det) {
           const futLbl = fut ? fut.ticker.replace('DLR/','') : '—';
+          const gap = _synthGap(fut);
+          const tol = (typeof FX_SYNTH_TOL_DAYS!=='undefined') ? FX_SYNTH_TOL_DAYS : 7;
+          const noCalza = (gap!=null && Math.abs(gap) > tol);
           det.innerHTML =
             '<div><strong style="color:#cbd5e1">Bono:</strong> '+ticker+' (vto '+item.mat+', días '+dSyn+')</div>'
-           +'<div><strong style="color:#cbd5e1">Futuro:</strong> '+futLbl+(fut?(' (exp '+fut.exp+')'):'')+'</div>'
+           +'<div><strong style="color:#cbd5e1">Futuro:</strong> '+futLbl+(fut?(' (exp '+fut.exp+')'):'')
+           +(gap!=null?(' · calce '+(gap===0?'exacto':Math.abs(gap)+'d '+(gap>0?'antes':'después'))):'')+'</div>'
+           +'<div><strong style="color:#cbd5e1">FX implícito hoy:</strong> '+(pxdl?(pxdl/100).toFixed(2):'—')+' (PX DL / 100)</div>'
            +'<div><strong style="color:#cbd5e1">Mecánica:</strong> ARS hoy = '+(pxdl?pxdl.toFixed(2):'—')
            +'  →  ARS al vto = 100 × '+(pxfut?pxfut.toFixed(2):'—')+' = '+(pxfut?(100*pxfut).toFixed(2):'—')+'</div>'
            +'<div><strong style="color:#cbd5e1">TNA ARS sintética:</strong> '+(tnaFinal?tnaFinal.toFixed(2)+'%':'—')
-           +'   ·   <strong style="color:#cbd5e1">TEA:</strong> '+(teaPct!=null?teaPct.toFixed(2)+'%':'—')+'</div>';
+           +'   ·   <strong style="color:#cbd5e1">TEA:</strong> '+(teaPct!=null?teaPct.toFixed(2)+'%':'—')+'</div>'
+           +(noCalza?'<div style="color:#fbbf24;margin-top:4px">⚠ El futuro no calza con el vto del bono ('+Math.abs(gap)+'d de gap): el retorno no queda lockeado.</div>':'');
         }
       } finally { _synthUpdating = false; }
     }
@@ -16468,6 +16531,7 @@ function openFxCalculator(type, id){
     if (futSel2) futSel2.addEventListener('change', _synthLoadLive);
 
     _synthLoadLive();
+    if (_o.tab === 'synth') window._fxcSwitchTab('synth');
   }
 
   // ESC to close
@@ -16943,6 +17007,81 @@ function populateFxSynthSelects(){
   if(spotInput){const s=getFxSpot(); if(s) spotInput.value=s.toFixed(2);}
 }
 
+// ═══ MOTOR SINTÉTICOS DL + FUTURO ════════════════════════════════
+// Mecánica: comprás el bono DL a Px DL (cotiza en ARS por lámina de 100 VN) y
+// vendés el futuro DLR calzado a Px Fut (ARS por 1 USD). Al vto el bono paga
+// 100 USD (bullet) → los ARS quedan lockeados en 100 × Px Fut.
+//   Retorno = 100 × Px Fut / Px DL − 1
+// BUG viejo: usaba futPx/dlPx − 1 (sin el ×100 del VN) → daba −99% siempre.
+// El FX implícito hoy del bono es Px DL / 100, NO Px DL.
+const FX_SYNTH_TOL_DAYS=7; // calce máximo (días) entre exp del futuro y vto del bono
+
+function fxSynthMetrics(dlPx,futPx,days){
+  if(!(dlPx>0)||!(futPx>0)||!(days>0)) return {ret:null,tna:null,tir:null};
+  const ret=100*futPx/dlPx-1;
+  return {ret, tna:ret*365/days*100, tir:(Math.pow(1+ret,365/days)-1)*100};
+}
+
+// Futuro comparable = el de exp más cercano al vto del bono. Prioriza los que
+// tienen precio live; si ninguno lo tiene, devuelve igual el más cercano.
+function _fxSynthBestFut(matD){
+  let withPx=null,wpDelta=Infinity,any=null,anyDelta=Infinity;
+  ROFEX_FUTURES.forEach(f=>{
+    const delta=Math.abs(DB(new Date(f.exp+"T00:00:00"),matD));
+    if(delta<anyDelta){anyDelta=delta;any=f;}
+    if(((_livePrices[f.ticker]||{}).last||0)>0 && delta<wpDelta){wpDelta=delta;withPx=f;}
+  });
+  return withPx||any;
+}
+
+// Arma la grilla de sintéticos DL+futuro. `calzado` = el futuro expira a menos
+// de FX_SYNTH_TOL_DAYS del vto del bono → el retorno queda realmente lockeado.
+function buildFxSynthRows(settle){
+  const rows=[];
+  DL_BONDS.forEach(b=>{
+    const matD=new Date(b.mat+"T00:00:00");
+    const days=DB(settle,matD);
+    if(days<=0) return;
+    const dlPx=(_livePrices[b.ticker]||{}).last||0;
+    const fut=_fxSynthBestFut(matD);
+    const futPx=fut?((_livePrices[fut.ticker]||{}).last||0):0;
+    const futExp=fut?new Date(fut.exp+"T00:00:00"):null;
+    const gap=futExp?DB(futExp,matD):null; // >0: el bono vence después del futuro
+    const calzado=!!(fut&&gap!==null&&Math.abs(gap)<=FX_SYNTH_TOL_DAYS);
+    const m=fxSynthMetrics(dlPx,futPx,days);
+    rows.push({b,fut,futExp,days,gap,calzado,dlPx,futPx,fxImpl:dlPx?dlPx/100:0,
+               ret:m.ret,tna:m.tna,tir:m.tir,ok:calzado&&m.ret!==null});
+  });
+  return rows;
+}
+
+// Carga los precios live del par seleccionado en los inputs editables
+function _fxSynthLoadLivePx(){
+  const dlSel=document.getElementById("fxSynthDL");
+  const futSel=document.getElementById("fxSynthFut");
+  const pxDLEl=document.getElementById("fxSynthPxDL");
+  const pxFutEl=document.getElementById("fxSynthPxFut");
+  if(!dlSel||!futSel||!pxDLEl||!pxFutEl) return;
+  const b=DL_BONDS.find(x=>x.id===dlSel.value);
+  const f=ROFEX_FUTURES.find(x=>x.id===futSel.value);
+  const dlPx=b?((_livePrices[b.ticker]||{}).last||0):0;
+  const futPx=f?((_livePrices[f.ticker]||{}).last||0):0;
+  pxDLEl.value=dlPx?dlPx.toFixed(2):'';
+  pxFutEl.value=futPx?futPx.toFixed(2):'';
+  calcFxSyntheticSingle();
+}
+
+function _fxSynthOnSelectChange(){ _fxSynthLoadLivePx(); }
+
+// Click en una fila de la tabla → selecciona el par y trae sus precios live
+function _fxSynthPick(dlId,futId){
+  const dlSel=document.getElementById("fxSynthDL");
+  const futSel=document.getElementById("fxSynthFut");
+  if(dlSel&&dlId) dlSel.value=dlId;
+  if(futSel&&futId) futSel.value=futId;
+  _fxSynthLoadLivePx();
+}
+
 function calcFxSynthetic(){
   const el=document.getElementById("fxSynthDLFResult");
   if(!el) return;
@@ -16950,37 +17089,12 @@ function calcFxSynthetic(){
   const sd=document.getElementById("settleDate").value;
   const settle=sd?new Date(sd+"T00:00:00"):ABD(today,1);
 
-  // Retorno Directo = futPx/dlPx − 1
-  // Px DL = FX implícito hoy; Px Futuro = FX implícito al vencimiento
-  // TNA = Retorno × 365/días ; TIR = (1+Retorno)^(365/días) − 1
-  const tableRows=[];
-  DL_BONDS.forEach(b=>{
-    const dlLp=_livePrices[b.ticker]||{};
-    const dlPx=dlLp.last||0;
-    const bondMat=new Date(b.mat+"T00:00:00");
-    let bestFut=null,bestDiff=Infinity;
-    ROFEX_FUTURES.forEach(f=>{
-      const diff=Math.abs(new Date(f.exp+"T00:00:00")-bondMat);
-      if(diff<bestDiff){bestDiff=diff;bestFut=f;}
-    });
-    const futLp=bestFut?(_livePrices[bestFut.ticker]||{}):{};
-    const futPx=futLp.last||0;
-    const futExp=bestFut?new Date(bestFut.exp+"T00:00:00"):null;
-    const futDays=futExp?DB(settle,futExp):0;
-    const spot=getFxSpot()||0;
-    // FIX: el sintético se arma COMPRANDO EL DL a su precio (FX implícito hoy)
-    // y vendiendo el futuro → retorno = futPx/dlPx − 1. Antes dividía por el
-    // spot mayorista → tasa equivocada (no coincidía con la calculadora DL).
-    const ret=(dlPx&&futPx&&futDays>0)?(futPx/dlPx-1):null;
-    const tna=ret!==null?ret*365/futDays*100:null;
-    const tir=ret!==null?(Math.pow(1+ret,365/futDays)-1)*100:null;
-    tableRows.push({b,dlPx,futPx,spot,futDays,ret,tna,tir,fut:bestFut,futExp});
-  });
+  const tableRows=buildFxSynthRows(settle);
 
   const na='<span style="color:var(--td)">N/A</span>';
   let tableHtml='<table class="lt" style="width:100%;margin-bottom:14px"><thead><tr>';
-  tableHtml+='<th>Ticker</th><th class="num">Liq Spot</th><th class="num">Liq Fut</th>';
-  tableHtml+='<th class="num">Días</th><th class="num">Px Fut</th><th class="num">Px DL</th>';
+  tableHtml+='<th>Ticker</th><th>Futuro</th><th class="num">Liq Spot</th><th class="num">Vto Bono</th>';
+  tableHtml+='<th class="num">Días</th><th class="num">Px DL</th><th class="num">FX impl hoy</th><th class="num">Px Fut</th>';
   tableHtml+='<th class="num">Retorno</th><th class="num" style="color:#22d3ee">TNA</th><th class="num">TIR</th>';
   tableHtml+='</tr></thead><tbody>';
   tableRows.forEach(r=>{
@@ -16988,13 +17102,18 @@ function calcFxSynthetic(){
     const fmtRet=v=>v!==null?`<span style="color:${v>0?'var(--ac)':'var(--w)'}">${(v*100).toFixed(2)}%</span>`:na;
     const fmtTna=v=>v!==null?`<span style="color:${v>0?'#22d3ee':'var(--w)'}"><b>${v.toFixed(2)}%</b></span>`:na;
     const fmtTir=v=>v!==null?`<span style="color:var(--td)">${v.toFixed(2)}%</span>`:na;
-    tableHtml+=`<tr class="fxc-row-clickable" onclick="document.getElementById('fxSynthDL').value='${r.b.id}';${r.fut?`document.getElementById('fxSynthFut').value='${r.fut.id}';`:''}calcFxSyntheticSingle()">`;
+    const matD=new Date(r.b.mat+"T00:00:00");
+    const futLbl=r.fut?r.fut.ticker.replace("DLR/","") : na;
+    const warn=(r.fut&&!r.calzado)?` <span style="color:var(--am)" title="El futuro expira ${Math.abs(r.gap)}d ${r.gap>0?'antes':'después'} del vto del bono — el sintético no queda lockeado">⚠</span>`:'';
+    tableHtml+=`<tr class="fxc-row-clickable" onclick="_fxSynthPick('${r.b.id}'${r.fut?`,'${r.fut.id}'`:''})">`;
     tableHtml+=`<td style="color:#22d3ee"><b>${r.b.ticker}</b></td>`;
+    tableHtml+=`<td style="color:var(--fut)">${futLbl}${warn}</td>`;
     tableHtml+=`<td class="num" style="color:var(--td)">${settle.toLocaleDateString('es-AR')}</td>`;
-    tableHtml+=`<td class="num" style="color:var(--td)">${r.futExp?r.futExp.toLocaleDateString('es-AR'):na}</td>`;
-    tableHtml+=`<td class="num">${r.futDays>0?r.futDays:na}</td>`;
-    tableHtml+=`<td class="num">${fmtPx(r.futPx)}</td>`;
+    tableHtml+=`<td class="num" style="color:var(--td)">${matD.toLocaleDateString('es-AR')}</td>`;
+    tableHtml+=`<td class="num">${r.days>0?r.days:na}</td>`;
     tableHtml+=`<td class="num">${fmtPx(r.dlPx)}</td>`;
+    tableHtml+=`<td class="num" style="color:var(--td)">${fmtPx(r.fxImpl)}</td>`;
+    tableHtml+=`<td class="num">${fmtPx(r.futPx)}</td>`;
     tableHtml+=`<td class="num">${fmtRet(r.ret)}</td>`;
     tableHtml+=`<td class="num">${fmtTna(r.tna)}</td>`;
     tableHtml+=`<td class="num">${fmtTir(r.tir)}</td>`;
@@ -17002,7 +17121,11 @@ function calcFxSynthetic(){
   });
   tableHtml+='</tbody></table>';
   el.innerHTML=tableHtml;
-  calcFxSyntheticSingle();
+  // Si los inputs de precio están vacíos, sembrarlos con los live del par actual
+  const pxDLEl=document.getElementById("fxSynthPxDL");
+  const pxFutEl=document.getElementById("fxSynthPxFut");
+  if(pxDLEl&&pxFutEl&&!pxDLEl.value&&!pxFutEl.value) _fxSynthLoadLivePx();
+  else calcFxSyntheticSingle();
 }
 
 function calcFxSyntheticSingle(){
@@ -17019,40 +17142,56 @@ function calcFxSyntheticSingle(){
   const fut=ROFEX_FUTURES.find(f=>f.id===futId);
   if(!dlBond||!fut){el.textContent="";return;}
 
-  const dlLp=_livePrices[dlBond.ticker]||{};
-  const futLp=_livePrices[fut.ticker]||{};
-  const dlPx=dlLp.last||0;
-  const futPx=futLp.last||0;
-  const futDays=DB(settle,new Date(fut.exp+"T00:00:00"));
+  // Precios: lo que haya escrito el usuario manda; si está vacío, live.
+  const pxDLIn=parseFloat((document.getElementById("fxSynthPxDL")||{}).value)||0;
+  const pxFutIn=parseFloat((document.getElementById("fxSynthPxFut")||{}).value)||0;
+  const dlPx=pxDLIn||((_livePrices[dlBond.ticker]||{}).last||0);
+  const futPx=pxFutIn||((_livePrices[fut.ticker]||{}).last||0);
+  const manual=(pxDLIn&&Math.abs(pxDLIn-((_livePrices[dlBond.ticker]||{}).last||0))>0.001)
+             ||(pxFutIn&&Math.abs(pxFutIn-((_livePrices[fut.ticker]||{}).last||0))>0.001);
+
+  const matD=new Date(dlBond.mat+"T00:00:00");
+  const futExp=new Date(fut.exp+"T00:00:00");
+  // Horizonte = días hasta el vto del BONO: ahí entran los pesos.
+  const days=DB(settle,matD);
+  const gap=DB(futExp,matD);
+  const calzado=Math.abs(gap)<=FX_SYNTH_TOL_DAYS;
 
   const spot=getFxSpot()||0;
-  if(!dlPx||!futPx||futDays<=0){el.innerHTML='<div style="color:var(--td);font-size:11px">Sin precio del DL / futuro, o futuro vencido</div>';return;}
+  if(!dlPx||!futPx||days<=0){el.innerHTML='<div style="color:var(--td);font-size:11px">Sin precio del DL / futuro, o bono vencido</div>';return;}
 
-  // FIX: retorno del sintético = futPx/dlPx − 1 (se compra el DL a su precio,
-  // no al spot). Antes usaba spot → tasa inconsistente con la calculadora DL.
-  const ret=futPx/dlPx-1;
-  const tna=ret*365/futDays*100;
-  const tir=(Math.pow(1+ret,365/futDays)-1)*100;
+  const m=fxSynthMetrics(dlPx,futPx,days);
+  const ret=m.ret, tna=m.tna, tir=m.tir;
+  const fxImpl=dlPx/100;                       // FX implícito hoy del bono
+  const devalImpl=spot?(fxImpl/spot-1)*100:null; // premium/descuento vs spot
   const spread=tna-tasaPesos;
   const col=ret>0?'var(--ac)':'var(--w)';
 
-  let html=`<div class="st" style="color:var(--td);font-size:11px;margin:10px 0 6px">${dlBond.ticker} vs ${fut.ticker.replace("DLR/","")}</div>`;
+  let html=`<div class="st" style="color:var(--td);font-size:11px;margin:10px 0 6px">${dlBond.ticker} vs ${fut.ticker.replace("DLR/","")}`;
+  html+=` <span style="text-transform:none;letter-spacing:0;color:${manual?'var(--am)':'var(--gn)'}">${manual?'· precios MANUALES':'· precios LIVE'}</span></div>`;
   html+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:10px">`;
-  html+=`<div class="metric"><div class="ms" style="color:var(--td)">${dlPx?dlPx.toFixed(2):'—'}</div><div class="ml">Precio DL</div></div>`;
-  html+=`<div class="metric"><div class="ms" style="color:#22d3ee">${spot.toFixed(2)}</div><div class="ml">Spot — FX hoy</div></div>`;
+  html+=`<div class="metric"><div class="ms" style="color:var(--td)">${dlPx.toFixed(2)}</div><div class="ml">Px DL (% VN)</div></div>`;
+  html+=`<div class="metric"><div class="ms" style="color:#22d3ee">${fxImpl.toFixed(2)}</div><div class="ml">FX implícito hoy (DL/100)</div></div>`;
+  html+=`<div class="metric"><div class="ms" style="color:var(--td)">${spot?spot.toFixed(2):'—'}</div><div class="ml">Spot mayorista${devalImpl!==null?` (${devalImpl>0?'+':''}${devalImpl.toFixed(2)}%)`:''}</div></div>`;
   html+=`<div class="metric"><div class="ms" style="color:var(--fut)">${futPx.toFixed(2)}</div><div class="ml">Futuro — FX al vto</div></div>`;
-  html+=`<div class="metric"><div class="ms" style="color:${ret>0?'var(--ac)':'var(--w)'}">${(ret*100).toFixed(2)}%</div><div class="ml">Retorno directo (${futDays}d)</div></div>`;
+  html+=`<div class="metric"><div class="ms" style="color:${col}">${(ret*100).toFixed(2)}%</div><div class="ml">Retorno directo (${days}d)</div></div>`;
   html+=`<div class="metric"><div class="mv" style="color:#22d3ee;font-size:16px"><b>${tna.toFixed(2)}%</b></div><div class="ml">TNA sintético</div></div>`;
   html+=`<div class="metric"><div class="ms" style="color:var(--td)">${tir.toFixed(2)}%</div><div class="ml">TIR (TEA)</div></div>`;
   if(tasaPesos) html+=`<div class="metric"><div class="mv" style="color:${spread>0?'var(--ac)':'var(--w)'};font-size:16px">${spread>0?'+':''}${spread.toFixed(2)}%</div><div class="ml">Spread vs Pesos</div></div>`;
   html+=`</div>`;
+  if(!calzado){
+    html+=`<div class="beb" style="border-left:3px solid var(--am);padding:8px;margin-bottom:8px">`;
+    html+=`<div style="color:var(--am);font-size:10px">⚠ Sintético NO calzado: el futuro ${fut.ticker.replace("DLR/","")} expira `;
+    html+=`${Math.abs(gap)}d ${gap>0?'antes del':'después del'} vto de ${dlBond.ticker}. Queda gap de FX sin cubrir — la TNA es indicativa.</div></div>`;
+  }
   html+=`<div class="beb" style="border-left:3px solid ${col};padding:10px">`;
-  html+=`<div style="color:${col};font-weight:700;font-size:12px">${ret>0?'LONG DL / SHORT FUTURO':'FUTURO > DL'}</div>`;
+  html+=`<div style="color:${col};font-weight:700;font-size:12px">${ret>0?'LONG DL / SHORT FUTURO':'SINTÉTICO NEGATIVO — FUTURO BARATO VS DL'}</div>`;
   html+=`<div style="font-size:10px;color:var(--td);margin-top:4px;line-height:1.7">`;
-  html+=`1. Comprar ${dlBond.ticker} a $${dlPx.toFixed(2)} (FX implícito hoy)<br>`;
-  html+=`2. Vender ${fut.ticker} a $${futPx.toFixed(2)} (FX implícito a ${futDays}d)<br>`;
-  html+=`<b style="color:${col}">Retorno: ${(ret*100).toFixed(2)}% en ${futDays}d → TNA ${tna.toFixed(2)}% / TIR ${tir.toFixed(2)}%</b>`;
-  if(tasaPesos) html+=`<br><span style="color:${spread>0?'var(--ac)':'var(--w)'}">vs Pesos (${tasaPesos}% TNA): spread ${spread>0?'+':''}${spread.toFixed(2)}%</span>`;
+  html+=`1. Comprar 100 VN de ${dlBond.ticker} a $${dlPx.toFixed(2)} → FX implícito $${fxImpl.toFixed(2)}<br>`;
+  html+=`2. Vender ${fut.ticker} por 100 USD a $${futPx.toFixed(2)} (FX lockeado a ${days}d)<br>`;
+  html+=`3. Al vto cobrás 100 × $${futPx.toFixed(2)} = $${(100*futPx).toFixed(2)} contra $${dlPx.toFixed(2)} invertidos<br>`;
+  html+=`<b style="color:${col}">Retorno: ${(ret*100).toFixed(2)}% en ${days}d → TNA ${tna.toFixed(2)}% / TIR ${tir.toFixed(2)}%</b>`;
+  if(tasaPesos) html+=`<br><span style="color:${spread>0?'var(--ac)':'var(--w)'}">vs Pesos (${tasaPesos}% TNA): spread ${spread>0?'+':''}${spread.toFixed(2)}% → ${spread>0?'conviene el sintético':'conviene colocar pesos'}</span>`;
   html+=`</div></div>`;
   el.innerHTML=html;
 }
