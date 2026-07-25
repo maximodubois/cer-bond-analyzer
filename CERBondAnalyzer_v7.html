@@ -56,6 +56,12 @@
     pp:(v,d=2)=>bad(v)?DASH:core(v,d,true)+' pp',
     /** Pesos. fmtARS(149150) → "$ 149.150,00" */
     ars:(v,d=2)=>bad(v)?DASH:'$ '+core(v,d,false),
+    /** Pesos con signo explícito, para PnL. fmtDARS(-1e7,0) → "−$10.000.000" */
+    dars:(v,d=2)=>{
+      if(bad(v)) return DASH;
+      const s='$'+nf(d).format(Math.abs(v));
+      return v<0?MINUS+s:(v>0?'+'+s:s);
+    },
     /** Dólares. */
     usd:(v,d=2)=>bad(v)?DASH:'US$ '+core(v,d,false),
     /** Días. fmtDays(247) → "247d" */
@@ -79,7 +85,7 @@
   window.fmtNum=F.num;   window.fmtPx=F.px;     window.fmtInt=F.int;
   window.fmtPct=F.pct;   window.fmtDelta=F.delta; window.fmtBps=F.bps;
   window.fmtPp=F.pp;     window.fmtARS=F.ars;   window.fmtUSD=F.usd;
-  window.fmtDays=F.days; window.deltaColor=F.color;
+  window.fmtDays=F.days; window.deltaColor=F.color; window.fmtDARS=F.dars;
 })();
 </script>
 <style>
@@ -15034,9 +15040,20 @@ function alertsEval(){
 // ═══════════════════════════════════════════════════════════════════
 function _cartLoad(){ try{ const x=JSON.parse(localStorage.getItem("cer_cartera_v1")||"{}"); return (x&&typeof x==="object")?x:{}; }catch(_e){ return {}; } }
 function _cartSave(base){ try{ localStorage.setItem("cer_cartera_v1",JSON.stringify(base)); }catch(_e){} }
+/* BUG FIX — el lado del trade venía de dos convenciones distintas:
+   · el BLOTTER guarda side:'B'|'S'   (_blotter, modal de trade)
+   · el módulo viejo de _positions guarda side:'C'|'V'
+   cartEffective() testeaba side==="V", que NUNCA es cierto para un trade del
+   blotter, así que toda VENTA se foldeaba como COMPRA. Una compra y una venta
+   del mismo VN quedaban como posición doble long en vez de plana: PnL no
+   realizado inventado y la pérdida/ganancia realizada nunca se registraba.
+   Ahora hay un único normalizador que acepta las dos convenciones. */
+function _sideIsSell(raw){ return /^(s|v|sell|venta|sale|short)$/i.test(String(raw==null?"":raw).trim()); }
+function _cartSide(raw){ return _sideIsSell(raw)?"V":"B"; }
+
 function _cartFold(pos, side, q, px){
   // Average-cost con soporte de cruce de lado. pos={vn,ppp,realized}
-  const dir=side==="V"?-1:1;
+  const dir=_sideIsSell(side)?-1:1;
   const tq=dir*q;
   if(pos.vn===0||Math.sign(pos.vn)===Math.sign(tq)){
     if(pos.vn===0){ pos.ppp=px; }
@@ -15067,7 +15084,7 @@ function cartEffective(){
     const cutoff=eff[tk].asOf?new Date(eff[tk].asOf).getTime():0;
     const ts=t.ts?new Date(t.ts).getTime():0;
     if(ts<=cutoff) return; // anterior a la carga de base → ya incluido en base
-    _cartFold(eff[tk], t.side==="V"?"V":"B", parseFloat(t.qty), parseFloat(t.price));
+    _cartFold(eff[tk], _cartSide(t.side), parseFloat(t.qty), parseFloat(t.price));
     eff[tk].nTrades++;
   });
   return eff;
@@ -15125,18 +15142,19 @@ function renderCartera(){
     if(mv!=null) sumMv+=mv;
     if(pnl!=null){ sumPnl+=pnl; anyPnl=true; }
     sumReal+=p.realized||0;
-    const pc=v=>v==null?"var(--td)":(v>=0?"var(--ac)":"var(--w)");
+    const pc=v=>v==null?"var(--tm)":(v>0?"var(--pos)":v<0?"var(--neg)":"var(--tm)");
+    const flat=Math.abs(p.vn)<1e-9;
     html+=`<tr>
-      <td class="tk" style="color:${color}">${tk}${p.hasBase?"":' <span style="color:var(--am);font-size:10px" title="posición generada solo por trades del blotter, sin base cargada">blt</span>'}</td>
-      <td class="num" style="font-weight:700;color:${p.vn>=0?"var(--t)":"var(--w)"}">${Math.round(p.vn).toLocaleString("es-AR")}</td>
-      <td class="num">${p.ppp!=null?p.ppp.toFixed(2):'<span style="color:var(--am)" title="PPP desconocido: cargalo en la base o se arma con las próximas compras">—</span>'}</td>
-      <td class="num">${px?px.toFixed(2):"—"}</td>
-      <td class="num">${mPpp?mPpp.tea.toFixed(2)+"%":"—"}</td>
-      <td class="num">${mPx?mPx.tea.toFixed(2)+"%":"—"}</td>
-      <td class="num">${mv!=null?"$"+mv.toLocaleString("es-AR",{maximumFractionDigits:0}):"—"}</td>
-      <td class="num" style="color:${pc(pnl)};font-weight:700">${pnl!=null?"$"+(pnl>=0?"+":"")+pnl.toLocaleString("es-AR",{maximumFractionDigits:0}):"—"}</td>
-      <td class="num" style="color:${pc(pnlPct)}">${pnlPct!=null?(pnlPct>=0?"+":"")+pnlPct.toFixed(2)+"%":"—"}</td>
-      <td class="num" style="color:${pc(p.realized)}">${p.realized?"$"+(p.realized>=0?"+":"")+p.realized.toLocaleString("es-AR",{maximumFractionDigits:0}):"—"}</td>
+      <td class="tk" style="color:${color}">${tk}${p.hasBase?"":' <span style="color:var(--warn);font-size:var(--fs-xs)" title="posición generada solo por trades del blotter, sin base cargada">blt</span>'}${flat?' <span style="color:var(--tm);font-size:var(--fs-xs)" title="compras y ventas netean a cero: no hay exposición, sólo PnL realizado">plana</span>':''}</td>
+      <td class="num"${fmt.dv(p.vn)} style="font-weight:700;color:${flat?"var(--tm)":p.vn>0?"var(--t)":"var(--neg)"}">${fmtInt(p.vn)}</td>
+      <td class="num"${fmt.dv(p.ppp)}>${p.ppp!=null?fmtPx(p.ppp):'<span style="color:var(--warn)" title="PPP desconocido: cargalo en la base o se arma con las próximas compras">—</span>'}</td>
+      <td class="num"${fmt.dv(px||null)}>${fmtPx(px||null)}</td>
+      <td class="num"${fmt.dv(mPpp?mPpp.tea:null)}>${fmtPct(mPpp?mPpp.tea:null)}</td>
+      <td class="num"${fmt.dv(mPx?mPx.tea:null)}>${fmtPct(mPx?mPx.tea:null)}</td>
+      <td class="num"${fmt.dv(mv)}>${mv!=null?fmtARS(mv,0):"—"}</td>
+      <td class="num"${fmt.dv(pnl)} style="color:${pc(pnl)};font-weight:700">${pnl!=null?fmtDARS(pnl,0):"—"}</td>
+      <td class="num"${fmt.dv(pnlPct)} style="color:${pc(pnlPct)}">${fmtDelta(pnlPct)}</td>
+      <td class="num"${fmt.dv(p.realized||null)} style="color:${pc(p.realized)};font-weight:${p.realized?700:400}">${p.realized?fmtDARS(p.realized,0):"—"}</td>
       <td class="num" style="color:var(--td)">${p.nTrades||0}</td>
       <td style="white-space:nowrap">
         <button class="btn-api btn-sm" title="Absorber trades aplicados en la base" onclick="cartConsolidate('${tk}')">⟲</button>
@@ -15146,9 +15164,10 @@ function renderCartera(){
   });
   html+='</tbody></table>';
   el.innerHTML=html;
-  if(tot) tot.innerHTML=`<b>Total:</b> valor mercado <b>$${sumMv.toLocaleString("es-AR",{maximumFractionDigits:0})}</b>
-    · PnL no realizado <b style="color:${sumPnl>=0?"var(--ac)":"var(--w)"}">$${(sumPnl>=0?"+":"")+sumPnl.toLocaleString("es-AR",{maximumFractionDigits:0})}${anyPnl?"":" (sin PPP)"}</b>
-    · PnL realizado <b style="color:${sumReal>=0?"var(--ac)":"var(--w)"}">$${(sumReal>=0?"+":"")+sumReal.toLocaleString("es-AR",{maximumFractionDigits:0})}</b>`;
+  if(tot) tot.innerHTML=`<b>Total:</b> valor mercado <b>${fmtARS(sumMv,0)}</b>
+    · PnL no realizado <b style="color:${deltaColor(sumPnl)}">${fmtDARS(sumPnl,0)}${anyPnl?"":" (sin PPP)"}</b>
+    · PnL realizado <b style="color:${deltaColor(sumReal)}">${fmtDARS(sumReal,0)}</b>
+    · PnL total <b style="color:${deltaColor(sumPnl+sumReal)}">${fmtDARS(sumPnl+sumReal,0)}</b>`;
 }
 
 function renderRVQuant(){
