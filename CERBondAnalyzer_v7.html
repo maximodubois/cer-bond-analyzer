@@ -854,6 +854,23 @@
   <div class="gi" id="tamarGrid"></div>
   <div id="tamarApiLog" class="note">Cargando TAMAR BCRA para inicializar el promedio de las ultimas 5 observaciones y la grilla mensual.</div>
 </div>
+<div class="card" id="dualDlCard" style="margin-top:6px">
+  <div class="st" style="color:#22D3EE">Supuestos DUAL TAMAR / DL <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;color:var(--td)">TMVE8 — rama 2 dollar linked A3500</span></div>
+  <div class="note" style="margin-bottom:8px">El VN está en dólares al A3500 de emisión, así que el precio cotiza en escala DL y se normaliza dividiendo por ese A3500 antes de calcular TIREA y margen. A vto paga el <b>mayor</b> entre la rama TAMAR capitalizada y 100 × A3500_vto / A3500_em (intrínseco a vto, sin valuar la opcionalidad). El <b>BE deval</b> es la devaluación anual del A3500 que iguala las dos ramas: por encima el bono paga DL, por debajo TAMAR.</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;gap:10px;align-items:end;margin-bottom:8px">
+    <div class="ig"><label>A3500 emisión ($/USD)</label><input type="number" id="dualFxEm" step="0.01" placeholder="auto BCRA" oninput="onDualDLInput('fx')"></div>
+    <div class="ig"><label>Devaluación proy. TEA %</label><input type="number" id="dualDevProj" step="0.01" placeholder="auto ROFEX" oninput="onDualDLInput('dev')"></div>
+    <div class="ig"><label>A3500 spot</label><input type="text" id="dualSpotOut" readonly value="-" style="opacity:0.75"></div>
+    <div class="ig"><label>A3500 proy. al vto</label><input type="text" id="dualFxMatOut" readonly value="-" style="opacity:0.75"></div>
+    <div class="ig"><label>BE deval TEA (A3500)</label><input type="text" id="dualBeOut" readonly value="-" style="opacity:0.75"></div>
+    <div style="display:flex;gap:6px;justify-content:flex-end">
+      <button class="btn-api btn-sm" onclick="useDualDevAuto()">Deval ROFEX</button>
+      <button class="btn-api btn-sm" onclick="fetchA3500Series()">Actualizar A3500</button>
+    </div>
+  </div>
+  <div class="st" style="font-size:10px;color:var(--td);margin-bottom:6px">Rama activa hoy: <span id="dualBranchOut" style="font-weight:700">-</span></div>
+  <div id="dualDlApiLog" class="note">Cargando A3500 BCRA para fijar el tipo de cambio de emisión del dual.</div>
+</div>
 <div class="fixed-grid" id="tamarRow"></div>
 
 <div style="display:flex;gap:10px;margin-top:10px">
@@ -4022,7 +4039,12 @@ const TAMAR_BONDS=[
   {id:"TTD26", ticker:"TTD26", name:"Dual TAMAR 15-Dic-26",type:"DUAL",     mat:"2026-12-15", emDate:"2025-01-29", margen1816:0,   margen90:0,   temFija:0.0214, color:"#a88505"},
   {id:"TMF27", ticker:"TMF27", name:"Bono TAMAR 26-Feb-27",type:"BONTAMAR", mat:"2027-02-26", emDate:"2026-02-13", margen1816:650, margen90:650, color:"#987a00"},
   {id:"TMG27", ticker:"TMG27", name:"Bono TAMAR 31-Ago-27",type:"BONTAMAR", mat:"2027-08-31", emDate:"2026-04-01", margen1816:600, margen90:600, color:"#7a6300"},
-  {id:"TMVE8", ticker:"TMVE8", name:"Bono DUAL Ene-28",type:"DUAL", mat:"2028-01-31", emDate:"2026-07-31", margen1816:0, margen90:0, color:"#d946ef"},
+  // dualLeg:"DL" → la segunda rama NO es tasa fija sino dollar linked (A3500).
+  // El VN esta denominado en USD al A3500 de emision, asi que el precio cotiza
+  // en la escala DL (igual que DL_BONDS) y no en base 100 pesos: hay que
+  // normalizarlo por fxEm antes de meterlo en la matematica TAMAR.
+  // fxEm: A3500 de emision. null = se autocompleta desde BCRA (serie 5).
+  {id:"TMVE8", ticker:"TMVE8", name:"Bono DUAL TAMAR/DL Ene-28",type:"DUAL", dualLeg:"DL", mat:"2028-01-31", emDate:"2026-07-31", margen1816:0, margen90:0, fxEm:null, color:"#d946ef"},
   {id:"TMF28", ticker:"TMF28", name:"Bono TAMAR 25-Feb-28",type:"BONTAMAR", mat:"2028-02-25", emDate:"2026-04-20", margen1816:650, margen90:650, color:"#5e4c00"},
   {id:"TXMJ8", ticker:"TXMJ8", name:"Bono DUAL Jun-28",type:"DUAL", mat:"2028-06-30", emDate:"2026-05-15", margen1816:300, margen90:300, color:"#d946ef"},
   {id:"TMG28", ticker:"TMG28", name:"Bono TAMAR 30-Ago-28",type:"BONTAMAR", mat:"2028-08-30", emDate:"2026-04-30", margen1816:690, margen90:690, color:"#3f3300"},
@@ -5166,23 +5188,264 @@ function calcTamarVPV(bond, avgTNA){
   if(tamarTEM==null) return null;
   return 100*Math.pow(1+tamarTEM, dias/30);
 }
+
+// ═══ DUAL TAMAR / DOLLAR LINKED ═══════════════════════════════════
+// El dual TAMAR/DL (hoy solo TMVE8) paga a vto el MAYOR entre:
+//   • rama TAMAR : VN_pesos × (1+TEM_TAMAR)^(DAYS360(em,vto)/30)
+//   • rama DL    : VN_usd × A3500_vto
+// donde VN_pesos = VN_usd × A3500_emision. Dividiendo todo por A3500_emision
+// (o sea, trabajando "por 100 VN dolarizados") las dos ramas quedan en la misma
+// base 100 que usa el resto de la matematica TAMAR:
+//   • VF_TAMAR = 100 × (1+TEM)^(n)                ← formula existente, sin cambios
+//   • VF_DL    = 100 × A3500_vto / A3500_emision
+//   • Precio   = px_pantalla / A3500_emision      ← normalizacion clave
+// El precio de pantalla viene en la escala DL (misma que DL_BONDS: ~100×spot),
+// por eso sin normalizar la TIREA sale absurda.
+// NO se valua la opcionalidad: es el max de ramas a vto bajo los supuestos
+// cargados, igual criterio que el dual TAMAR/fija ya existente.
+const BCRA_A3500_ID=5;                 // Tipo de cambio mayorista A3500 (BCRA v4)
+let _bcraA3500Series=[];               // [{fecha,valor}] ascendente
+let _dualFxEmAuto={};                  // bondId → A3500 del emDate (autofetch)
+let _dualPxSnap={};                    // bondId → factor 10^k de la escala de la Sheet
+let _dualDevTouched=false;
+
+function isDualDL(bond){
+  return !!bond && bond.type==="DUAL" && bond.dualLeg==="DL";
+}
+function hasDualDLBonds(){
+  return typeof TAMAR_BONDS!=='undefined' && TAMAR_BONDS.some(isDualDL);
+}
+function getA3500OnOrBefore(dateLike){
+  if(!_bcraA3500Series.length) return null;
+  const ds=typeof dateLike==="string"?dateLike:DS(dateLike);
+  for(let i=_bcraA3500Series.length-1;i>=0;i--){
+    if(_bcraA3500Series[i].fecha<=ds) return _bcraA3500Series[i].valor;
+  }
+  return null;
+}
+// A3500 de emision: input manual > constante del bono > autofetch BCRA.
+function getDualFxEm(bond){
+  if(!isDualDL(bond)) return null;
+  const el=document.getElementById("dualFxEm");
+  const manual=el?parseFloat(el.value):NaN;
+  if(isFinite(manual)&&manual>0) return manual;
+  if(bond.fxEm>0) return bond.fxEm;
+  if(_dualFxEmAuto[bond.id]>0) return _dualFxEmAuto[bond.id];
+  return null;
+}
+// Devaluacion proyectada (TEA %) para llevar el spot A3500 hasta el vto.
+// Default: la que implican los futuros ROFEX mas largos con precio live.
+function getDualDevAutoTEA(){
+  const spot=(typeof getFxSpot==='function')?getFxSpot():0;
+  if(!(spot>0)||typeof ROFEX_FUTURES==='undefined') return null;
+  const today=new Date();today.setHours(0,0,0,0);
+  let best=null;
+  ROFEX_FUTURES.forEach(f=>{
+    const lp=(typeof _livePrices!=='undefined')?(_livePrices[f.ticker]||{}):{};
+    const px=lp.last||0;
+    const d=DB(today,new Date(f.exp+"T00:00:00"));
+    if(!(px>0)||d<=30) return;
+    if(!best||d>best.d) best={d,px};
+  });
+  if(!best) return null;
+  const tea=(Math.pow(best.px/spot,365/best.d)-1)*100;
+  return isFinite(tea)?tea:null;
+}
+function getDualDevTEA(){
+  const el=document.getElementById("dualDevProj");
+  const v=el?parseFloat(el.value):NaN;
+  if(isFinite(v)) return v;
+  const auto=getDualDevAutoTEA();
+  return auto!=null?auto:0;
+}
+// A3500 proyectado a una fecha: spot × (1+dev)^(dias/365), ACT/365.
+function projectA3500At(dateLike){
+  const spot=(typeof getFxSpot==='function')?getFxSpot():0;
+  if(!(spot>0)) return null;
+  const today=new Date();today.setHours(0,0,0,0);
+  const matD=(dateLike instanceof Date)?dateLike:new Date(dateLike+"T00:00:00");
+  const d=DB(today,matD);
+  if(d<=0) return spot;
+  const dev=getDualDevTEA()/100;
+  const fx=spot*Math.pow(1+dev,d/365);
+  return isFinite(fx)&&fx>0?fx:null;
+}
+// VF de la rama DL en base 100 = 100 × A3500_vto / A3500_emision.
+function calcDualDLBranchVF(bond){
+  if(!isDualDL(bond)) return null;
+  const fxEm=getDualFxEm(bond);
+  const fxMat=projectA3500At(bond.mat);
+  if(!(fxEm>0)||!(fxMat>0)) return null;
+  return 100*fxMat/fxEm;
+}
+// Normaliza el precio de pantalla a la base 100 pesos que espera la matematica
+// TAMAR. Para el dual DL divide por el A3500 de emision. El auto-snap corrige
+// el factor 10^k si la Sheet cotiza por 1 VN en vez de por 100 VN — deja
+// constancia en el objeto (y en consola) para que sea auditable, nunca silencioso.
+function tamarPxToBase100Info(bond, px){
+  if(!(px>0)) return {px:px,factor:1,fxEm:null,snap:1,dl:false};
+  if(!isDualDL(bond)) return {px:px,factor:1,fxEm:null,snap:1,dl:false};
+  const fxEm=getDualFxEm(bond);
+  if(!(fxEm>0)) return {px:px,factor:1,fxEm:null,snap:1,dl:true,missingFx:true};
+  let p=px/fxEm, snap=1;
+  while(p<40&&snap<1e4){ p*=10; snap*=10; }
+  while(p>400&&snap>1e-4){ p/=10; snap/=10; }
+  if(snap!==1&&!tamarPxToBase100Info._warned){
+    tamarPxToBase100Info._warned=true;
+    console.warn('[dual-dl] precio '+bond.ticker+' reescalado ×'+snap+' (px '+px+' / A3500em '+fxEm+' = '+(px/fxEm).toFixed(4)+'). Revisá la convención de la Sheet: se espera precio por 100 VN dolarizados.');
+  }
+  _dualPxSnap[bond.id]=snap;   // el snap depende de la escala de la Sheet, no del valor
+  return {px:p,factor:snap/fxEm,fxEm,snap,dl:true};
+}
+function tamarPxToBase100(bond, px){
+  return tamarPxToBase100Info(bond,px).px;
+}
+// Inversa: lleva un precio en base 100 de vuelta a la escala de pantalla, para
+// que el "precio implícito" de una TIR objetivo se muestre comparable al live.
+// Usa el snap aprendido del último precio real normalizado (no recalcula sobre
+// el valor base 100, que daría otro orden de magnitud).
+function tamarPxFromBase100(bond, p){
+  if(!isDualDL(bond)||!(p>0)) return p;
+  const fxEm=getDualFxEm(bond);
+  if(!(fxEm>0)) return p;
+  const snap=_dualPxSnap[bond.id]>0?_dualPxSnap[bond.id]:1;
+  return p*fxEm/snap;
+}
+// Breakeven de devaluación: TEA anual del A3500 que iguala la rama DL con la
+// rama TAMAR. Por encima de ese nivel el bono paga DL; por debajo, TAMAR.
+function calcDualDLBreakeven(bond, vfTamar){
+  if(!isDualDL(bond)||!(vfTamar>0)) return null;
+  const fxEm=getDualFxEm(bond);
+  const spot=(typeof getFxSpot==='function')?getFxSpot():0;
+  if(!(fxEm>0)||!(spot>0)) return null;
+  const today=new Date();today.setHours(0,0,0,0);
+  const d=DB(today,new Date(bond.mat+"T00:00:00"));
+  if(d<=0) return null;
+  const fxBE=fxEm*vfTamar/100;                       // A3500 al vto que iguala ramas
+  const devBE=(Math.pow(fxBE/spot,365/d)-1)*100;     // TEA implícita desde el spot
+  return isFinite(devBE)?{fxBE,devBE,days:d,spot,fxEm}:null;
+}
+async function fetchA3500Series(){
+  if(!hasDualDLBonds()) return null;
+  const log=document.getElementById("dualDlApiLog");
+  if(log) log.innerHTML='<span class="api-load">Buscando A3500 BCRA...</span>';
+  try{
+    const earliestEm=TAMAR_BONDS.filter(isDualDL).reduce((best,b)=>{
+      const d=new Date(b.emDate+"T00:00:00");
+      return d<best?d:best;
+    }, new Date());
+    const desde=SBD(earliestEm,15);
+    const detalle=await bcraFetch(BCRA_A3500_ID,DS(desde),DS(new Date()));
+    _bcraA3500Series=detalle
+      .filter(d=>d&&d.fecha&&d.valor!=null&&isFinite(Number(d.valor)))
+      .map(d=>({fecha:d.fecha,valor:Number(d.valor)}))
+      .sort((a,b)=>new Date(a.fecha)-new Date(b.fecha));
+    TAMAR_BONDS.filter(isDualDL).forEach(b=>{
+      const v=getA3500OnOrBefore(b.emDate);
+      if(v>0) _dualFxEmAuto[b.id]=v;
+    });
+    syncDualDLInputs();
+    if(log){
+      const rows=TAMAR_BONDS.filter(isDualDL).map(b=>{
+        const v=_dualFxEmAuto[b.id];
+        return `${b.ticker}: A3500 ${b.emDate} = ${v>0?v.toFixed(2):'sin dato'}`;
+      }).join(' | ');
+      log.innerHTML=`<span class="api-ok">OK A3500 BCRA | ${_bcraA3500Series.length} obs</span><br><span style="color:var(--td)">${rows}</span>`;
+    }
+    scheduleAutoCalc();
+    return _bcraA3500Series;
+  }catch(e){
+    if(log) log.innerHTML=`<span class="api-err">Error A3500 BCRA: ${e.message}</span><br><span style="color:var(--td)">Cargá el A3500 de emisión a mano para que el dual DL calcule.</span>`;
+    return null;
+  }
+}
+// Prellena los inputs de supuestos DUAL/DL sin pisar lo que tocó el usuario.
+function syncDualDLInputs(){
+  const fxEl=document.getElementById("dualFxEm");
+  if(fxEl&&!fxEl.value){
+    const b=(typeof TAMAR_BONDS!=='undefined')?TAMAR_BONDS.find(isDualDL):null;
+    const v=b?(b.fxEm>0?b.fxEm:_dualFxEmAuto[b.id]):null;
+    if(v>0) fxEl.value=v.toFixed(2);
+  }
+  const devEl=document.getElementById("dualDevProj");
+  if(devEl&&!_dualDevTouched){
+    const auto=getDualDevAutoTEA();
+    if(auto!=null) devEl.value=auto.toFixed(2);
+  }
+  renderDualDLReadout();
+}
+function onDualDLInput(which){
+  if(which==='dev') _dualDevTouched=true;
+  renderDualDLReadout();
+  scheduleAutoCalc();
+}
+function useDualDevAuto(){
+  const auto=getDualDevAutoTEA();
+  const devEl=document.getElementById("dualDevProj");
+  if(auto==null){
+    if(devEl) devEl.placeholder='sin futuros ROFEX live';
+    return;
+  }
+  if(devEl) devEl.value=auto.toFixed(2);
+  _dualDevTouched=false;
+  renderDualDLReadout();
+  scheduleAutoCalc();
+}
+function renderDualDLReadout(){
+  const card=document.getElementById("dualDlCard");
+  if(!card) return;
+  const b=(typeof TAMAR_BONDS!=='undefined')?TAMAR_BONDS.find(isDualDL):null;
+  if(!b){ card.style.display='none'; return; }
+  const set=(id,txt,col)=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.textContent=txt;
+    if(col) el.style.color=col;
+  };
+  const fxMat=projectA3500At(b.mat);
+  set("dualFxMatOut",fxMat>0?fxMat.toLocaleString('es-AR',{maximumFractionDigits:2}):"-");
+  const spot=(typeof getFxSpot==='function')?getFxSpot():0;
+  set("dualSpotOut",spot>0?spot.toLocaleString('es-AR',{maximumFractionDigits:2}):"-");
+  const be=b._dualBE;
+  set("dualBeOut",be&&be.devBE!=null?be.devBE.toFixed(2)+"% ("+be.fxBE.toLocaleString('es-AR',{maximumFractionDigits:2})+")":"-");
+  const branch=b._dualBranch;
+  set("dualBranchOut",branch||"-",branch==='DL'?'#22D3EE':branch==='TAMAR'?'var(--bl)':'var(--td)');
+}
 function calcDualVPV(bond, avgTNA){
+  const d=calcDualVPVDetail(bond,avgTNA);
+  return d?d.vf:null;
+}
+// Detalle de las dos ramas del dual, para poder mostrar cuál manda y el BE.
+function calcDualVPVDetail(bond, avgTNA){
   const emD=getTamarAccrualStartDate(bond);
   const matD=new Date(bond.mat+"T00:00:00");
   const dias=days360US(emD,matD);
   const tamarTEM=calcTamarTEMFromAnnualTNA(avgTNA,getTamarMarginBps(bond));
   if(tamarTEM==null) return null;
   const vfTamar=100*Math.pow(1+tamarTEM, dias/30);
+  if(isDualDL(bond)){
+    // Rama 2 = dollar linked. Sin A3500 (de emisión o proyectado) no se puede
+    // valuar: se cae a la rama TAMAR sola en vez de inventar un piso en 100.
+    const vfDL=calcDualDLBranchVF(bond);
+    if(vfDL==null) return {vf:vfTamar,vfTamar,vfAlt:null,branch:'TAMAR',leg:'DL',incomplete:true};
+    return {vf:Math.max(vfTamar,vfDL),vfTamar,vfAlt:vfDL,branch:vfDL>vfTamar?'DL':'TAMAR',leg:'DL'};
+  }
   const vfFija=100*Math.pow(1+(bond.temFija||0), dias/30);
-  return Math.max(vfTamar,vfFija);
+  return {vf:Math.max(vfTamar,vfFija),vfTamar,vfAlt:vfFija,branch:vfFija>vfTamar?'FIJA':'TAMAR',leg:'FIJA'};
 }
 function calcTamarValueData(bond, tamarMonthlyMap, flatTNAOverride){
   const avgData=calcTamarAvgTNA(bond,tamarMonthlyMap,flatTNAOverride);
   if(!avgData) return null;
   const tamarTEM=calcTamarTEMFromAnnualTNA(avgData.avgTNA,getTamarMarginBps(bond));
   if(tamarTEM==null) return null;
-  const vf=bond.type==="DUAL"?calcDualVPV(bond,avgData.avgTNA):calcTamarVPV(bond,avgData.avgTNA);
-  return {...avgData,tamarTEM,vf};
+  const dual=bond.type==="DUAL"?calcDualVPVDetail(bond,avgData.avgTNA):null;
+  const vf=dual?dual.vf:calcTamarVPV(bond,avgData.avgTNA);
+  return {...avgData,tamarTEM,vf,
+          vfTamar:dual?dual.vfTamar:vf,
+          vfAlt:dual?dual.vfAlt:null,
+          branch:dual?dual.branch:null,
+          leg:dual?dual.leg:null,
+          dlIncomplete:!!(dual&&dual.incomplete)};
 }
 function calcTamarAvgTNAFromDate(startDate, bond, tamarMonthlyMap, flatTNAOverride){
   const start=new Date(startDate);
@@ -5239,6 +5502,12 @@ function calcTamarCurrentMarginData(bond, price, settle, tamarMonthlyMap, flatTN
   const valueData=calcTamarValueData(bond,tamarMonthlyMap,flatTNAOverride);
   if(!(price>0)) return null;
   if(!valueData||!valueData.vf||daysAct<=0) return null;
+  // Dual TAMAR/DL: el precio llega en escala DL → a base 100 antes de la TIREA.
+  // Para el resto de los TAMAR pxInfo.px === price (factor 1).
+  const pxInfo=tamarPxToBase100Info(bond,price);
+  if(pxInfo.missingFx) return null;   // sin A3500 de emisión no hay TIREA válida
+  const pxRaw=price;
+  price=pxInfo.px;
   const tirea=Math.pow(valueData.vf/price, 365/daysAct)-1;
   const den=365/32;
   const tna32=(Math.pow(1+tirea, 32/365)-1)*den;
@@ -5247,6 +5516,33 @@ function calcTamarCurrentMarginData(bond, price, settle, tamarMonthlyMap, flatTN
   const lastTamarTNA=getLastKnownTamarTNA();
   const remAvg=calcTamarAvgTNAFromDate(settle,bond,tamarMonthlyMap,flatTNAOverride);
   if(impliedTNA==null||benchTamarTNA==null) return null;
+  // Dual TAMAR/DL: además de la TIREA en pesos interesa la TIR en dólares que
+  // deja la rama DL (piso del bono) — misma cuenta que hace la curva DL:
+  // el bono paga 100 USD al vto y el precio se dolariza al A3500 spot.
+  let tirUsd=null, dlDetail=null;
+  if(isDualDL(bond)){
+    const spot=(typeof getFxSpot==='function')?getFxSpot():0;
+    const fxEm=pxInfo.fxEm;
+    if(spot>0&&fxEm>0){
+      // px en USD por 100 VN = (px base 100) × fxEm / spot
+      const pxUsd=price*fxEm/spot;
+      if(pxUsd>0){
+        const t=Math.pow(100/pxUsd,365/daysAct)-1;
+        if(isFinite(t)) tirUsd=t*100;
+      }
+    }
+    dlDetail={
+      fxEm,
+      fxMat: projectA3500At(bond.mat),
+      devTEA: getDualDevTEA(),
+      branch: valueData.branch,
+      vfTamar: valueData.vfTamar,
+      vfDL: valueData.vfAlt,
+      be: calcDualDLBreakeven(bond,valueData.vfTamar),
+      pxRaw,
+      pxBase100: price
+    };
+  }
   return {
     impliedTNA,
     impliedTIREA: tirea*100,
@@ -5254,7 +5550,12 @@ function calcTamarCurrentMarginData(bond, price, settle, tamarMonthlyMap, flatTN
     lastTamarTNA,
     benchTamarTNA,
     currentMargin: impliedTNA - benchTamarTNA,
-    vf: valueData.vf
+    vf: valueData.vf,
+    branch: valueData.branch,
+    tirUsd,
+    dl: dlDetail,
+    pxBase100: price,
+    pxRaw
   };
 }
 function setTamarDefaultProjection(avgInfo){
@@ -6128,7 +6429,13 @@ function calculate(){
       t._tamarBE=null;
       t._compTicker=null;
       t._compTNA=null;
+      t._dualBranch=null;
+      t._dualBE=null;
+      t._tirUsd=null;
       const price=parseFloat(document.getElementById("tpx_"+t.id)?.value);
+      // Dual TAMAR/DL: el precio cotiza en escala DL. Todo lo que compare
+      // precio contra VF (base 100) usa pxB100, no el precio de pantalla.
+      const pxB100=price>0?tamarPxToBase100(t,price):price;
       const currentMarginData=price>0 ? calcTamarCurrentMarginData(t,price,settle,tamarMap,null) : null;
       if(currentMarginData){
         t._marginToday=currentMarginData.currentMargin;
@@ -6136,6 +6443,9 @@ function calculate(){
         t._remainingAvgTNA=currentMarginData.remainingAvgTNA;
         t._lastTamarTNA=currentMarginData.lastTamarTNA;
         t._benchTamarTNA=currentMarginData.benchTamarTNA;
+        t._dualBranch=currentMarginData.branch;
+        t._tirUsd=currentMarginData.tirUsd;
+        if(currentMarginData.dl) t._dualBE=currentMarginData.dl.be;
       }
       // Comparable LECAP/BONCAP: closest by maturity date (not duration)
       if(okFixed.length){
@@ -6151,10 +6461,10 @@ function calculate(){
         // BE TAMAR: bisecta el override flat de TAMAR proyectada que hace
         //   TIREA(VF/price) = compTEA. La parte historica (TAMAR observada) NO
         //   se altera; solo se varia la proyeccion futura. Para DUAL respeta
-        //   el max(VF_TAMAR, VF_fija). Ya descontamos el spread.
-        if(price>0&&days>0){
+        //   el max(VF_TAMAR, rama alternativa: fija o DL). Ya descontamos el spread.
+        if(pxB100>0&&days>0){
           const compTEA=best._tea/100;
-          const vfTarget=price*Math.pow(1+compTEA,days/365);
+          const vfTarget=pxB100*Math.pow(1+compTEA,days/365);
           const vfAt=(proj)=>{
             const data=calcTamarValueData(t,tamarMap,proj);
             return data?data.vf:null;
@@ -6163,7 +6473,7 @@ function calculate(){
           const vfMax=vfAt(500);
           if(vfFloor!=null&&vfMax!=null){
             if(vfFloor>=vfTarget){
-              t._tamarBE=0; // DUAL: rama fija ya domina aun con TAMAR ~0
+              t._tamarBE=0; // DUAL: la otra rama (fija o DL) ya domina aun con TAMAR ~0
             } else if(vfMax<vfTarget){
               t._tamarBE=null;
             } else {
@@ -6196,7 +6506,21 @@ function calculate(){
       if(tmarginEl) tmarginEl.textContent=t._marginToday!=null?(t._marginToday>=0?'+':'')+t._marginToday.toFixed(2)+'%':'-';
       if(tbeEl) tbeEl.textContent=t._tamarBE!=null?t._tamarBE.toFixed(2)+'%':'-';
       if(tcompEl)   tcompEl.textContent  =t._compTicker||'-';
+      // Métricas extra del dual TAMAR/DL: rama que manda, BE de devaluación y
+      // TIR en dólares de la rama DL (el piso dolarizado del bono).
+      if(isDualDL(t)){
+        const brEl=document.getElementById("tdualbranch_"+t.id);
+        const beEl=document.getElementById("tdualbe_"+t.id);
+        const usdEl=document.getElementById("tdualusd_"+t.id);
+        if(brEl){
+          brEl.textContent=t._dualBranch||'-';
+          brEl.style.color=t._dualBranch==='DL'?'#22D3EE':t._dualBranch==='TAMAR'?'var(--bl)':'var(--td)';
+        }
+        if(beEl) beEl.textContent=t._dualBE&&t._dualBE.devBE!=null?t._dualBE.devBE.toFixed(2)+'%':'-';
+        if(usdEl) usdEl.textContent=t._tirUsd!=null?t._tirUsd.toFixed(2)+'%':'-';
+      }
     });
+    if(typeof renderDualDLReadout==='function') renderDualDLReadout();
   }
 
   const chosen2=FIXED.find(f=>f.id===document.getElementById("fixedComparable").value);
@@ -9096,9 +9420,12 @@ function openBondCalculator(bondType, bondId){
       const tamarData=calcTamarValueData(b, tamarMap, !isNaN(projTNA)&&projTNA>0?projTNA:null);
       const vf=tamarData?tamarData.vf:null;
 
+      // Dual TAMAR/DL: el precio de pantalla está en escala DL — se lo lleva a
+      // base 100 (÷ A3500 de emisión) antes de compararlo contra el VF.
+      const pxB100=price>0?tamarPxToBase100(b,price):price;
       let tir=null, tna=null;
-      if(price>0&&vf&&days>0){
-        tir=(Math.pow(vf/price, 365/days)-1)*100;
+      if(pxB100>0&&vf&&days>0){
+        tir=(Math.pow(vf/pxB100, 365/days)-1)*100;
         tna=((Math.pow(1+tir/100,days/365)-1)*(365/days))*100;
       }
       const scale=vnoAmount/100;
@@ -9128,9 +9455,32 @@ function openBondCalculator(bondType, bondId){
         const avgTNATxt=tamarData&&tamarData.avgTNA!=null?tamarData.avgTNA.toFixed(4)+'%':'-';
         const avgTEMtxt=tamarData&&tamarData.tamarTEM!=null?(tamarData.tamarTEM*100).toFixed(4)+'%':'-';
         const histTxt=tamarData?`${tamarData.historicalCount} hist / ${tamarData.projectedCount} proy`:'-';
+        const dualTxt=b.type!=="DUAL"?''
+          :isDualDL(b)?' | DUAL: MAX(TAMAR, DL)'
+          :' | DUAL: MAX(TAMAR, fija)';
+        // Dual DL: el flujo se muestra en la escala del precio (ARS por 100 VN
+        // dolarizados = base 100 × A3500 emisión), no en base 100 pesos.
+        const vfShow=tamarPxFromBase100(b,vf);
+        let dlNote='';
+        if(isDualDL(b)&&currentMarginData&&currentMarginData.dl){
+          const dl=currentMarginData.dl;
+          const be=dl.be;
+          dlNote=`<div style="font-size:10px;color:var(--td);margin-bottom:6px">
+            Rama activa: <strong style="color:${dl.branch==='DL'?'#22D3EE':'var(--bl)'}">${dl.branch}</strong>
+            | VF TAMAR: <strong>${dl.vfTamar!=null?dl.vfTamar.toFixed(2):'-'}</strong>
+            vs VF DL: <strong>${dl.vfDL!=null?dl.vfDL.toFixed(2):'-'}</strong> (base 100)
+            | A3500 em: <strong>${dl.fxEm>0?dl.fxEm.toLocaleString('es-AR',{maximumFractionDigits:2}):'-'}</strong>
+            → vto proy: <strong>${dl.fxMat>0?dl.fxMat.toLocaleString('es-AR',{maximumFractionDigits:2}):'-'}</strong>
+            (deval ${dl.devTEA!=null?dl.devTEA.toFixed(2):'-'}% TEA)
+            | BE deval: <strong>${be&&be.devBE!=null?be.devBE.toFixed(2)+'%':'-'}</strong>
+            | TIR USD rama DL: <strong style="color:#22D3EE">${currentMarginData.tirUsd!=null?currentMarginData.tirUsd.toFixed(2)+'%':'-'}</strong>
+            <br>Precio ${dl.pxRaw!=null?dl.pxRaw.toLocaleString('es-AR',{maximumFractionDigits:2}):'-'} (escala DL) → <strong>${dl.pxBase100!=null?dl.pxBase100.toFixed(2):'-'}</strong> base 100 pesos.
+          </div>`;
+        }
         document.getElementById('bck-flows').innerHTML=`
           <div class="st" style="margin-bottom:6px">Flujo de Fondos (bullet)</div>
-          <div style="font-size:10px;color:var(--td);margin-bottom:6px">TAMAR promedio TNA: <strong>${avgTNATxt}</strong> | TAMAR TEM contractual: <strong>${avgTEMtxt}</strong> | ${histTxt}${b.type==="DUAL"?' | DUAL: MAX(TAMAR, fija)':''}</div>
+          <div style="font-size:10px;color:var(--td);margin-bottom:6px">TAMAR promedio TNA: <strong>${avgTNATxt}</strong> | TAMAR TEM contractual: <strong>${avgTEMtxt}</strong> | ${histTxt}${dualTxt}</div>
+          ${dlNote}
           <table><thead><tr>
             <th>Fecha</th><th style="text-align:right">Dias</th>
             <th style="text-align:right">Por 100 VN ($)</th>
@@ -9139,13 +9489,13 @@ function openBondCalculator(bondType, bondId){
           <tr>
             <td>${matD.toLocaleDateString('es-AR')}</td>
             <td style="text-align:right">${days}</td>
-            <td style="text-align:right">${vf.toFixed(4)}</td>
-            <td style="text-align:right">${(vf*scale).toFixed(2)}</td>
+            <td style="text-align:right">${vfShow.toFixed(4)}</td>
+            <td style="text-align:right">${(vfShow*scale).toFixed(2)}</td>
           </tr>
           </tbody><tfoot><tr>
             <td>Total</td><td></td>
-            <td style="text-align:right">${vf.toFixed(4)}</td>
-            <td style="text-align:right">${(vf*scale).toFixed(2)}</td>
+            <td style="text-align:right">${vfShow.toFixed(4)}</td>
+            <td style="text-align:right">${(vfShow*scale).toFixed(2)}</td>
           </tr></tfoot></table>`;
       } else {
         document.getElementById('bck-flows').innerHTML=`<div class="note" style="padding:10px;color:var(--tm)">Sin datos TAMAR - completa los supuestos TNA en la pestana CALCULADORAS.</div>`;
@@ -9156,12 +9506,14 @@ function openBondCalculator(bondType, bondId){
         const targetTirVal=parseFloat(document.getElementById('bci-target-tir').value);
         const targetTnaVal=parseFloat(document.getElementById('bci-target-tna').value);
         const parts=[];
+        // El precio implícito sale en base 100 → se devuelve a la escala de
+        // pantalla para que sea comparable contra el live (dual DL: × A3500 em).
         if(!isNaN(targetTirVal)&&vf&&days>0){
-          const impliedPx=vf/Math.pow(1+targetTirVal/100,days/365);
+          const impliedPx=tamarPxFromBase100(b,vf/Math.pow(1+targetTirVal/100,days/365));
           parts.push(`TEA <strong style="color:var(--acl)">${targetTirVal.toFixed(2)}%</strong> → <strong style="color:var(--acl);font-size:13px">${impliedPx.toFixed(4)}</strong>`);
         }
         if(!isNaN(targetTnaVal)&&vf&&days>0){
-          const impliedPx=vf/(1+targetTnaVal/100*days/365);
+          const impliedPx=tamarPxFromBase100(b,vf/(1+targetTnaVal/100*days/365));
           parts.push(`TNA <strong style="color:var(--fx)">${targetTnaVal.toFixed(2)}%</strong> → <strong style="color:var(--fx);font-size:13px">${impliedPx.toFixed(4)}</strong>`);
         }
         document.getElementById('bck-target-result').innerHTML=
@@ -10989,7 +11341,10 @@ function _bltYieldFor(ticker, price){
     const tamarData=calcTamarValueData(bondTam, getTamarMap(), null);
     const vf=tamarData?tamarData.vf:null;
     if(!vf) return null;
-    const tir=(Math.pow(vf/price, 365/days)-1)*100;
+    // Dual TAMAR/DL: precio de pantalla (escala DL) → base 100 antes de la TIR.
+    const pxB100=tamarPxToBase100(bondTam,price);
+    if(!(pxB100>0)) return null;
+    const tir=(Math.pow(vf/pxB100, 365/days)-1)*100;
     const tna=((Math.pow(1+tir/100,days/365)-1)*(365/days))*100;
     return {label:'TNA', primary:tna, secondary:null};
   }
@@ -15930,9 +16285,11 @@ function buildTAMARCards(){
           <div class="list-title">
             <span class="tag" style="background:${t.color}22;color:${t.color}">${t.ticker}</span>
             <span class="tag" style="background:var(--bld);color:var(--bl)">TAMAR</span>
+            ${isDualDL(t)?'<span class="tag" style="background:#22D3EE22;color:#22D3EE">DUAL DL</span>':''}
           </div>
           <div class="list-meta">${t.name||t.ticker} | Vto: ${FD(new Date(t.mat+"T00:00:00"))}<br>
             Margen contractual emisión: <strong>+${getTamarMarginBps(t).toFixed(0)} bps</strong>
+            ${isDualDL(t)?' | precio en escala DL, normalizado por A3500 de emisión':''}
           </div>
         </div>
         <div class="list-inputs">
@@ -15947,6 +16304,10 @@ function buildTAMARCards(){
           <div class="metric"><div class="mv" style="color:var(--bl)" id="tmargin_${t.id}">-</div><div class="ml">Margen hoy</div></div>
           <div class="metric"><div class="mv" style="color:var(--bl)" id="tbe_${t.id}">-</div><div class="ml">BE TAMAR</div></div>
           <div class="metric"><div class="ms" style="color:var(--td)" id="tcomp_${t.id}">-</div><div class="ml">comparable</div></div>
+          ${isDualDL(t)?`
+          <div class="metric"><div class="ms" style="color:var(--td)" id="tdualbranch_${t.id}">-</div><div class="ml">rama activa</div></div>
+          <div class="metric"><div class="mv" style="color:#22D3EE" id="tdualbe_${t.id}">-</div><div class="ml">BE deval</div></div>
+          <div class="metric"><div class="mv" style="color:#22D3EE" id="tdualusd_${t.id}">-</div><div class="ml">TIR USD (DL)</div></div>`:''}
         </div>
       </div>
     </div>
@@ -15997,6 +16358,12 @@ setTimeout(()=>{
 setTimeout(()=>{
   fetchLatestTAMAR();
 },650);
+
+// A3500 de emisión del dual TAMAR/DL (TMVE8). Sin este dato la normalización
+// del precio no corre y el bono queda sin TIREA en vez de mostrar un absurdo.
+setTimeout(()=>{
+  try{ fetchA3500Series(); }catch(e){ console.warn('[dual-dl]',e); }
+},700);
 
 setTimeout(()=>{
   try{ startPricePolling(); }catch(e){}
@@ -19049,7 +19416,12 @@ function _pxsTamarRows(settle){
     let vd=null;
     try{ vd=calcTamarValueData(t,tmap,flat); }catch(e){ return; }
     if(!vd||!(vd.vf>0)) return;
-    const r=_pxsMakeRow({ticker:t.ticker,color:t.color,mat:t.mat,px,flows:[{days,nominal:vd.vf}],key:'nominal'});
+    // Dual TAMAR/DL: TIR y DM se calculan en base 100 (precio ÷ A3500 emisión);
+    // en la columna de precio se muestra el de pantalla. El ΔP/P no cambia por
+    // el reescalado, así que DM y CX quedan bien igual.
+    const pxCalc=tamarPxToBase100(t,px);
+    if(!(pxCalc>0)) return;
+    const r=_pxsMakeRow({ticker:t.ticker,color:t.color,mat:t.mat,px:pxCalc,pxShow:px,flows:[{days,nominal:vd.vf}],key:'nominal'});
     if(r) out.push(r);
   });
   return out;
