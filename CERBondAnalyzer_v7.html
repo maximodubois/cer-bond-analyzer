@@ -1192,11 +1192,12 @@
 </style>
 <div class="card" style="margin-top:10px">
   <div class="st">Análisis de Sensibilidad del Precio por Duration y Convexity</div>
-  <div class="note" style="margin-bottom:10px"><b>Qué hace:</b> para cada bono aplica shocks paralelos de TIR (±PB) y devuelve la variación porcentual del precio. <b>DM</b> = modified duration (años), <b>CX</b> = convexidad estándar — ambas calculadas sobre los cashflows reales del bono, no por aproximación de bullet. Las tablas van <b>separadas por curva</b> porque cada una se shockea en su propio espacio de tasa: CER en TIR real, tasa fija en TEA pesos, DL y USD en TIR dólar, TAMAR en TIREA implícita. <b>Aprox</b> usa ΔP/P ≈ −DM·ΔTIR + ½·CX·(ΔTIR)²; <b>Exacto</b> revalúa los flujos descontándolos a TIR+ΔTIR (la diferencia entre ambos es el error de truncar Taylor en segundo orden).</div>
-  <div style="display:grid;grid-template-columns:repeat(4,auto) 1fr auto;gap:10px;align-items:end;margin-bottom:10px">
+  <div class="note" style="margin-bottom:10px"><b>Qué hace:</b> para cada bono aplica shocks paralelos de TIR (±PB) y devuelve la variación porcentual del precio. <b>DM</b> = modified duration (años), <b>CX</b> = convexidad estándar — ambas calculadas sobre los cashflows reales del bono, no por aproximación de bullet. Las tablas van <b>separadas por curva</b> porque cada una se shockea en su propio espacio de tasa: tasa fija en TEA pesos, DL y USD en TIR dólar, TAMAR en TIREA implícita. <b>Aprox</b> usa ΔP/P ≈ −DM·ΔTIR + ½·CX·(ΔTIR)²; <b>Exacto</b> revalúa los flujos descontándolos a TIR+ΔTIR (la diferencia entre ambos es el error de truncar Taylor en segundo orden).<br><b>El CER va dos veces, y no son la misma duration:</b> la tabla de <b>TIR real</b> descuenta los flujos en pesos de hoy (CER liq) y te dice cuánto te mueve el precio un shock de tasa real — es la que usás para operar dentro de la curva CER. La de <b>TIR nominal</b> descuenta los flujos ya indexados con tu grilla de inflación y shockea la tasa nominal en pesos: es la métrica comparable contra LECAP/BONCAP, y da DM más corta porque la tasa de descuento es mucho más alta. Ojo que la nominal se apoya en tu proyección de inflación — si cambiás la grilla, cambia.</div>
+  <div style="display:grid;grid-template-columns:repeat(3,auto) 1fr auto;gap:10px;align-items:end;margin-bottom:10px">
     <div class="ig"><label>Curvas</label><select id="pxsCurve" onchange="calcPxSensitivity()">
       <option value="all" selected>Todas</option>
-      <option value="cer">CER</option>
+      <option value="cer">CER — TIR real</option>
+      <option value="cerNom">CER — TIR nominal (tasa fija eq.)</option>
       <option value="fixed">Tasa fija (LECAP/BONCAP)</option>
       <option value="tamar">TAMAR / DUAL</option>
       <option value="dl">Dollar Linked</option>
@@ -1207,10 +1208,6 @@
       <option value="approx" selected>Aprox (DM + CX)</option>
       <option value="exact">Exacto (revaluación)</option>
       <option value="both">Aprox + error vs exacto</option>
-    </select></div>
-    <div class="ig"><label>Base CER</label><select id="pxsCerBase" onchange="calcPxSensitivity()">
-      <option value="real" selected>TIR real</option>
-      <option value="nominal">TIR nominal</option>
     </select></div>
     <div id="pxsInfo" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;align-self:center">—</div>
     <button class="btn-api" onclick="calcPxSensitivity()">Recalcular</button>
@@ -18418,11 +18415,14 @@ function _pxsMakeRow(o){
           y,md,cx,pv0,flows:o.flows,key:o.key};
 }
 
-function _pxsCerRows(settle){
+// key='real'    → flujos en pesos de hoy (CER liq), shock sobre TIR real.
+// key='nominal' → flujos ya indexados con la grilla de inflación, shock sobre
+//                 la TIR nominal pesos. Es la que se compara contra LECAP, y da
+//                 DM más corta porque descuenta a una tasa mucho más alta.
+function _pxsCerRowsFor(settle,key){
   if(typeof BONDS==='undefined') return [];
   const ctx=_pxsCerContext();
   if(!ctx) return [];
-  const key=(document.getElementById("pxsCerBase")?.value==='nominal')?'nominal':'real';
   const out=[];
   filterActive(BONDS).forEach(b=>{
     const px=getCurrentPrice(b.id);
@@ -18432,9 +18432,13 @@ function _pxsCerRows(settle){
     const r=_pxsMakeRow({ticker:b.ticker,color:b.color,mat:b.mat,px,flows,key});
     if(r) out.push(r);
   });
-  out.note=(key==='real')?'flujos reales @ CER liq · shock sobre TIR real':'flujos nominales · shock sobre TIR nominal';
+  out.note=(key==='real')
+    ? 'flujos reales @ CER liq · shock sobre TIR real'
+    : 'flujos indexados con la grilla de inflación · shock sobre TIR nominal pesos';
   return out;
 }
+const _pxsCerRows=settle=>_pxsCerRowsFor(settle,'real');
+const _pxsCerNomRows=settle=>_pxsCerRowsFor(settle,'nominal');
 
 function _pxsFixedRows(settle){
   if(typeof FIXED==='undefined') return [];
@@ -18513,7 +18517,9 @@ function _pxsUsdRows(settle){
 }
 
 const _PXS_CURVES=[
-  {id:'cer',   name:'Curva CER',                       build:_pxsCerRows,   pxLabel:'Precio (ARS)',
+  {id:'cer',    name:'Curva CER — TIR real',           build:_pxsCerRows,    pxLabel:'Precio (ARS)', tir:'TIR Real (%)',
+   empty:'Sin bonos CER calculados — cargá CER base, CER liquidación y precios.'},
+  {id:'cerNom', name:'Curva CER — TIR nominal (tasa fija equivalente)', build:_pxsCerNomRows, pxLabel:'Precio (ARS)', tir:'TIR Nom. (%)',
    empty:'Sin bonos CER calculados — cargá CER base, CER liquidación y precios.'},
   {id:'fixed', name:'Curva Tasa Fija — LECAP / BONCAP', build:_pxsFixedRows, pxLabel:'Precio (ARS)', tir:'TIR TEA (%)',
    empty:'Sin instrumentos de tasa fija con precio.'},
@@ -18621,7 +18627,6 @@ function calcPxSensitivity(){
   const shocks=_pxsShocks();
   const mode=document.getElementById("pxsMode")?.value||"approx";
   const which=document.getElementById("pxsCurve")?.value||"all";
-  const cerBase=(document.getElementById("pxsCerBase")?.value==='nominal')?'nominal':'real';
   const defs=_PXS_CURVES.filter(d=>which==='all'||d.id===which);
 
   let html='', total=0;
@@ -18629,16 +18634,17 @@ function calcPxSensitivity(){
     let rows=[];
     try{ rows=def.build(settle)||[]; }catch(e){ console.warn('[pxsens]',def.id,e); }
     total+=rows.length;
-    const tirLabel=def.id==='cer' ? (cerBase==='real'?'TIR Real (%)':'TIR Nom. (%)') : def.tir;
-    html+=_pxsRenderCurve(def,rows,shocks,mode,tirLabel);
+    html+=_pxsRenderCurve(def,rows,shocks,mode,def.tir);
   });
   host.innerHTML=html;
 
   const info=document.getElementById("pxsInfo");
   if(info){
     const modeTxt=mode==='exact'?'revaluación exacta':mode==='both'?'aprox + error':'aprox DM+CX';
-    info.innerHTML=`${total} instrumentos · settle ${settle.toLocaleDateString('es-AR')} · ${modeTxt}`
-      + (which==='all'||which==='cer' ? ` · CER shockeado en ${cerBase==='real'?'TIR real':'TIR nominal'}` : '');
+    // El CER se cuenta dos veces cuando van todas las curvas (real + nominal):
+    // se aclara para que el total no parezca inflado.
+    const dup=(which==='all')?' · CER contado 2 veces (real + nominal)':'';
+    info.innerHTML=`${total} instrumentos · settle ${settle.toLocaleDateString('es-AR')} · ${modeTxt}${dup}`;
   }
 }
 
