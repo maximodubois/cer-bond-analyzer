@@ -1130,9 +1130,14 @@
     <div class="il" style="color:var(--ac);margin-bottom:4px">Forward CER Nominal (TNA equiv tasa fija)</div>
     <div style="overflow-x:auto"><div id="fwdCERNomMatrix"></div></div>
   </div>
-  <div>
+  <div style="margin-bottom:12px">
     <div class="il" style="color:var(--am);margin-bottom:4px">Forward CER Real (TNA CER+)</div>
     <div style="overflow-x:auto"><div id="fwdCERRealMatrix"></div></div>
+  </div>
+  <div id="fwdDLBlock" style="display:none">
+    <div class="il" style="color:var(--ac-dl);margin-bottom:4px">Forward Dollar Linked (TNA en USD)</div>
+    <div class="note" style="margin:0 0 6px 0">Tasa forward <b>en dólares</b> entre dos vencimientos DL: la TIR USD sale de dolarizar el precio al A3500 (100 USD al vto). Leída al revés es la devaluación que el mercado necesita convalidar entre esos dos plazos para que comprar el corto y renovar iguale al largo. <span id="fwdDLSpot" style="color:var(--td)"></span></div>
+    <div style="overflow-x:auto"><div id="fwdDLMatrix"></div></div>
   </div>
 </div>
 
@@ -12075,11 +12080,36 @@ function buildAllForwardMatrices(){
       tem:Math.pow(1+(b._tr||0)/100,30/365)-1};
   }).sort((a,b)=>a.days-b.days);
 
-  if(fxItems.length>1||cerNomItems.length>1){
+  // Dollar Linked: la curva es de tasa EN DÓLARES. El bono paga 100 USD al vto,
+  // así que dolarizando el precio al A3500 la TIR sale de (100/pxUsd)^(365/d)−1.
+  // El forward entre dos nodos es entonces la tasa USD implícita en ese tramo.
+  // Precio: lp.last, igual que el resto de los consumidores de DL de la app.
+  const spot=(typeof getFxSpot==='function')?getFxSpot():0;
+  const dlItems=(typeof DL_BONDS==='undefined'||!(spot>0)) ? [] :
+    filterActive(DL_BONDS).map(b=>{
+      const lp=_livePrices[b.ticker]||{};
+      const days=DB(settle,new Date(b.mat+"T00:00:00"));
+      if(!(lp.last>0)||days<=0) return null;
+      const accrual=100*spot/lp.last;             // factor de acretamiento a vto
+      if(!(accrual>0)) return null;
+      const tea=(Math.pow(accrual,365/days)-1)*100;
+      if(!isFinite(tea)) return null;
+      return {ticker:b.ticker, days, tna:(accrual-1)*365/days*100, tea,
+        tem:Math.pow(1+tea/100,30/365)-1};
+    }).filter(Boolean).sort((a,b)=>a.days-b.days);
+
+  if(fxItems.length>1||cerNomItems.length>1||dlItems.length>1){
     card.style.display="";
     buildForwardMatrix(fxItems,"fwdFXMatrix");
     buildForwardMatrix(cerNomItems,"fwdCERNomMatrix");
     buildForwardMatrix(cerRealItems,"fwdCERRealMatrix");
+    buildForwardMatrix(dlItems,"fwdDLMatrix");
+    // El bloque DL vive de precios live: si no hay al menos 2 nodos no se
+    // muestra el título colgado sin matriz debajo.
+    const dlBlock=document.getElementById("fwdDLBlock");
+    if(dlBlock) dlBlock.style.display=(dlItems.length>1)?"":"none";
+    const dlSpot=document.getElementById("fwdDLSpot");
+    if(dlSpot) dlSpot.textContent=(spot>0)?`Spot A3500 usado: ${spot.toFixed(2)}.`:"";
   }
 }
 
@@ -18486,7 +18516,7 @@ function _pxsDlRows(settle){
   const out=[];
   filterActive(DL_BONDS).forEach(b=>{
     const lp=_livePrices[b.ticker]||{};
-    const pxArs=lp.last||lp.mid||lp.bid||lp.ask||0;
+    const pxArs=lp.last||0;   // DL usa LAST en toda la app; no mezclar con bid/offer
     const days=DB(settle,new Date(b.mat+"T00:00:00"));
     if(!(pxArs>0)||!(days>0)) return;
     // Cero cupón en dólares: 100 USD al vto. La TIR se saca sobre el precio
