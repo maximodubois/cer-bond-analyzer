@@ -1134,10 +1134,15 @@
     <div class="il" style="color:var(--am);margin-bottom:4px">Forward CER Real (TNA CER+)</div>
     <div style="overflow-x:auto"><div id="fwdCERRealMatrix"></div></div>
   </div>
-  <div id="fwdDLBlock" style="display:none">
+  <div id="fwdDLBlock" style="display:none;margin-bottom:12px">
     <div class="il" style="color:var(--ac-dl);margin-bottom:4px">Forward Dollar Linked (TNA en USD)</div>
     <div class="note" style="margin:0 0 6px 0">Tasa forward <b>en dólares</b> entre dos vencimientos DL: la TIR USD sale de dolarizar el precio al A3500 (100 USD al vto). Leída al revés es la devaluación que el mercado necesita convalidar entre esos dos plazos para que comprar el corto y renovar iguale al largo. <span id="fwdDLSpot" style="color:var(--td)"></span></div>
     <div style="overflow-x:auto"><div id="fwdDLMatrix"></div></div>
+  </div>
+  <div id="fwdROFEXBlock" style="display:none">
+    <div class="il" style="color:var(--ac-rof);margin-bottom:4px">Forward ROFEX (TNA de devaluación implícita)</div>
+    <div class="note" style="margin:0 0 6px 0">Devaluación forward entre dos posiciones del futuro: TEA implícita de cada una = (Futuro / Spot)^(365/d) − 1, y el forward es la tasa del tramo entre ambas. Es la curva de devaluación pura contra la que se compara la DL — si el forward DL de un tramo paga más que el de ROFEX, ese tramo del sintético está barato. <b>Ojo con el plazo:</b> los futuros liquidan T+0, así que sus días se cuentan desde <b>hoy</b>, no desde el settle T+1 de las matrices de bonos. <span id="fwdROFEXSpot" style="color:var(--td)"></span></div>
+    <div style="overflow-x:auto"><div id="fwdROFEXMatrix"></div></div>
   </div>
 </div>
 
@@ -12098,18 +12103,40 @@ function buildAllForwardMatrices(){
         tem:Math.pow(1+tea/100,30/365)-1};
     }).filter(Boolean).sort((a,b)=>a.days-b.days);
 
-  if(fxItems.length>1||cerNomItems.length>1||dlItems.length>1){
+  // ROFEX: curva de devaluación pura. TEA implícita = (futuro/spot)^(365/d)−1.
+  // Los futuros liquidan T+0, así que los días van desde HOY y no desde el
+  // settle T+1 que usan las matrices de bonos — dentro de esta matriz el
+  // criterio es uniforme, pero no hay que cruzar los plazos con las otras.
+  const todayRof=new Date(); todayRof.setHours(0,0,0,0);
+  const rofItems=(typeof ROFEX_FUTURES==='undefined'||!(spot>0)) ? [] :
+    ROFEX_FUTURES.map(f=>{
+      const lp=_livePrices[f.ticker]||{};
+      const d=DB(todayRof,new Date(f.exp+"T00:00:00"));
+      if(!(lp.last>0)||d<=0) return null;
+      const ratio=lp.last/spot;
+      if(!(ratio>0)) return null;
+      const tea=(Math.pow(ratio,365/d)-1)*100;
+      if(!isFinite(tea)) return null;
+      return {ticker:f.ticker.replace("DLR/",""), days:d, tna:(ratio-1)*365/d*100, tea,
+        tem:Math.pow(1+tea/100,30/365)-1};
+    }).filter(Boolean).sort((a,b)=>a.days-b.days);
+
+  if(fxItems.length>1||cerNomItems.length>1||dlItems.length>1||rofItems.length>1){
     card.style.display="";
     buildForwardMatrix(fxItems,"fwdFXMatrix");
     buildForwardMatrix(cerNomItems,"fwdCERNomMatrix");
     buildForwardMatrix(cerRealItems,"fwdCERRealMatrix");
     buildForwardMatrix(dlItems,"fwdDLMatrix");
-    // El bloque DL vive de precios live: si no hay al menos 2 nodos no se
+    buildForwardMatrix(rofItems,"fwdROFEXMatrix");
+    // DL y ROFEX viven de precios live: si no hay al menos 2 nodos no se
     // muestra el título colgado sin matriz debajo.
-    const dlBlock=document.getElementById("fwdDLBlock");
-    if(dlBlock) dlBlock.style.display=(dlItems.length>1)?"":"none";
-    const dlSpot=document.getElementById("fwdDLSpot");
-    if(dlSpot) dlSpot.textContent=(spot>0)?`Spot A3500 usado: ${spot.toFixed(2)}.`:"";
+    const spotTxt=(spot>0)?`Spot A3500 usado: ${spot.toFixed(2)}.`:"";
+    [["fwdDLBlock","fwdDLSpot",dlItems],["fwdROFEXBlock","fwdROFEXSpot",rofItems]].forEach(([blockId,spotId,items])=>{
+      const block=document.getElementById(blockId);
+      if(block) block.style.display=(items.length>1)?"":"none";
+      const spotEl=document.getElementById(spotId);
+      if(spotEl) spotEl.textContent=spotTxt;
+    });
   }
 }
 
