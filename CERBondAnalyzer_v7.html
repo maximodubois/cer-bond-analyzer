@@ -1168,6 +1168,57 @@
 <!-- TAB: QUANT+ -->
 <div id="tab-quantplus" style="display:none">
 
+<!-- ══════════════════════════════════════════════════════════════════
+     SENSIBILIDAD DEL PRECIO POR DURATION Y CONVEXITY — dividido por curva
+     ══════════════════════════════════════════════════════════════════ -->
+<style>
+  .pxs-wrap{overflow-x:auto}
+  .pxs-tbl{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px}
+  .pxs-tbl th{padding:6px 8px;border-bottom:1px solid var(--cb);color:var(--td);font-weight:600;font-size:10px;
+              letter-spacing:0.05em;text-transform:uppercase;text-align:right;white-space:nowrap;background:#0a0f1a}
+  .pxs-tbl th:first-child{text-align:left}
+  .pxs-tbl td{padding:5px 8px;border-bottom:1px solid #1a2233;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .pxs-tbl td:first-child{text-align:left;font-weight:700}
+  .pxs-tbl tr:hover td{background:rgba(0,200,130,0.04)}
+  .pxs-tbl td.pxs-shock{font-weight:700;border-bottom:1px solid #0a0f1a}
+  .pxs-sep{border-left:1px solid var(--cb)}
+  .pxs-curve-hd{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px;
+                margin:14px 0 4px 0;padding-top:10px;border-top:1px dashed var(--cb)}
+  .pxs-curve-hd:first-child{margin-top:0;padding-top:0;border-top:none}
+  .pxs-curve-name{font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase}
+  .pxs-curve-meta{font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace}
+  .pxs-empty{font-size:11px;color:var(--tm);padding:8px 0;font-family:'IBM Plex Mono',monospace}
+  .pxs-formula{font-size:11px;color:var(--td);font-family:'IBM Plex Mono',monospace;margin-top:10px}
+</style>
+<div class="card" style="margin-top:10px">
+  <div class="st">Análisis de Sensibilidad del Precio por Duration y Convexity</div>
+  <div class="note" style="margin-bottom:10px"><b>Qué hace:</b> para cada bono aplica shocks paralelos de TIR (±PB) y devuelve la variación porcentual del precio. <b>DM</b> = modified duration (años), <b>CX</b> = convexidad estándar — ambas calculadas sobre los cashflows reales del bono, no por aproximación de bullet. Las tablas van <b>separadas por curva</b> porque cada una se shockea en su propio espacio de tasa: CER en TIR real, tasa fija en TEA pesos, DL y USD en TIR dólar, TAMAR en TIREA implícita. <b>Aprox</b> usa ΔP/P ≈ −DM·ΔTIR + ½·CX·(ΔTIR)²; <b>Exacto</b> revalúa los flujos descontándolos a TIR+ΔTIR (la diferencia entre ambos es el error de truncar Taylor en segundo orden).</div>
+  <div style="display:grid;grid-template-columns:repeat(4,auto) 1fr auto;gap:10px;align-items:end;margin-bottom:10px">
+    <div class="ig"><label>Curvas</label><select id="pxsCurve" onchange="calcPxSensitivity()">
+      <option value="all" selected>Todas</option>
+      <option value="cer">CER</option>
+      <option value="fixed">Tasa fija (LECAP/BONCAP)</option>
+      <option value="tamar">TAMAR / DUAL</option>
+      <option value="dl">Dollar Linked</option>
+      <option value="usd">USD Sob. (Bonares/Globales)</option>
+    </select></div>
+    <div class="ig"><label>Shocks (PB)</label><input type="text" id="pxsShocks" value="100,200,300" style="width:120px" oninput="calcPxSensitivity()"></div>
+    <div class="ig"><label>Método</label><select id="pxsMode" onchange="calcPxSensitivity()">
+      <option value="approx" selected>Aprox (DM + CX)</option>
+      <option value="exact">Exacto (revaluación)</option>
+      <option value="both">Aprox + error vs exacto</option>
+    </select></div>
+    <div class="ig"><label>Base CER</label><select id="pxsCerBase" onchange="calcPxSensitivity()">
+      <option value="real" selected>TIR real</option>
+      <option value="nominal">TIR nominal</option>
+    </select></div>
+    <div id="pxsInfo" style="font-size:10px;color:var(--td);font-family:'IBM Plex Mono',monospace;align-self:center">—</div>
+    <button class="btn-api" onclick="calcPxSensitivity()">Recalcular</button>
+  </div>
+  <div id="pxsResult"></div>
+  <div class="pxs-formula">ΔP/P ≈ − DM · ΔTIR + ½ · CX · (ΔTIR)²</div>
+</div>
+
 <!-- BUTTERFLY / RV TRADE BUILDER -->
 <div class="card" style="margin-top:10px">
   <div class="st">Butterfly &amp; Relative Value Trade Builder</div>
@@ -12039,6 +12090,7 @@ function buildAllForwardMatrices(){
 
 function refreshQuantPlus(){
   populateBfSelects();
+  try{ calcPxSensitivity(); }catch(_e){ console.warn('[pxsens]',_e); }
   calcButterfly();
   calcTotalReturn();
   calcZSpread();
@@ -18299,6 +18351,296 @@ setInterval(()=>{
     }
   }
 },1000);
+
+// ═══════════════════════════════════════════════════════════════════════
+// SENSIBILIDAD DEL PRECIO POR DURATION Y CONVEXITY — Tab DESARROLLO
+//
+// Una tabla por curva. Cada curva se shockea en el espacio de tasa que le
+// corresponde (no tiene sentido mover "la TIR" de un CER y de un Bonar con la
+// misma vara): CER en TIR real sobre flujos reales, tasa fija en TEA pesos,
+// TAMAR/DUAL en la TIREA implícita de su VF proyectado, DL y USD en TIR dólar.
+// DM y CX salen de los cashflows reales vía durationFromFlows/convexityFromFlows
+// — nada de aproximar duration = plazo/(1+y), que sólo vale para bullets.
+// ═══════════════════════════════════════════════════════════════════════
+const _PXS_DEFAULT_SHOCKS=[100,200,300];
+
+function _pxsSettle(){
+  const sd=document.getElementById("settleDate")?.value;
+  if(sd) return new Date(sd+"T00:00:00");
+  const today=new Date(); today.setHours(0,0,0,0);
+  return (typeof ABD==='function')?ABD(today,1):today;
+}
+
+function _pxsShocks(){
+  const raw=document.getElementById("pxsShocks")?.value||"";
+  const arr=raw.split(/[^0-9.]+/).map(s=>parseFloat(s)).filter(v=>isFinite(v)&&v>0&&v<=5000);
+  const uniq=[...new Set(arr)].sort((a,b)=>a-b).slice(0,6);
+  return uniq.length?uniq:_PXS_DEFAULT_SHOCKS.slice();
+}
+
+// Contexto CER (base, fecha, grilla de inflación) para reconstruir los flujos
+// con el mismo motor que usa la tab CER. Devuelve null si falta algún input.
+function _pxsCerContext(){
+  try{
+    const bv=parseFloat(document.getElementById("baseCER")?.value);
+    const bDate=document.getElementById("baseCERDate")?.value;
+    const cerLiq=parseFloat(document.getElementById("cerLiq")?.value);
+    if(!(bv>0)||!bDate||!(cerLiq>0)) return null;
+    const inflMap={};
+    if(typeof IM!=='undefined') IM.forEach(m=>{inflMap[m.k]=parseFloat(document.getElementById("i_"+m.k)?.value)||0});
+    return {getCER:buildCER(bv,bDate,inflMap), cerLiq};
+  }catch(e){ return null; }
+}
+
+// PV de los flujos a una tasa y (ACT/365, misma convención que xirrFromFlows).
+function _pxsPV(y, flows, key){
+  if(y==null||!isFinite(y)||y<=-0.9999) return null;
+  let pv=0;
+  for(const f of flows){
+    if(!(f.days>0)||!(f[key]>0)) continue;
+    pv+=f[key]/Math.pow(1+y,f.days/365);
+  }
+  return pv>0?pv:null;
+}
+
+// Arma la fila: TIR por XIRR + DM + CX sobre los flujos. pv0 se guarda para el
+// modo exacto: revaluar contra el PV teórico (no contra el precio de pantalla)
+// evita que el redondeo del precio se cuele como error de aproximación.
+function _pxsMakeRow(o){
+  if(!o.flows||!o.flows.length||!(o.px>0)) return null;
+  const y=xirrFromFlows(o.px,o.flows,o.key);
+  if(y==null||!isFinite(y)) return null;
+  const md=durationFromFlows(y,o.flows,o.key);
+  const cx=convexityFromFlows(y,o.flows,o.key);
+  const pv0=_pxsPV(y,o.flows,o.key);
+  if(md==null||cx==null||pv0==null) return null;
+  return {ticker:o.ticker,color:o.color||'var(--t)',mat:o.mat,px:o.pxShow!=null?o.pxShow:o.px,
+          y,md,cx,pv0,flows:o.flows,key:o.key};
+}
+
+function _pxsCerRows(settle){
+  if(typeof BONDS==='undefined') return [];
+  const ctx=_pxsCerContext();
+  if(!ctx) return [];
+  const key=(document.getElementById("pxsCerBase")?.value==='nominal')?'nominal':'real';
+  const out=[];
+  filterActive(BONDS).forEach(b=>{
+    const px=getCurrentPrice(b.id);
+    if(!(px>0)) return;
+    let flows=[];
+    try{ flows=getBondSchedule(b,settle,ctx.getCER,ctx.cerLiq); }catch(e){ return; }
+    const r=_pxsMakeRow({ticker:b.ticker,color:b.color,mat:b.mat,px,flows,key});
+    if(r) out.push(r);
+  });
+  out.note=(key==='real')?'flujos reales @ CER liq · shock sobre TIR real':'flujos nominales · shock sobre TIR nominal';
+  return out;
+}
+
+function _pxsFixedRows(settle){
+  if(typeof FIXED==='undefined') return [];
+  const out=[];
+  filterActive(FIXED).forEach(f=>{
+    const px=getCurrentPrice(f.id);
+    const matD=new Date(f.mat+"T00:00:00");
+    const days=DB(settle,matD);
+    if(!(px>0)||!(days>0)) return;
+    // VF = capitalización de la TEM de emisión sobre meses 30/360 (misma
+    // fórmula que calcFixedOne); si ya está calculado, se reusa.
+    let vf=(f._vf>0)?f._vf:null;
+    if(vf==null&&f.temIssue!=null&&f.emDate){
+      vf=100*Math.pow(1+f.temIssue, days360US(new Date(f.emDate+"T00:00:00"),matD)/30);
+    }
+    if(!(vf>0)) return;
+    const r=_pxsMakeRow({ticker:f.ticker,color:f.color,mat:f.mat,px,flows:[{days,nominal:vf}],key:'nominal'});
+    if(r) out.push(r);
+  });
+  return out;
+}
+
+function _pxsTamarRows(settle){
+  if(typeof TAMAR_BONDS==='undefined') return [];
+  const tmap=(typeof getTamarMap==='function')?getTamarMap():null;
+  const flat=(typeof getTamarProjectionDefaultTNA==='function')?getTamarProjectionDefaultTNA():null;
+  const out=[];
+  filterActive(TAMAR_BONDS).forEach(t=>{
+    const px=getCurrentPrice(t.id);
+    const days=DB(settle,new Date(t.mat+"T00:00:00"));
+    if(!(px>0)||!(days>0)) return;
+    let vd=null;
+    try{ vd=calcTamarValueData(t,tmap,flat); }catch(e){ return; }
+    if(!vd||!(vd.vf>0)) return;
+    const r=_pxsMakeRow({ticker:t.ticker,color:t.color,mat:t.mat,px,flows:[{days,nominal:vd.vf}],key:'nominal'});
+    if(r) out.push(r);
+  });
+  return out;
+}
+
+function _pxsDlRows(settle){
+  if(typeof DL_BONDS==='undefined') return [];
+  const spot=(typeof getFxSpot==='function')?getFxSpot():0;
+  if(!(spot>0)) return [];
+  const out=[];
+  filterActive(DL_BONDS).forEach(b=>{
+    const lp=_livePrices[b.ticker]||{};
+    const pxArs=lp.last||lp.mid||lp.bid||lp.ask||0;
+    const days=DB(settle,new Date(b.mat+"T00:00:00"));
+    if(!(pxArs>0)||!(days>0)) return;
+    // Cero cupón en dólares: 100 USD al vto. La TIR se saca sobre el precio
+    // dolarizado al A3500, pero el ΔP/P es el mismo en ARS con spot fijo.
+    const r=_pxsMakeRow({ticker:b.ticker,color:b.color,mat:b.mat,px:pxArs/spot,pxShow:pxArs,
+                         flows:[{days,nominal:100}],key:'nominal'});
+    if(r) out.push(r);
+  });
+  // `note` viaja pegada al array: el header de la curva la muestra como contexto.
+  out.note=`spot A3500 ${spot.toFixed(2)}`;
+  return out;
+}
+
+function _pxsUsdRows(settle){
+  if(typeof USD_BONDS==='undefined') return [];
+  const out=[];
+  filterActive(USD_BONDS).forEach(b=>{
+    const tk=(typeof usdBondPriceTicker==='function')?usdBondPriceTicker(b):b.ticker+'D';
+    const lp=_livePrices[tk]||{};
+    const px=lp.last||lp.mid||lp.bid||lp.ask||0;
+    if(!(px>0)) return;
+    let flows=[];
+    try{ flows=usdBondCashflows(b,settle); }catch(e){ return; }
+    const r=_pxsMakeRow({ticker:b.ticker,color:b.color,mat:b.mat,px,flows,key:'nominal'});
+    if(r) out.push(r);
+  });
+  return out;
+}
+
+const _PXS_CURVES=[
+  {id:'cer',   name:'Curva CER',                       build:_pxsCerRows,   pxLabel:'Precio (ARS)',
+   empty:'Sin bonos CER calculados — cargá CER base, CER liquidación y precios.'},
+  {id:'fixed', name:'Curva Tasa Fija — LECAP / BONCAP', build:_pxsFixedRows, pxLabel:'Precio (ARS)', tir:'TIR TEA (%)',
+   empty:'Sin instrumentos de tasa fija con precio.'},
+  {id:'tamar', name:'Curva TAMAR / DUAL',              build:_pxsTamarRows, pxLabel:'Precio (ARS)', tir:'TIREA (%)',
+   empty:'Sin TAMAR/DUAL con precio y proyección de TAMAR cargada.'},
+  {id:'dl',    name:'Curva Dollar Linked',             build:_pxsDlRows,    pxLabel:'Precio (ARS)', tir:'TIR USD (%)',
+   empty:'Sin Dollar Linked con precio live (requiere spot A3500).'},
+  {id:'usd',   name:'Curva USD Soberana — Bonares / Globales', build:_pxsUsdRows, pxLabel:'Precio (USD)', tir:'TIR USD (%)',
+   empty:'Sin bonos USD con precio live en el ticker D.'},
+];
+
+function _pxsPctApprox(r,bp){
+  const dy=bp/10000;
+  return (-r.md*dy + 0.5*r.cx*dy*dy)*100;
+}
+function _pxsPctExact(r,bp){
+  const pv=_pxsPV(r.y+bp/10000,r.flows,r.key);
+  return pv==null?null:(pv/r.pv0-1)*100;
+}
+
+// Heatmap divergente estilo PPT: amarillo → rojo para caídas, amarillo → verde
+// para subas, saturado contra el |Δ| máximo de la tabla (no del universo, así
+// una curva larga no aplana el contraste de una corta).
+function _pxsHeat(pct,maxAbs){
+  if(pct==null||!isFinite(pct)||!(maxAbs>0)) return '';
+  const t=Math.min(1,Math.abs(pct)/maxAbs);
+  const h=pct>=0 ? 62+78*t : 48-44*t;
+  const s=pct>=0 ? 62+18*t : 84+10*t;
+  const l=90-40*t;
+  return `background:hsl(${h.toFixed(0)} ${s.toFixed(0)}% ${l.toFixed(0)}%);color:${l>60?'#0a0f1a':'#fff'}`;
+}
+
+// Formato es-AR (coma decimal) y signo tipográfico −, igual que el reporte de
+// referencia. Toda la tarjeta usa estos helpers para no mezclar 107,37 con 28.17%.
+function _pxsFmtNum(v,dec){
+  if(v==null||!isFinite(v)) return '—';
+  const d=(dec==null)?2:dec;
+  return (v>=0?'':'−')+Math.abs(v).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});
+}
+const _pxsFmtPct=v=>(v==null||!isFinite(v))?'—':_pxsFmtNum(v,2)+'%';
+const _pxsFmtPx=v=>_pxsFmtNum(v,2);
+
+function _pxsHead(def,meta){
+  return `<div class="pxs-curve-hd">
+      <span class="pxs-curve-name" style="color:var(--acl)">${def.name}</span>
+      <span class="pxs-curve-meta">${meta||''}</span>
+    </div>`;
+}
+
+function _pxsRenderCurve(def,rows,shocks,mode,tirLabel){
+  if(!rows.length) return _pxsHead(def,'')+`<div class="pxs-empty">${def.empty}</div>`;
+  rows.sort((a,b)=>String(a.mat).localeCompare(String(b.mat)));
+  // +300, +200, +100 | −100, −200, −300 (igual que el reporte de referencia)
+  const cols=shocks.slice().reverse().concat(shocks.map(s=>-s));
+  const primary=(mode==='exact')?_pxsPctExact:_pxsPctApprox;
+  const grid=rows.map(r=>cols.map(bp=>primary(r,bp)));
+  let maxAbs=0;
+  grid.forEach(line=>line.forEach(v=>{ if(v!=null&&isFinite(v)) maxAbs=Math.max(maxAbs,Math.abs(v)); }));
+
+  const mds=rows.map(r=>r.md);
+  const maxShock=shocks[shocks.length-1];
+  const worst=rows.reduce((a,b)=>a.md>=b.md?a:b);
+  const meta=(rows.note?rows.note+' · ':'')
+    +`${rows.length} instrumentos · DM ${_pxsFmtNum(Math.min(...mds),2)}–${_pxsFmtNum(Math.max(...mds),2)}y · `
+    +`más sensible <b style="color:${worst.color}">${worst.ticker}</b> (${_pxsFmtPct(primary(worst,maxShock))} a +${maxShock}PB)`;
+
+  let h=_pxsHead(def,meta)+'<div class="pxs-wrap"><table class="pxs-tbl"><thead><tr>'
+    +'<th>Ticker</th><th>Fecha vto.</th><th>'+def.pxLabel+'</th><th>'+tirLabel+'</th><th>DM</th><th>CX</th>';
+  cols.forEach((bp,i)=>{
+    const sep=(i===0||bp<0&&cols[i-1]>0)?' class="pxs-sep"':'';
+    h+=`<th${sep}>Px ${bp>0?'+':'−'}${Math.abs(bp)}PB</th>`;
+  });
+  h+='</tr></thead><tbody>';
+
+  rows.forEach((r,ri)=>{
+    h+=`<tr><td style="color:${r.color}">${r.ticker}</td>`
+      +`<td>${new Date(r.mat+"T00:00:00").toLocaleDateString('es-AR')}</td>`
+      +`<td>${_pxsFmtPx(r.px)}</td>`
+      +`<td style="color:var(--acl)">${_pxsFmtPct(r.y*100)}</td>`
+      +`<td>${_pxsFmtNum(r.md,2)}</td>`
+      +`<td>${_pxsFmtNum(r.cx,2)}</td>`;
+    cols.forEach((bp,ci)=>{
+      const v=grid[ri][ci];
+      const sep=(ci===0||bp<0&&cols[ci-1]>0)?' pxs-sep':'';
+      if(v==null||!isFinite(v)){ h+=`<td class="pxs-shock${sep}">—</td>`; return; }
+      let inner=_pxsFmtPct(v);
+      if(mode==='both'){
+        const ex=_pxsPctExact(r,bp);
+        // error de Taylor en pb de precio: cuánto se equivoca DM+CX vs revaluar
+        const err=(ex!=null&&isFinite(ex))?(v-ex)*100:null;
+        inner+=`<div style="font-size:9px;font-weight:400;opacity:0.7">err ${err==null?'—':(err>=0?'+':'')+_pxsFmtNum(err,1)+'pb'}</div>`;
+      }
+      h+=`<td class="pxs-shock${sep}" style="${_pxsHeat(v,maxAbs)}">${inner}</td>`;
+    });
+    h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+  return h;
+}
+
+function calcPxSensitivity(){
+  const host=document.getElementById("pxsResult");
+  if(!host) return;
+  const settle=_pxsSettle();
+  const shocks=_pxsShocks();
+  const mode=document.getElementById("pxsMode")?.value||"approx";
+  const which=document.getElementById("pxsCurve")?.value||"all";
+  const cerBase=(document.getElementById("pxsCerBase")?.value==='nominal')?'nominal':'real';
+  const defs=_PXS_CURVES.filter(d=>which==='all'||d.id===which);
+
+  let html='', total=0;
+  defs.forEach(def=>{
+    let rows=[];
+    try{ rows=def.build(settle)||[]; }catch(e){ console.warn('[pxsens]',def.id,e); }
+    total+=rows.length;
+    const tirLabel=def.id==='cer' ? (cerBase==='real'?'TIR Real (%)':'TIR Nom. (%)') : def.tir;
+    html+=_pxsRenderCurve(def,rows,shocks,mode,tirLabel);
+  });
+  host.innerHTML=html;
+
+  const info=document.getElementById("pxsInfo");
+  if(info){
+    const modeTxt=mode==='exact'?'revaluación exacta':mode==='both'?'aprox + error':'aprox DM+CX';
+    info.innerHTML=`${total} instrumentos · settle ${settle.toLocaleDateString('es-AR')} · ${modeTxt}`
+      + (which==='all'||which==='cer' ? ` · CER shockeado en ${cerBase==='real'?'TIR real':'TIR nominal'}` : '');
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════════════
 // QUANT TOOLKIT v2 — Tab DESARROLLO (Quantplus)
