@@ -394,6 +394,28 @@
   .fwd-matrix td.fwd-hi{background:rgba(56,201,122,0.10);color:var(--pos)}
   .fwd-matrix td.fwd-lo{background:var(--negd);color:var(--neg)}
   .fwd-matrix td.fwd-mid{color:var(--t)}
+  .fwd-matrix td.fwd-clickable{cursor:pointer}
+  .fwd-matrix td.fwd-clickable:hover{outline:1px solid var(--gn);outline-offset:-1px}
+  .fwd-matrix td.fwd-active{outline:2px solid var(--gn);outline-offset:-2px;font-weight:700}
+  /* ── Panel de la celda de forward ── */
+  .fwdp{margin-top:8px;background:var(--bg);border:1px solid var(--cb);border-radius:6px;padding:10px}
+  .fwdp-hd{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+  .fwdp-ttl{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:var(--t)}
+  .fwdp-x{cursor:pointer;color:var(--td);font-size:14px;line-height:1;padding:0 4px}
+  .fwdp-x:hover{color:var(--t)}
+  .fwdp-legs{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px;margin-bottom:8px}
+  .fwdp-leg{background:var(--cd,#0d141d);border:1px solid var(--cb);border-radius:5px;padding:8px}
+  .fwdp-leg-hd{font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-bottom:5px}
+  .fwdp-leg-tk{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700}
+  .fwdp-row{display:flex;align-items:center;gap:8px;margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:11px}
+  .fwdp-row input{width:110px;background:var(--bg);color:var(--t);border:1px solid var(--cb);border-radius:4px;
+                  padding:3px 6px;font-family:'IBM Plex Mono',monospace;font-size:11px;text-align:right}
+  .fwdp-row input.fwdp-edited{border-color:var(--am);color:var(--am)}
+  .fwdp-mkt{color:var(--td);font-size:10px}
+  .fwdp-out{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;align-items:end}
+  .fwdp-kpi{background:var(--cd,#0d141d);border:1px solid var(--cb);border-radius:5px;padding:7px 9px}
+  .fwdp-kpi .v{font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:700;line-height:1.1}
+  .fwdp-kpi .l{font-size:9px;text-transform:uppercase;letter-spacing:0.06em;color:var(--td);margin-top:3px}
   /* Quant additions */
   .stress-grid{display:grid;gap:2px;font-family:'IBM Plex Mono',monospace;font-size:var(--fs-xs)}
   .stress-cell{padding:4px 6px;text-align:center;border-radius:var(--r-sm);white-space:nowrap}
@@ -1121,16 +1143,16 @@
 <!-- FORWARD MATRICES -->
 <div class="card" id="fwdCard" style="display:none">
   <div class="st">Matrices de Tasas Forward (TNA implicita entre plazos)</div>
-  <div class="note" style="margin-bottom:8px">Forward TNA = ((1+TEM₂)^(d₂/30) / (1+TEM₁)^(d₁/30) − 1) × 365/(d₂−d₁). Capitalización por TEM, anualización base 365.</div>
-  <div style="margin-bottom:12px">
+  <div class="note" style="margin-bottom:8px">Forward TNA = ((1+TEM₂)^(d₂/30) / (1+TEM₁)^(d₁/30) − 1) × 365/(d₂−d₁). Capitalización por TEM, anualización base 365. <b>Tocá cualquier celda</b> para ver qué precio usa cada pata y recalcular el forward con los tuyos.</div>
+  <div id="fwdFXBlock" style="margin-bottom:12px">
     <div class="il" style="color:var(--fx);margin-bottom:4px">Forward LECAP / BONCAP (TNA)</div>
     <div style="overflow-x:auto"><div id="fwdFXMatrix"></div></div>
   </div>
-  <div style="margin-bottom:12px">
+  <div id="fwdCERNomBlock" style="margin-bottom:12px">
     <div class="il" style="color:var(--ac);margin-bottom:4px">Forward CER Nominal (TNA equiv tasa fija)</div>
     <div style="overflow-x:auto"><div id="fwdCERNomMatrix"></div></div>
   </div>
-  <div style="margin-bottom:12px">
+  <div id="fwdCERRealBlock" style="margin-bottom:12px">
     <div class="il" style="color:var(--am);margin-bottom:4px">Forward CER Real (TNA CER+)</div>
     <div style="overflow-x:auto"><div id="fwdCERRealMatrix"></div></div>
   </div>
@@ -1144,6 +1166,8 @@
     <div class="note" style="margin:0 0 6px 0">Devaluación forward entre dos posiciones del futuro: TEA implícita de cada una = (Futuro / Spot)^(365/d) − 1, y el forward es la tasa del tramo entre ambas. Es la curva de devaluación pura contra la que se compara la DL — si el forward DL de un tramo paga más que el de ROFEX, ese tramo del sintético está barato. <b>Ojo con el plazo:</b> los futuros liquidan T+0, así que sus días se cuentan desde <b>hoy</b>, no desde el settle T+1 de las matrices de bonos. <span id="fwdROFEXSpot" style="color:var(--td)"></span></div>
     <div style="overflow-x:auto"><div id="fwdROFEXMatrix"></div></div>
   </div>
+  <!-- Panel de la celda clickeada: se mueve al bloque de la matriz activa -->
+  <div id="fwdPanel" style="display:none"></div>
 </div>
 
 <!-- CALCULATORS -->
@@ -12019,9 +12043,27 @@ function buildQuantDashboard(){
   ranking.innerHTML=rk;
 }
 
-function buildForwardMatrix(items, containerID){
+// Fórmula única del forward: la usan la celda de la matriz y el panel de la
+// celda, así que no pueden divergir aunque se edite el precio de una pata.
+function fwdTemOf(it){
+  return it.tem||(Math.pow(1+(it.tea||0)/100,30/365)-1);
+}
+function fwdRateBetween(r,c){
+  const dd=c.days-r.days;
+  if(!(dd>0)) return null;
+  const fv=Math.pow(1+fwdTemOf(c), c.days/30)/Math.pow(1+fwdTemOf(r), r.days/30);
+  const fwd=(fv-1)*365/dd*100;
+  return isFinite(fwd)?fwd:null;
+}
+
+// Registro de matrices renderizadas — el panel necesita volver a los items
+// (con sus closures de repricing) a partir de los índices de la celda tocada.
+const _FWD_MATRICES={};
+
+function buildForwardMatrix(items, containerID, key){
   const el=document.getElementById(containerID);
   if(!el||!items.length){if(el)el.innerHTML="";return}
+  if(key) _FWD_MATRICES[key]={items, containerID};
   const n=items.length;
   const avg=items.reduce((s,i)=>s+i.tna,0)/n;
   let html='<table class="fwd-matrix"><thead><tr><th></th>';
@@ -12031,21 +12073,192 @@ function buildForwardMatrix(items, containerID){
     html+=`<tr><th>${r.ticker} ${r.days}d</th>`;
     items.forEach((c,ci)=>{
       if(ci<=ri){html+='<td style="background:var(--bg);color:var(--tm)">—</td>';return}
-      const dd=c.days-r.days;
-      if(dd<=0){html+='<td>—</td>';return}
-      const tem_c=c.tem||(Math.pow(1+(c.tea||0)/100,30/365)-1);
-      const tem_r=r.tem||(Math.pow(1+(r.tea||0)/100,30/365)-1);
-      const fv_c=Math.pow(1+tem_c, c.days/30);
-      const fv_r=Math.pow(1+tem_r, r.days/30);
-      const fwdFactor=fv_c/fv_r;
-      const fwd=(fwdFactor-1)*365/dd*100;
+      const fwd=fwdRateBetween(r,c);
+      if(fwd==null){html+='<td>—</td>';return}
       const cls=fwd>avg*1.03?"fwd-hi":fwd<avg*0.97?"fwd-lo":"fwd-mid";
-      html+=`<td class="${cls}">${fwd.toFixed(2)}%</td>`;
+      const attrs=key
+        ? ` data-ri="${ri}" data-ci="${ci}" onclick="fwdOpenCell('${key}',${ri},${ci})" title="${r.ticker} → ${c.ticker} · tocá para ver precios y recalcular"`
+        : '';
+      html+=`<td class="${cls}${key?' fwd-clickable':''}"${attrs}>${fwd.toFixed(2)}%</td>`;
     });
     html+='</tr>';
   });
   html+='</tbody></table>';
   el.innerHTML=html;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PANEL DE LA CELDA DE FORWARD
+   Muestra de qué precio salió cada pata y deja pisarlo para recalcular ese
+   forward puntual. La matriz NO se recalcula: sigue mostrando mercado, así
+   no hay forma de confundir un número propio con uno de pantalla.
+   Los overrides son por (matriz, ticker) y sobreviven mientras navegás celdas
+   de la misma matriz — si tocás una pata que ya editaste, se respeta.
+   ══════════════════════════════════════════════════════════════════════ */
+const _fwdOvr={};        // `${key}|${ticker}` → precio del usuario
+let _fwdSel=null;        // {key, ri, ci}
+
+const _fwdBlockOf={fx:"fwdFXBlock", cerNom:"fwdCERNomBlock", cerReal:"fwdCERRealBlock",
+                   dl:"fwdDLBlock", rofex:"fwdROFEXBlock"};
+const _fwdNameOf={fx:"LECAP / BONCAP", cerNom:"CER Nominal", cerReal:"CER Real",
+                  dl:"Dollar Linked", rofex:"ROFEX"};
+// Etiqueta de la tasa de cada pata: no es lo mismo una TEA en pesos que una en
+// dólares, y el panel muestra el número sin la matriz alrededor que lo aclare.
+const _fwdTeaLabelOf={fx:"TIR TEA", cerNom:"TIR Nom. TEA", cerReal:"TIR Real TEA",
+                      dl:"TIR USD TEA", rofex:"Devaluación TEA"};
+
+// Un precio mal tipeado dispara la tasa implícita a valores sin sentido (y la
+// TEA equivalente, que eleva a 365/dd, sale en notación científica). Por encima
+// del techo se muestra "—" y un aviso, en vez de un número que no dice nada.
+const FWD_RATE_MAX=1e5;      // 100.000% TNA
+const FWD_TEA_MAX=1e4;       // 10.000% TEA
+function fwdFmtRate(v,max){
+  const cap=max||FWD_RATE_MAX;
+  return (v==null||!isFinite(v)||Math.abs(v)>cap)?'—':v.toFixed(2)+'%';
+}
+
+// Item con el override aplicado (si hay). Devuelve el original si el precio
+// editado no produce una tasa válida, para que el panel no quede en blanco.
+function _fwdEffItem(key,it){
+  const ovr=_fwdOvr[key+'|'+it.ticker];
+  if(ovr==null||!(ovr>0)||typeof it.reprice!=='function') return it;
+  const re=it.reprice(ovr);
+  return re?{...it,...re,px:ovr,edited:true}:it;
+}
+
+function fwdOpenCell(key,ri,ci){
+  const m=_FWD_MATRICES[key];
+  if(!m||!m.items[ri]||!m.items[ci]) return;
+  _fwdSel={key,ri,ci};
+  fwdRenderPanel();
+}
+
+function fwdClosePanel(){
+  _fwdSel=null;
+  const p=document.getElementById("fwdPanel");
+  if(p){ p.style.display="none"; p.innerHTML=""; }
+  document.querySelectorAll(".fwd-matrix td.fwd-active").forEach(td=>td.classList.remove("fwd-active"));
+}
+
+function fwdSetPrice(leg,raw){
+  if(!_fwdSel) return;
+  const m=_FWD_MATRICES[_fwdSel.key];
+  if(!m) return;
+  const it=m.items[leg==='r'?_fwdSel.ri:_fwdSel.ci];
+  if(!it) return;
+  // input de texto (no number) para poder restaurar el cursor al re-renderizar;
+  // se acepta coma decimal porque es lo que se tipea acá.
+  const v=parseFloat(String(raw).replace(',','.'));
+  const k=_fwdSel.key+'|'+it.ticker;
+  if(!(v>0)) delete _fwdOvr[k]; else _fwdOvr[k]=v;
+  fwdRenderPanel(true);
+}
+
+function fwdResetPrices(){
+  if(!_fwdSel) return;
+  Object.keys(_fwdOvr).forEach(k=>{ if(k.startsWith(_fwdSel.key+'|')) delete _fwdOvr[k]; });
+  fwdRenderPanel();
+}
+
+// keepFocus: al tipear se re-renderiza el panel entero, así que hay que
+// devolver el cursor al input que se estaba editando (y su posición).
+function fwdRenderPanel(keepFocus){
+  const panel=document.getElementById("fwdPanel");
+  if(!panel) return;
+  if(!_fwdSel){ fwdClosePanel(); return; }
+  const {key,ri,ci}=_fwdSel;
+  const m=_FWD_MATRICES[key];
+  if(!m){ fwdClosePanel(); return; }
+
+  const active=document.activeElement;
+  const focusId=(keepFocus&&active&&active.id&&active.id.startsWith("fwdPx"))?active.id:null;
+  const caret=focusId?active.selectionStart:null;
+  // El texto crudo, no el formateado: si no, tipear "125" se reescribe como
+  // "125.00" en el medio y el cursor salta.
+  const rawVal=focusId?active.value:null;
+
+  // Panel al pie del bloque de la matriz tocada, y marca de la celda activa
+  const block=document.getElementById(_fwdBlockOf[key]);
+  if(block&&panel.parentElement!==block) block.appendChild(panel);
+  document.querySelectorAll(".fwd-matrix td.fwd-active").forEach(td=>td.classList.remove("fwd-active"));
+  const cont=document.getElementById(m.containerID);
+  const cell=cont&&cont.querySelector(`td[data-ri="${ri}"][data-ci="${ci}"]`);
+  if(cell) cell.classList.add("fwd-active");
+
+  const rawR=m.items[ri], rawC=m.items[ci];
+  const effR=_fwdEffItem(key,rawR), effC=_fwdEffItem(key,rawC);
+  const mktFwd=fwdRateBetween(rawR,rawC);
+  const myFwd=fwdRateBetween(effR,effC);
+  const dd=rawC.days-rawR.days;
+  const edited=!!(effR.edited||effC.edited);
+  const diffBps=(edited&&mktFwd!=null&&myFwd!=null)?(myFwd-mktFwd)*100:null;
+  const dec=2;
+  const teaLbl=_fwdTeaLabelOf[key]||"TEA";
+
+  const legHtml=(leg,raw,eff,rol)=>{
+    const id="fwdPx"+leg;
+    const mkt=raw.px;
+    return `<div class="fwdp-leg">
+      <div class="fwdp-leg-hd">${rol} · ${raw.days} días</div>
+      <div class="fwdp-leg-tk">${raw.ticker}<span style="color:var(--td);font-weight:400;font-size:11px"> · vto ${raw.mat?new Date(raw.mat+"T00:00:00").toLocaleDateString('es-AR'):'—'}</span></div>
+      <div class="fwdp-row">
+        <span style="color:var(--td)">${raw.pxLabel||'Precio'}</span>
+        <input type="text" inputmode="decimal" id="${id}" class="${eff.edited?'fwdp-edited':''}"
+               value="${(eff.px!=null&&isFinite(eff.px))?eff.px.toFixed(dec):''}"
+               oninput="fwdSetPrice('${leg}',this.value)">
+        ${eff.edited?`<span class="fwdp-mkt">mercado ${mkt!=null&&isFinite(mkt)?mkt.toFixed(dec):'—'}</span>`:'<span class="fwdp-mkt">de mercado</span>'}
+      </div>
+      <div class="fwdp-row">
+        <span style="color:var(--td)">${teaLbl}</span>
+        <b style="color:${eff.edited?'var(--am)':'var(--acl)'}">${fwdFmtRate(eff.tea)}</b>
+        <span class="fwdp-mkt">TNA ${fwdFmtRate(eff.tna)}</span>
+      </div>
+    </div>`;
+  };
+
+  const fwdTea=(myFwd!=null&&dd>0)?(Math.pow(1+myFwd/100*dd/365,365/dd)-1)*100:null;
+  const outOfRange=[effR.tea,effC.tea,myFwd].some(v=>v==null||!isFinite(v)||Math.abs(v)>FWD_RATE_MAX);
+
+  panel.style.display="";
+  panel.innerHTML=`<div class="fwdp">
+    <div class="fwdp-hd">
+      <div class="fwdp-ttl">${_fwdNameOf[key]||key}: ${rawR.ticker} → ${rawC.ticker}
+        <span style="color:var(--td);font-weight:400"> · tramo de ${dd} días</span></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        ${edited?'<button class="btn-api btn-sm" onclick="fwdResetPrices()">Volver a mercado</button>':''}
+        <span class="fwdp-x" onclick="fwdClosePanel()" title="Cerrar">✕</span>
+      </div>
+    </div>
+    <div class="fwdp-legs">
+      ${legHtml('r',rawR,effR,'Pata corta')}
+      ${legHtml('c',rawC,effC,'Pata larga')}
+    </div>
+    <div class="fwdp-out">
+      <div class="fwdp-kpi">
+        <div class="v" style="color:${edited?'var(--am)':'var(--gn)'}">${fwdFmtRate(myFwd)}</div>
+        <div class="l">Forward TNA${edited?' (tus precios)':''}</div>
+      </div>
+      <div class="fwdp-kpi">
+        <div class="v" style="color:var(--t)">${fwdFmtRate(fwdTea,FWD_TEA_MAX)}</div>
+        <div class="l">Forward TEA equivalente</div>
+      </div>
+      ${edited?`<div class="fwdp-kpi">
+        <div class="v" style="color:var(--td)">${fwdFmtRate(mktFwd)}</div>
+        <div class="l">Forward de mercado</div>
+      </div>
+      <div class="fwdp-kpi">
+        <div class="v" style="color:${diffBps==null?'var(--td)':diffBps>=0?'var(--pos)':'var(--neg)'}">${(diffBps==null||!isFinite(diffBps)||Math.abs(diffBps)>1e6)?'—':(diffBps>=0?'+':'')+diffBps.toFixed(0)+' bps'}</div>
+        <div class="l">Diferencia vs mercado</div>
+      </div>`:''}
+    </div>
+    ${outOfRange?'<div class="note" style="margin:8px 0 0 0;color:var(--neg)">La tasa implícita se dispara con ese precio — revisá que esté en la unidad correcta del instrumento.</div>':''}
+    <div class="note" style="margin:8px 0 0 0">Editar precios acá <b>no toca la matriz</b>: arriba seguís viendo mercado. Los precios que pises quedan aplicados a ese instrumento mientras recorrés otras celdas de esta misma matriz.</div>
+  </div>`;
+
+  if(focusId){
+    const el=document.getElementById(focusId);
+    if(el){ el.value=rawVal; el.focus(); try{ el.setSelectionRange(caret,caret); }catch(_e){} }
+  }
 }
 
 // Forward-Forward Implied Inflation: exact inflation between two curve nodes
@@ -12068,22 +12281,50 @@ function buildAllForwardMatrices(){
   const sd=document.getElementById("settleDate").value;
   const settle=new Date(sd+"T00:00:00");
 
-  const fxItems=FIXED.filter(f=>f._ok&&f._tna!=null).map(f=>({
-    ticker:f.ticker, days:DB(settle,new Date(f.mat+"T00:00:00")), tna:f._tna, tea:f._tea,
-    tem:f._temCurrent/100
-  })).sort((a,b)=>a.days-b.days);
-
-  const cerNomItems=BONDS.filter(b=>b._ok&&b._tnaTF!=null).map(b=>{
-    const days=DB(settle,new Date(b.mat+"T00:00:00"));
-    return {ticker:b.ticker, days, tna:b._tnaTF, tea:b._tn,
-      tem:Math.pow(1+(b._tn||0)/100,30/365)-1};
+  // `px` = el precio del que efectivamente salió la tasa de ese nodo (no el que
+  // "debería" usar): así el panel muestra el input real de la matriz. `reprice`
+  // recalcula tna/tea/tem para un precio distinto, replicando exactamente la
+  // cuenta original de cada curva — sin eso, editar un precio daría un forward
+  // que no empalma con el de la celda.
+  const fxItems=FIXED.filter(f=>f._ok&&f._tna!=null).map(f=>{
+    const matD=new Date(f.mat+"T00:00:00");
+    const days=DB(settle,matD);
+    const monthsRem=Math.max(days360US(settle,matD)/30, days/30);
+    return {ticker:f.ticker, days, mat:f.mat, tna:f._tna, tea:f._tea,
+      tem:f._temCurrent/100, px:f._price, pxLabel:'Precio (ARS)',
+      // mismo cálculo que calcFixedOne: VF fijo, TEM sobre meses 30/360
+      reprice:(npx)=>{
+        if(!(npx>0)||!(f._vf>0)||!(days>0)) return null;
+        const tea=(Math.pow(f._vf/npx,365/days)-1)*100;
+        if(!isFinite(tea)) return null;
+        return {tea, tna:((Math.pow(1+tea/100,days/365)-1)*(365/days))*100,
+                tem:Math.pow(f._vf/npx,1/Math.max(monthsRem,1e-9))-1};
+      }};
   }).sort((a,b)=>a.days-b.days);
 
-  const cerRealItems=BONDS.filter(b=>b._ok&&b._tnaReal!=null).map(b=>{
+  // CER: el repricing vuelve a correr XIRR sobre los cashflows del bono, que es
+  // lo que hizo calculate(). Los flujos se arman una sola vez por bono y quedan
+  // capturados en la closure — no se reconstruyen en cada tecla.
+  const cerCtx=(typeof _pxsCerContext==='function')?_pxsCerContext():null;
+  const mkCerItems=(tnaKey,teaKey,flowKey)=>BONDS.filter(b=>b._ok&&b[tnaKey]!=null).map(b=>{
     const days=DB(settle,new Date(b.mat+"T00:00:00"));
-    return {ticker:b.ticker, days, tna:b._tnaReal, tea:b._tr,
-      tem:Math.pow(1+(b._tr||0)/100,30/365)-1};
+    let flows=[];
+    if(cerCtx){ try{ flows=getBondSchedule(b,settle,cerCtx.getCER,cerCtx.cerLiq); }catch(e){} }
+    return {ticker:b.ticker, days, mat:b.mat, tna:b[tnaKey], tea:b[teaKey],
+      tem:Math.pow(1+(b[teaKey]||0)/100,30/365)-1,
+      px:parseFloat(document.getElementById("p_"+b.id)?.value)||0, pxLabel:'Precio (ARS)',
+      reprice:(npx)=>{
+        if(!(npx>0)||!flows.length||!(days>0)) return null;
+        const y=xirrFromFlows(npx,flows,flowKey);
+        if(y==null||!isFinite(y)) return null;
+        const tea=y*100;
+        return {tea, tna:((Math.pow(1+tea/100,days/365)-1)*(365/days))*100,
+                tem:Math.pow(1+tea/100,30/365)-1};
+      }};
   }).sort((a,b)=>a.days-b.days);
+
+  const cerNomItems=mkCerItems('_tnaTF','_tn','nominal');
+  const cerRealItems=mkCerItems('_tnaReal','_tr','real');
 
   // Dollar Linked: la curva es de tasa EN DÓLARES. El bono paga 100 USD al vto,
   // así que dolarizando el precio al A3500 la TIR sale de (100/pxUsd)^(365/d)−1.
@@ -12099,8 +12340,15 @@ function buildAllForwardMatrices(){
       if(!(accrual>0)) return null;
       const tea=(Math.pow(accrual,365/days)-1)*100;
       if(!isFinite(tea)) return null;
-      return {ticker:b.ticker, days, tna:(accrual-1)*365/days*100, tea,
-        tem:Math.pow(1+tea/100,30/365)-1};
+      return {ticker:b.ticker, days, mat:b.mat, tna:(accrual-1)*365/days*100, tea,
+        tem:Math.pow(1+tea/100,30/365)-1, px:lp.last, pxLabel:'Precio (ARS)',
+        reprice:(npx)=>{
+          if(!(npx>0)||!(days>0)||!(spot>0)) return null;
+          const acc=100*spot/npx;
+          const t=(Math.pow(acc,365/days)-1)*100;
+          if(!isFinite(t)) return null;
+          return {tea:t, tna:(acc-1)*365/days*100, tem:Math.pow(1+t/100,30/365)-1};
+        }};
     }).filter(Boolean).sort((a,b)=>a.days-b.days);
 
   // ROFEX: curva de devaluación pura. TEA implícita = (futuro/spot)^(365/d)−1.
@@ -12117,17 +12365,26 @@ function buildAllForwardMatrices(){
       if(!(ratio>0)) return null;
       const tea=(Math.pow(ratio,365/d)-1)*100;
       if(!isFinite(tea)) return null;
-      return {ticker:f.ticker.replace("DLR/",""), days:d, tna:(ratio-1)*365/d*100, tea,
-        tem:Math.pow(1+tea/100,30/365)-1};
+      return {ticker:f.ticker.replace("DLR/",""), days:d, mat:f.exp, tna:(ratio-1)*365/d*100, tea,
+        tem:Math.pow(1+tea/100,30/365)-1, px:lp.last, pxLabel:'Futuro ($/USD)',
+        reprice:(npx)=>{
+          if(!(npx>0)||!(d>0)||!(spot>0)) return null;
+          const rt=npx/spot;
+          const t=(Math.pow(rt,365/d)-1)*100;
+          if(!isFinite(t)) return null;
+          return {tea:t, tna:(rt-1)*365/d*100, tem:Math.pow(1+t/100,30/365)-1};
+        }};
     }).filter(Boolean).sort((a,b)=>a.days-b.days);
 
   if(fxItems.length>1||cerNomItems.length>1||dlItems.length>1||rofItems.length>1){
     card.style.display="";
-    buildForwardMatrix(fxItems,"fwdFXMatrix");
-    buildForwardMatrix(cerNomItems,"fwdCERNomMatrix");
-    buildForwardMatrix(cerRealItems,"fwdCERRealMatrix");
-    buildForwardMatrix(dlItems,"fwdDLMatrix");
-    buildForwardMatrix(rofItems,"fwdROFEXMatrix");
+    // El panel abierto apunta a items viejos: se cierra antes de re-renderizar.
+    fwdClosePanel();
+    buildForwardMatrix(fxItems,"fwdFXMatrix","fx");
+    buildForwardMatrix(cerNomItems,"fwdCERNomMatrix","cerNom");
+    buildForwardMatrix(cerRealItems,"fwdCERRealMatrix","cerReal");
+    buildForwardMatrix(dlItems,"fwdDLMatrix","dl");
+    buildForwardMatrix(rofItems,"fwdROFEXMatrix","rofex");
     // DL y ROFEX viven de precios live: si no hay al menos 2 nodos no se
     // muestra el título colgado sin matriz debajo.
     const spotTxt=(spot>0)?`Spot A3500 usado: ${spot.toFixed(2)}.`:"";
