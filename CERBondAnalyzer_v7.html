@@ -1168,6 +1168,13 @@
     <div class="note" style="margin:0 0 6px 0">Devaluación forward entre dos posiciones del futuro: TEA implícita de cada una = (Futuro / Spot)^(365/d) − 1, y el forward es la tasa del tramo entre ambas. Es la curva de devaluación pura contra la que se compara la DL — si el forward DL de un tramo paga más que el de ROFEX, ese tramo del sintético está barato. <b>Ojo con el plazo:</b> los futuros liquidan T+0, así que sus días se cuentan desde <b>hoy</b>, no desde el settle T+1 de las matrices de bonos. <span id="fwdROFEXSpot" style="color:var(--td)"></span></div>
     <div style="overflow-x:auto"><div id="fwdROFEXMatrix"></div></div>
   </div>
+  <div id="fwdArbBlock" style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid var(--cb)">
+    <div class="il" style="color:var(--ac-syn);margin-bottom:4px">DL vs Sintético (ROFEX + tasa pesos) — spread forward por tramo</div>
+    <div class="note" style="margin:0 0 6px 0"><b>Ojo con qué se compara con qué:</b> el forward de la curva DL es un <b>rendimiento en dólares</b>; el de ROFEX es una <b>tasa de devaluación</b>. Restarlos directo no significa nada. El sintético equivalente es colocar pesos y comprar el futuro: su rendimiento en dólares es <code>(1+tasa pesos)/(1+devaluación) − 1</code>, y <b>eso</b> es lo comparable contra la DL.<br>
+    Cada fila parte la curva en tramos entre vencimientos DL consecutivos. Las curvas de ROFEX y LECAP se interpolan a esas mismas fechas por <i>flat forward</i> (lineal sobre el log del factor de capitalización), que es la convención que deja el forward constante dentro de cada tramo. <b>No se extrapola:</b> los tramos más largos que el último futuro o la última LECAP quedan en "—".<br>
+    <b style="color:var(--ac)">Spread &gt; 0</b> = la DL paga más que el sintético en ese tramo → DL barata. <b style="color:var(--neg)">Spread &lt; 0</b> = conviene armar el sintético. <span id="fwdArbNote" style="color:var(--td)"></span></div>
+    <div style="overflow-x:auto"><div id="fwdArbTable"></div></div>
+  </div>
   <!-- Panel de la celda clickeada: se mueve al bloque de la matriz activa -->
   <div id="fwdPanel" style="display:none"></div>
 </div>
@@ -7275,6 +7282,9 @@ function renderResumenCurves(){
   // ni de la pestaña FX. Antes esto vivía después del early-return de abajo,
   // así que sin haber apretado "Calcular todo" no se dibujaban nunca.
   refreshFxCurvePoints();
+  // Las matrices forward de DL y ROFEX se cuelgan del mismo tick: colgadas sólo
+  // de calculate() quedaban stale con el mercado de bonos quieto.
+  try{ refreshFxForwardMatrices(); }catch(_e){ console.warn('[fwd-fx]',_e); }
   if(_dlCurvePoints.length||_dlCurvePrevPoints.length){
     const pts=_dlCurvePoints.concat(_dlCurvePrevPoints);
     const mx=Math.max.apply(null,pts.map(p=>p.x))*1.1;
@@ -12394,76 +12404,257 @@ function buildAllForwardMatrices(){
   const cerNomItems=mkCerItems('_tnaTF','_tn','nominal');
   const cerRealItems=mkCerItems('_tnaReal','_tr','real');
 
-  // Dollar Linked: la curva es de tasa EN DÓLARES. El bono paga 100 USD al vto,
-  // así que dolarizando el precio al A3500 la TIR sale de (100/pxUsd)^(365/d)−1.
-  // El forward entre dos nodos es entonces la tasa USD implícita en ese tramo.
-  // Precio: lp.last, igual que el resto de los consumidores de DL de la app.
   const spot=(typeof getFxSpot==='function')?getFxSpot():0;
-  const dlItems=(typeof DL_BONDS==='undefined'||!(spot>0)) ? [] :
-    filterActive(DL_BONDS).map(b=>{
-      const lp=_livePrices[b.ticker]||{};
-      const days=DB(settle,new Date(b.mat+"T00:00:00"));
-      if(!(lp.last>0)||days<=0) return null;
-      const accrual=100*spot/lp.last;             // factor de acretamiento a vto
-      if(!(accrual>0)) return null;
-      const tea=(Math.pow(accrual,365/days)-1)*100;
-      if(!isFinite(tea)) return null;
-      return {ticker:b.ticker, days, mat:b.mat, tna:(accrual-1)*365/days*100, tea,
-        tem:Math.pow(1+tea/100,30/365)-1, px:lp.last, pxLabel:'Precio (ARS)',
-        reprice:(npx)=>{
-          if(!(npx>0)||!(days>0)||!(spot>0)) return null;
-          const acc=100*spot/npx;
-          const t=(Math.pow(acc,365/days)-1)*100;
-          if(!isFinite(t)) return null;
-          return {tea:t, tna:(acc-1)*365/days*100, tem:Math.pow(1+t/100,30/365)-1};
-        }};
-    }).filter(Boolean).sort((a,b)=>a.days-b.days);
+  const dlItems=fwdBuildDlItems(settle,spot);
 
-  // ROFEX: curva de devaluación pura. TEA implícita = (futuro/spot)^(365/d)−1.
-  // Los futuros liquidan T+0, así que los días van desde HOY y no desde el
-  // settle T+1 que usan las matrices de bonos — dentro de esta matriz el
-  // criterio es uniforme, pero no hay que cruzar los plazos con las otras.
-  const todayRof=new Date(); todayRof.setHours(0,0,0,0);
-  const rofItems=(typeof ROFEX_FUTURES==='undefined'||!(spot>0)) ? [] :
-    ROFEX_FUTURES.map(f=>{
-      const lp=_livePrices[f.ticker]||{};
-      const d=DB(todayRof,new Date(f.exp+"T00:00:00"));
-      if(!(lp.last>0)||d<=0) return null;
-      const ratio=lp.last/spot;
-      if(!(ratio>0)) return null;
-      const tea=(Math.pow(ratio,365/d)-1)*100;
-      if(!isFinite(tea)) return null;
-      return {ticker:f.ticker.replace("DLR/",""), days:d, mat:f.exp, tna:(ratio-1)*365/d*100, tea,
-        tem:Math.pow(1+tea/100,30/365)-1, px:lp.last, pxLabel:'Futuro ($/USD)',
-        reprice:(npx)=>{
-          if(!(npx>0)||!(d>0)||!(spot>0)) return null;
-          const rt=npx/spot;
-          const t=(Math.pow(rt,365/d)-1)*100;
-          if(!isFinite(t)) return null;
-          return {tea:t, tna:(rt-1)*365/d*100, tem:Math.pow(1+t/100,30/365)-1};
-        }};
-    }).filter(Boolean).sort((a,b)=>a.days-b.days);
+  const rofItems=fwdBuildRofItems(spot);
 
   if(fxItems.length>1||cerNomItems.length>1||dlItems.length>1||rofItems.length>1){
     card.style.display="";
     buildForwardMatrix(fxItems,"fwdFXMatrix","fx");
     buildForwardMatrix(cerNomItems,"fwdCERNomMatrix","cerNom");
     buildForwardMatrix(cerRealItems,"fwdCERRealMatrix","cerReal");
-    buildForwardMatrix(dlItems,"fwdDLMatrix","dl");
-    buildForwardMatrix(rofItems,"fwdROFEXMatrix","rofex");
-    // DL y ROFEX viven de precios live: si no hay al menos 2 nodos no se
-    // muestra el título colgado sin matriz debajo.
-    const spotTxt=(spot>0)?`Spot A3500 usado: ${spot.toFixed(2)}.`:"";
-    [["fwdDLBlock","fwdDLSpot",dlItems],["fwdROFEXBlock","fwdROFEXSpot",rofItems]].forEach(([blockId,spotId,items])=>{
-      const block=document.getElementById(blockId);
-      if(block) block.style.display=(items.length>1)?"":"none";
-      const spotEl=document.getElementById(spotId);
-      if(spotEl) spotEl.textContent=spotTxt;
-    });
+    fwdRenderFxMatrices(dlItems,rofItems,spot,fxItems);
     // El panel de la celda NO se cierra con el refresh del feed: se reengancha
     // a los items nuevos (por ticker) y respeta que estés tipeando.
     fwdRefreshAfterRebuild();
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   DL y ROFEX viven del feed, no de calculate()
+   updateLivePrice() sólo encadena scheduleAutoCalc() para CER, FIXED y TAMAR:
+   un tick de un futuro o de un DL no dispara nada. Con las matrices colgadas
+   sólo de calculate() se refrescaban de rebote, cuando algún bono en pesos
+   tickeaba — y con el mercado de bonos quieto quedaban mostrando futuros
+   viejos sin ningún indicador de que lo eran. Estos builders se exponen aparte
+   para poder reconstruir esas dos matrices desde renderResumenCurves(), que sí
+   corre en cada tick.
+   ══════════════════════════════════════════════════════════════════════ */
+function fwdSettleDate(){
+  const sd=document.getElementById("settleDate")?.value;
+  if(sd) return new Date(sd+"T00:00:00");
+  const today=new Date(); today.setHours(0,0,0,0);
+  return (typeof ABD==='function')?ABD(today,1):today;
+}
+
+// Dollar Linked: la curva es de tasa EN DÓLARES. El bono paga 100 USD al vto,
+// así que dolarizando el precio al A3500 la TIR sale de (100/pxUsd)^(365/d)−1.
+// Precio: lp.last, igual que el resto de los consumidores de DL de la app.
+function fwdBuildDlItems(settle,spot){
+  if(typeof DL_BONDS==='undefined'||!(spot>0)) return [];
+  return filterActive(DL_BONDS).map(b=>{
+    const lp=_livePrices[b.ticker]||{};
+    const days=DB(settle,new Date(b.mat+"T00:00:00"));
+    if(!(lp.last>0)||days<=0) return null;
+    const accrual=100*spot/lp.last;             // factor de acretamiento a vto
+    if(!(accrual>0)) return null;
+    const tea=(Math.pow(accrual,365/days)-1)*100;
+    if(!isFinite(tea)) return null;
+    return {ticker:b.ticker, days, mat:b.mat, tna:(accrual-1)*365/days*100, tea,
+      tem:Math.pow(1+tea/100,30/365)-1, px:lp.last, pxLabel:'Precio (ARS)',
+      reprice:(npx)=>{
+        if(!(npx>0)||!(days>0)||!(spot>0)) return null;
+        const acc=100*spot/npx;
+        const t=(Math.pow(acc,365/days)-1)*100;
+        if(!isFinite(t)) return null;
+        return {tea:t, tna:(acc-1)*365/days*100, tem:Math.pow(1+t/100,30/365)-1};
+      }};
+  }).filter(Boolean).sort((a,b)=>a.days-b.days);
+}
+
+// ROFEX: curva de devaluación pura. TEA implícita = (futuro/spot)^(365/d)−1.
+// Los futuros liquidan T+0, así que los días van desde HOY y no desde el
+// settle T+1 que usan las matrices de bonos — dentro de esta matriz el criterio
+// es uniforme, pero no hay que cruzar los plazos con las otras.
+function fwdBuildRofItems(spot){
+  if(typeof ROFEX_FUTURES==='undefined'||!(spot>0)) return [];
+  const today=new Date(); today.setHours(0,0,0,0);
+  return ROFEX_FUTURES.map(f=>{
+    const lp=_livePrices[f.ticker]||{};
+    const d=DB(today,new Date(f.exp+"T00:00:00"));
+    if(!(lp.last>0)||d<=0) return null;
+    const ratio=lp.last/spot;
+    if(!(ratio>0)) return null;
+    const tea=(Math.pow(ratio,365/d)-1)*100;
+    if(!isFinite(tea)) return null;
+    return {ticker:f.ticker.replace("DLR/",""), days:d, mat:f.exp, tna:(ratio-1)*365/d*100, tea,
+      tem:Math.pow(1+tea/100,30/365)-1, px:lp.last, pxLabel:'Futuro ($/USD)',
+      reprice:(npx)=>{
+        if(!(npx>0)||!(d>0)||!(spot>0)) return null;
+        const rt=npx/spot;
+        const t=(Math.pow(rt,365/d)-1)*100;
+        if(!isFinite(t)) return null;
+        return {tea:t, tna:(rt-1)*365/d*100, tem:Math.pow(1+t/100,30/365)-1};
+      }};
+  }).filter(Boolean).sort((a,b)=>a.days-b.days);
+}
+
+function fwdRenderFxMatrices(dlItems,rofItems,spot,fxItems){
+  // Se sincroniza la firma también cuando el render viene de calculate(), así
+  // el próximo tick no rebuildea de nuevo lo mismo.
+  _fwdFxSig=_fwdFxSignature(spot);
+  buildForwardMatrix(dlItems,"fwdDLMatrix","dl");
+  buildForwardMatrix(rofItems,"fwdROFEXMatrix","rofex");
+  // Sin al menos 2 nodos no se muestra el título colgado sin matriz debajo.
+  const spotTxt=(spot>0)?`Spot A3500 usado: ${spot.toFixed(2)}.`:"";
+  [["fwdDLBlock","fwdDLSpot",dlItems],["fwdROFEXBlock","fwdROFEXSpot",rofItems]].forEach(([blockId,spotId,items])=>{
+    const block=document.getElementById(blockId);
+    if(block) block.style.display=(items.length>1)?"":"none";
+    const spotEl=document.getElementById(spotId);
+    if(spotEl) spotEl.textContent=spotTxt;
+  });
+  buildDlSyntheticSpread(dlItems,rofItems,fxItems);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   DL vs SINTÉTICO (ROFEX + tasa pesos) — spread forward por tramo
+   El forward de la curva DL es un rendimiento EN DÓLARES; el de ROFEX es una
+   tasa de DEVALUACIÓN. Restarlos no significa nada. El sintético equivalente
+   —colocar pesos y comprar el futuro— rinde en dólares
+       (1 + tasa pesos) / (1 + devaluación) − 1
+   que es la misma cuenta del card "Sintético FX" de DESARROLLO, llevada al
+   espacio forward. Eso sí es comparable contra la DL.
+   ══════════════════════════════════════════════════════════════════════ */
+// Interpolador flat-forward sobre el log del factor de capitalización. Los
+// items ya traen `tem`, y (1+tem)^(d/30) es exactamente el factor que usa
+// fwdRateBetween: interpolando sobre eso, el spread no puede divergir de las
+// matrices de arriba. Devuelve null fuera del último nodo — extrapolar la punta
+// larga de ROFEX sobre un DL a 2 años sería inventar precio.
+function fwdLogFactorCurve(items){
+  const nodes=(items||[])
+    .filter(i=>i&&i.days>0&&isFinite(fwdTemOf(i)))
+    .map(i=>({d:i.days, g:Math.log(Math.pow(1+fwdTemOf(i), i.days/30))}))
+    .filter(n=>isFinite(n.g))
+    .sort((a,b)=>a.d-b.d);
+  if(!nodes.length) return null;
+  return (d)=>{
+    if(!(d>0)) return 0;
+    if(d>nodes[nodes.length-1].d) return null;      // sin extrapolar
+    if(d<=nodes[0].d) return nodes[0].g*(d/nodes[0].d);
+    for(let i=1;i<nodes.length;i++){
+      if(d<=nodes[i].d){
+        const a=nodes[i-1], b=nodes[i];
+        return a.g+(b.g-a.g)*((d-a.d)/(b.d-a.d));
+      }
+    }
+    return null;
+  };
+}
+// TNA simple del tramo a partir de dos puntos del log-factor.
+function _fwdSegTNA(g1,g2,dd){
+  if(g1==null||g2==null||!(dd>0)) return null;
+  const v=(Math.exp(g2-g1)-1)*365/dd*100;
+  return isFinite(v)?v:null;
+}
+
+function buildDlSyntheticSpread(dlItems,rofItems,fxItems){
+  const block=document.getElementById("fwdArbBlock");
+  const host=document.getElementById("fwdArbTable");
+  if(!block||!host) return;
+  const dl=(dlItems||[]).slice().sort((a,b)=>a.days-b.days);
+  if(dl.length<1||!(rofItems||[]).length){ block.style.display="none"; return; }
+
+  const gDL=fwdLogFactorCurve(dl), gROF=fwdLogFactorCurve(rofItems), gFX=fwdLogFactorCurve(fxItems);
+  if(!gDL||!gROF){ block.style.display="none"; return; }
+
+  // ROFEX cuenta días desde HOY (liquida T+0) y los bonos desde el settle T+1.
+  // Para evaluar la curva de futuros en la MISMA fecha calendario que un
+  // vencimiento DL hay que correr el plazo por esa diferencia; si no, se
+  // compararían dos ventanas distintas.
+  const settle=fwdSettleDate();
+  const today=new Date(); today.setHours(0,0,0,0);
+  const offset=DB(today,settle);
+
+  // Tramos: hoy → primer nodo, y después entre nodos DL consecutivos.
+  const segs=[];
+  dl.forEach((it,i)=>{
+    if(i===0) segs.push({label:`Hoy → ${it.ticker}`, d1:0, d2:it.days, mat:it.mat});
+    else segs.push({label:`${dl[i-1].ticker} → ${it.ticker}`, d1:dl[i-1].days, d2:it.days, mat:it.mat});
+  });
+
+  let anyFx=false;
+  const rows=segs.map(s=>{
+    const dd=s.d2-s.d1;
+    const fwdDL=_fwdSegTNA(gDL(s.d1),gDL(s.d2),dd);
+    // Los DOS extremos corridos por el offset: si sólo se corriera el largo, la
+    // ventana de ROFEX quedaría un día más larga que la de la DL y el spread
+    // arrastraría un día de devaluación que no corresponde al tramo.
+    const fwdDev=_fwdSegTNA(gROF(s.d1+offset),gROF(s.d2+offset),dd);
+    const fwdArs=gFX?_fwdSegTNA(gFX(s.d1),gFX(s.d2),dd):null;
+    if(fwdArs!=null) anyFx=true;
+    // Sintético en dólares: (1+pesos)/(1+deval) − 1 sobre el tramo, y de vuelta
+    // a TNA. Se opera con factores del período, no con las TNA anualizadas.
+    let fwdSynth=null;
+    if(fwdDev!=null&&fwdArs!=null&&dd>0){
+      const fDev=1+fwdDev/100*dd/365, fArs=1+fwdArs/100*dd/365;
+      if(fDev>0){ const v=(fArs/fDev-1)*365/dd*100; if(isFinite(v)) fwdSynth=v; }
+    }
+    const spread=(fwdDL!=null&&fwdSynth!=null)?(fwdDL-fwdSynth)*100:null;
+    return {...s, dd, fwdDL, fwdDev, fwdArs, fwdSynth, spread};
+  });
+
+  const f=(v,suf)=>(v==null||!isFinite(v))?'<span style="color:var(--tm)">—</span>':v.toFixed(2)+(suf||'%');
+  const BAND=25;   // ±25bps: por debajo de eso es ruido de interpolación, no señal
+  let html='<table class="fwd-matrix" style="width:auto;min-width:100%"><thead><tr>'
+    +'<th style="text-align:left">Tramo</th><th>Días</th><th>Fwd DL (USD)</th>'
+    +'<th>Fwd deval. ROFEX</th><th>Fwd pesos LECAP</th><th>Fwd sintético (USD)</th>'
+    +'<th>Spread</th><th>Señal</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    let sig='<span style="color:var(--tm)">sin dato</span>', cls='fwd-mid';
+    if(r.spread!=null){
+      if(r.spread>BAND){ sig='<b style="color:var(--pos)">DL barata</b>'; cls='fwd-hi'; }
+      else if(r.spread<-BAND){ sig='<b style="color:var(--neg)">Sintético barato</b>'; cls='fwd-lo'; }
+      else { sig='<span style="color:var(--td)">neutro</span>'; }
+    }
+    html+=`<tr><td style="text-align:left;color:var(--ac-dl)">${r.label}</td>`
+      +`<td style="color:var(--td)">${r.dd}</td>`
+      +`<td>${f(r.fwdDL)}</td><td>${f(r.fwdDev)}</td><td>${f(r.fwdArs)}</td><td>${f(r.fwdSynth)}</td>`
+      +`<td class="${cls}">${r.spread==null?'<span style="color:var(--tm)">—</span>':(r.spread>0?'+':'')+r.spread.toFixed(0)+' bps'}</td>`
+      +`<td>${sig}</td></tr>`;
+  });
+  html+='</tbody></table>';
+  host.innerHTML=html;
+  block.style.display="";
+
+  const note=document.getElementById("fwdArbNote");
+  if(note){
+    note.innerHTML=anyFx ? '' :
+      '<b style="color:var(--am)">Falta la curva de tasa fija:</b> sin LECAP calculadas no se puede armar el sintético, así que sólo se muestran las dos patas sueltas. Apretá "Calcular todo".';
+  }
+}
+
+// Firma de los precios que alimentan las dos curvas. renderResumenCurves() se
+// llama ~26 veces por segundo (la app la encadena desde varios lados), y
+// rebuildear dos matrices de 17×17 a esa frecuencia además de tirar el DOM
+// abajo del mouse no tiene sentido: si ningún precio se movió, no hay nada que
+// redibujar. Comparar la firma es mucho más barato que armar las matrices.
+let _fwdFxSig=null;
+function _fwdFxSignature(spot){
+  let s='s'+spot;
+  if(typeof DL_BONDS!=='undefined') for(const b of DL_BONDS) s+='|'+b.ticker+':'+((_livePrices[b.ticker]||{}).last||0);
+  if(typeof ROFEX_FUTURES!=='undefined') for(const f of ROFEX_FUTURES) s+='|'+f.ticker+':'+((_livePrices[f.ticker]||{}).last||0);
+  return s;
+}
+
+// Llamado desde renderResumenCurves(), que corre en cada tick del feed.
+function refreshFxForwardMatrices(force){
+  const card=document.getElementById("fwdCard");
+  if(!card) return;
+  const spot=(typeof getFxSpot==='function')?getFxSpot():0;
+  const sig=_fwdFxSignature(spot);
+  if(!force&&sig===_fwdFxSig) return;
+  _fwdFxSig=sig;
+  const settle=fwdSettleDate();
+  const dlItems=fwdBuildDlItems(settle,spot);
+  const rofItems=fwdBuildRofItems(spot);
+  if(!dlItems.length&&!rofItems.length) return;
+  // Si sólo hay curvas de FX (sin haber apretado "Calcular todo") la card sigue
+  // oculta y no se vería nada: se abre acá también.
+  if(dlItems.length>1||rofItems.length>1) card.style.display="";
+  const fxItems=(_FWD_MATRICES.fx&&_FWD_MATRICES.fx.items)||[];
+  fwdRenderFxMatrices(dlItems,rofItems,spot,fxItems);
+  fwdRefreshAfterRebuild();
 }
 
 // ═══ V7 QUANT+ FUNCTIONS ═════════════════════════════════════════
