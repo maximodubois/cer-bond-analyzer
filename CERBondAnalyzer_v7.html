@@ -401,6 +401,8 @@
   .fwdp{margin-top:8px;background:var(--bg);border:1px solid var(--cb);border-radius:6px;padding:10px}
   .fwdp-hd{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
   .fwdp-ttl{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:var(--t)}
+  .fwdp-pin{margin-left:8px;font-size:10px;font-weight:600;color:var(--am);background:var(--amd);
+            border:1px solid rgba(229,168,57,0.35);border-radius:4px;padding:1px 6px}
   .fwdp-x{cursor:pointer;color:var(--td);font-size:14px;line-height:1;padding:0 4px}
   .fwdp-x:hover{color:var(--t)}
   .fwdp-legs{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px;margin-bottom:8px}
@@ -12095,8 +12097,9 @@ function buildForwardMatrix(items, containerID, key){
    Los overrides son por (matriz, ticker) y sobreviven mientras navegás celdas
    de la misma matriz — si tocás una pata que ya editaste, se respeta.
    ══════════════════════════════════════════════════════════════════════ */
-const _fwdOvr={};        // `${key}|${ticker}` → precio del usuario
-let _fwdSel=null;        // {key, ri, ci}
+const _fwdOvr={};          // `${key}|${ticker}` → precio del usuario
+let _fwdSel=null;          // {key, rT, cT, pinned}
+let _fwdPendingRefresh=false;
 
 const _fwdBlockOf={fx:"fwdFXBlock", cerNom:"fwdCERNomBlock", cerReal:"fwdCERRealBlock",
                    dl:"fwdDLBlock", rofex:"fwdROFEXBlock"};
@@ -12126,25 +12129,91 @@ function _fwdEffItem(key,it){
   return re?{...it,...re,px:ovr,edited:true}:it;
 }
 
+// El feed reescribe los precios y dispara calculate() en cada tick, así que los
+// items se rebuildean bajo los pies del panel. La selección se guarda por
+// TICKER y no por índice: el array nuevo puede venir con otro orden u otro
+// largo, y con índices el panel terminaría apuntando a otro bono.
+function _fwdResolveSel(){
+  if(!_fwdSel) return null;
+  const m=_FWD_MATRICES[_fwdSel.key];
+  if(!m) return null;
+  const ri=m.items.findIndex(i=>i.ticker===_fwdSel.rT);
+  const ci=m.items.findIndex(i=>i.ticker===_fwdSel.cT);
+  if(_fwdSel.pinned) return {m, ri, ci, rawR:_fwdSel.pinned.r, rawC:_fwdSel.pinned.c};
+  if(ri<0||ci<0) return null;    // el nodo se cayó de la curva (venció o perdió precio)
+  return {m, ri, ci, rawR:m.items[ri], rawC:m.items[ci]};
+}
+
 function fwdOpenCell(key,ri,ci){
   const m=_FWD_MATRICES[key];
   if(!m||!m.items[ri]||!m.items[ci]) return;
-  _fwdSel={key,ri,ci};
+  _fwdSel={key, rT:m.items[ri].ticker, cT:m.items[ci].ticker, pinned:null};
   fwdRenderPanel();
 }
 
 function fwdClosePanel(){
   _fwdSel=null;
+  _fwdPendingRefresh=false;
   const p=document.getElementById("fwdPanel");
   if(p){ p.style.display="none"; p.innerHTML=""; }
   document.querySelectorAll(".fwd-matrix td.fwd-active").forEach(td=>td.classList.remove("fwd-active"));
 }
 
-function fwdSetPrice(leg,raw){
+// Congela las dos patas como están: el mercado sigue moviéndose alrededor pero
+// el par que estás analizando no. Se mantienen las closures de repricing, así
+// que seguís pudiendo editar precios sobre la foto.
+function fwdTogglePin(){
+  const r=_fwdResolveSel();
+  if(!r||!_fwdSel) return;
+  _fwdSel.pinned=_fwdSel.pinned?null:{r:{...r.rawR}, c:{...r.rawC}, at:new Date()};
+  fwdRenderPanel();
+}
+
+// Llamado al final de buildAllForwardMatrices: el panel NO se cierra, se
+// reengancha a los items nuevos. Si estás tipeando no se toca nada y el
+// refresco queda pendiente hasta que saques el foco del input.
+function fwdRefreshAfterRebuild(){
   if(!_fwdSel) return;
-  const m=_FWD_MATRICES[_fwdSel.key];
-  if(!m) return;
-  const it=m.items[leg==='r'?_fwdSel.ri:_fwdSel.ci];
+  const a=document.activeElement;
+  if(a&&a.id&&a.id.indexOf("fwdPx")===0){
+    // Tipeando: no se re-renderiza el panel, pero la matriz sí se rebuildeó y
+    // perdió el resaltado de la celda — se repone solo eso.
+    _fwdPendingRefresh=true;
+    fwdMarkActiveCell();
+    return;
+  }
+  fwdRenderPanel();
+}
+// El blur puede venir disparado por un innerHTML de otro módulo; mover el panel
+// ahí mismo revienta con "node is no longer a child of this node". Se difiere
+// al próximo tick, cuando esa operación ya terminó.
+function fwdOnBlur(){
+  if(!_fwdPendingRefresh) return;
+  _fwdPendingRefresh=false;
+  setTimeout(()=>{
+    if(!_fwdSel) return;
+    // El blur también lo dispara nuestro propio re-render al reemplazar el
+    // input mientras se tipea. Si el foco volvió a un input del panel, el
+    // refresco se sigue postergando en vez de pisar lo que está escribiendo.
+    const a=document.activeElement;
+    if(a&&a.id&&a.id.indexOf("fwdPx")===0){ _fwdPendingRefresh=true; return; }
+    fwdRenderPanel();
+  },0);
+}
+// Resaltado de la celda seleccionada, independiente de re-renderizar el panel.
+function fwdMarkActiveCell(){
+  document.querySelectorAll(".fwd-matrix td.fwd-active").forEach(td=>td.classList.remove("fwd-active"));
+  const sel=_fwdResolveSel();
+  if(!sel||sel.ri<0||sel.ci<0) return;
+  const cont=document.getElementById(sel.m.containerID);
+  const cell=cont&&cont.querySelector(`td[data-ri="${sel.ri}"][data-ci="${sel.ci}"]`);
+  if(cell) cell.classList.add("fwd-active");
+}
+
+function fwdSetPrice(leg,raw){
+  const r=_fwdResolveSel();
+  if(!r) return;
+  const it=leg==='r'?r.rawR:r.rawC;
   if(!it) return;
   // input de texto (no number) para poder restaurar el cursor al re-renderizar;
   // se acepta coma decimal porque es lo que se tipea acá.
@@ -12165,10 +12234,11 @@ function fwdResetPrices(){
 function fwdRenderPanel(keepFocus){
   const panel=document.getElementById("fwdPanel");
   if(!panel) return;
-  if(!_fwdSel){ fwdClosePanel(); return; }
-  const {key,ri,ci}=_fwdSel;
-  const m=_FWD_MATRICES[key];
-  if(!m){ fwdClosePanel(); return; }
+  const sel=_fwdResolveSel();
+  if(!sel){ fwdClosePanel(); return; }
+  const key=_fwdSel.key;
+  const {rawR,rawC}=sel;
+  const pinned=!!_fwdSel.pinned;
 
   const active=document.activeElement;
   const focusId=(keepFocus&&active&&active.id&&active.id.startsWith("fwdPx"))?active.id:null;
@@ -12180,12 +12250,8 @@ function fwdRenderPanel(keepFocus){
   // Panel al pie del bloque de la matriz tocada, y marca de la celda activa
   const block=document.getElementById(_fwdBlockOf[key]);
   if(block&&panel.parentElement!==block) block.appendChild(panel);
-  document.querySelectorAll(".fwd-matrix td.fwd-active").forEach(td=>td.classList.remove("fwd-active"));
-  const cont=document.getElementById(m.containerID);
-  const cell=cont&&cont.querySelector(`td[data-ri="${ri}"][data-ci="${ci}"]`);
-  if(cell) cell.classList.add("fwd-active");
+  fwdMarkActiveCell();
 
-  const rawR=m.items[ri], rawC=m.items[ci];
   const effR=_fwdEffItem(key,rawR), effC=_fwdEffItem(key,rawC);
   const mktFwd=fwdRateBetween(rawR,rawC);
   const myFwd=fwdRateBetween(effR,effC);
@@ -12205,7 +12271,7 @@ function fwdRenderPanel(keepFocus){
         <span style="color:var(--td)">${raw.pxLabel||'Precio'}</span>
         <input type="text" inputmode="decimal" id="${id}" class="${eff.edited?'fwdp-edited':''}"
                value="${(eff.px!=null&&isFinite(eff.px))?eff.px.toFixed(dec):''}"
-               oninput="fwdSetPrice('${leg}',this.value)">
+               oninput="fwdSetPrice('${leg}',this.value)" onblur="fwdOnBlur()">
         ${eff.edited?`<span class="fwdp-mkt">mercado ${mkt!=null&&isFinite(mkt)?mkt.toFixed(dec):'—'}</span>`:'<span class="fwdp-mkt">de mercado</span>'}
       </div>
       <div class="fwdp-row">
@@ -12223,8 +12289,10 @@ function fwdRenderPanel(keepFocus){
   panel.innerHTML=`<div class="fwdp">
     <div class="fwdp-hd">
       <div class="fwdp-ttl">${_fwdNameOf[key]||key}: ${rawR.ticker} → ${rawC.ticker}
-        <span style="color:var(--td);font-weight:400"> · tramo de ${dd} días</span></div>
+        <span style="color:var(--td);font-weight:400"> · tramo de ${dd} días</span>
+        ${pinned?`<span class="fwdp-pin">🔒 fijado ${_fwdSel.pinned.at.toLocaleTimeString('es-AR')}</span>`:''}</div>
       <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn-api btn-sm" onclick="fwdTogglePin()" title="${pinned?'Volver a seguir el mercado en vivo':'Congelar las dos patas para que el feed no te las mueva mientras analizás'}">${pinned?'Soltar':'🔒 Fijar'}</button>
         ${edited?'<button class="btn-api btn-sm" onclick="fwdResetPrices()">Volver a mercado</button>':''}
         <span class="fwdp-x" onclick="fwdClosePanel()" title="Cerrar">✕</span>
       </div>
@@ -12252,7 +12320,7 @@ function fwdRenderPanel(keepFocus){
       </div>`:''}
     </div>
     ${outOfRange?'<div class="note" style="margin:8px 0 0 0;color:var(--neg)">La tasa implícita se dispara con ese precio — revisá que esté en la unidad correcta del instrumento.</div>':''}
-    <div class="note" style="margin:8px 0 0 0">Editar precios acá <b>no toca la matriz</b>: arriba seguís viendo mercado. Los precios que pises quedan aplicados a ese instrumento mientras recorrés otras celdas de esta misma matriz.</div>
+    <div class="note" style="margin:8px 0 0 0">Editar precios acá <b>no toca la matriz</b>: arriba seguís viendo mercado. Los precios que pises quedan aplicados a ese instrumento mientras recorrés otras celdas de esta misma matriz. ${pinned?'<b style="color:var(--am)">Fijado:</b> las dos patas quedaron congeladas en la foto de arriba, el feed no las va a mover hasta que sueltes.':'El panel sobrevive a los refrescos del feed, y mientras tipeás no se actualiza. Si querés que ni el mercado se te mueva, tocá <b>Fijar</b>.'}</div>
   </div>`;
 
   if(focusId){
@@ -12378,8 +12446,6 @@ function buildAllForwardMatrices(){
 
   if(fxItems.length>1||cerNomItems.length>1||dlItems.length>1||rofItems.length>1){
     card.style.display="";
-    // El panel abierto apunta a items viejos: se cierra antes de re-renderizar.
-    fwdClosePanel();
     buildForwardMatrix(fxItems,"fwdFXMatrix","fx");
     buildForwardMatrix(cerNomItems,"fwdCERNomMatrix","cerNom");
     buildForwardMatrix(cerRealItems,"fwdCERRealMatrix","cerReal");
@@ -12394,6 +12460,9 @@ function buildAllForwardMatrices(){
       const spotEl=document.getElementById(spotId);
       if(spotEl) spotEl.textContent=spotTxt;
     });
+    // El panel de la celda NO se cierra con el refresh del feed: se reengancha
+    // a los items nuevos (por ticker) y respeta que estés tipeando.
+    fwdRefreshAfterRebuild();
   }
 }
 
